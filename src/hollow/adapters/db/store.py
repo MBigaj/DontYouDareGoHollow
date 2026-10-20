@@ -11,7 +11,7 @@ from sqlalchemy.pool import StaticPool
 from sqlalchemy.types import TypeDecorator
 
 from hollow.domain.activities import ActivityKind
-from hollow.domain.events import Event, MessageLeft, StudyLogged
+from hollow.domain.events import Event, MessageLeft, Source, StudyLogged
 
 
 class Base(DeclarativeBase):
@@ -52,6 +52,7 @@ def to_row(event: Event) -> EventRow:
             "kind": event.kind.value,
             "quantity": event.quantity,
             "note": event.note,
+            "source": event.source.value,
         }
         return EventRow(
             id=str(event.id), type="study_logged", occurred_at=event.occurred_at, payload=payload
@@ -72,6 +73,7 @@ def from_row(row: EventRow) -> Event:
             kind=ActivityKind(p["kind"]),
             quantity=int(p["quantity"]),
             note=str(p.get("note", "")),
+            source=Source(p.get("source", Source.MANUAL.value)),
             id=UUID(row.id),
         )
     if row.type == "message_left":
@@ -86,6 +88,17 @@ class SqlEventStore:
     def append(self, event: Event) -> None:
         with Session(self._engine) as session, session.begin():
             session.add(to_row(event))
+
+    def append_new(self, events: Sequence[Event]) -> list[Event]:
+        """Appends the events whose ids are not stored yet and returns them."""
+        if not events:
+            return []
+        ids = [str(event.id) for event in events]
+        with Session(self._engine) as session, session.begin():
+            existing = set(session.scalars(select(EventRow.id).where(EventRow.id.in_(ids))))
+            fresh = {str(e.id): e for e in events if str(e.id) not in existing}
+            session.add_all(to_row(event) for event in fresh.values())
+            return list(fresh.values())
 
     def all(self) -> Sequence[Event]:
         with Session(self._engine) as session:

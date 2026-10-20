@@ -1,5 +1,6 @@
 <div id="world" style="display: flex; flex-direction: column; gap: 16px">
   {% if flash %}<div class="flash" role="status">{{ flash }}</div>{% endif %}
+  {% if warning %}<div class="panel blood" role="alert" style="color: var(--blood-ink)">{{ warning }}</div>{% endif %}
 
   {% if state.bloodstain %}
   <div class="panel blood souls">
@@ -33,11 +34,20 @@
 
       {% if state.lit_today %}
         <div class="flash" style="text-align: center">The bonfire is lit for today. Rest, or venture further.</div>
+        {% if anki_enabled %}
+        <form method="post" action="/light" hx-post="/light" hx-target="#world" hx-swap="outerHTML">
+          <button class="btn" type="submit" style="width: 100%">Sync Anki</button>
+        </form>
+        {% endif %}
       {% else %}
         <form method="post" action="/light" hx-post="/light" hx-target="#world" hx-swap="outerHTML">
           <button class="btn ember big" type="submit">LIGHT THE BONFIRE</button>
         </form>
+        {% if anki_enabled %}
+        <span class="muted" style="font-size: 14px; text-align: center">Do 10 reviews in Anki, then press to sync</span>
+        {% else %}
         <span class="muted" style="font-size: 14px; text-align: center">Logs 10 Anki reviews · about 5 minutes</span>
+        {% endif %}
       {% endif %}
     </div>
   </section>

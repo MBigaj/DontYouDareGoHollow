@@ -1,0 +1,29 @@
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: hollow
+      POSTGRES_PASSWORD: hollow
+      POSTGRES_DB: hollow
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hollow"]
+      interval: 5s
+      retries: 10
+
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      HOLLOW_DATABASE_URL: postgresql+psycopg://hollow:hollow@db:5432/hollow
+      HOLLOW_TIMEZONE: Europe/Warsaw
+      HOLLOW_DAY_START_HOUR: "4"
+      HOLLOW_PASSWORD: ${HOLLOW_PASSWORD:-}
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

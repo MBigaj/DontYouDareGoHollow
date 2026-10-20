@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+<header class="topbar">
+  <h1 class="title">DONT YOU DARE GO HOLLOW</h1>
+  <span class="label">{{ state.today.strftime("%A %d %B") }}</span>
+</header>
+
+{% include "partials/_world.html" %}
+
+<div class="grid-2">
+  <section class="panel" aria-labelledby="log-title">
+    <h2 id="log-title" class="label">Log study</h2>
+    <form class="stack" method="post" action="/log" hx-post="/log" hx-target="#world" hx-swap="outerHTML">
+      <div class="row">
+        <label>Activity
+          <select name="kind">
+            <optgroup label="Ronin · Japanese">
+              {% for spec in ronin_kinds %}<option value="{{ spec.kind.value }}">{{ spec.label }} ({{ spec.unit }})</option>{% endfor %}
+            </optgroup>
+            <optgroup label="Architect · Python">
+              {% for spec in architect_kinds %}<option value="{{ spec.kind.value }}">{{ spec.label }} ({{ spec.unit }})</option>{% endfor %}
+            </optgroup>
+          </select>
+        </label>
+        <label>Amount
+          <input name="quantity" type="number" min="1" max="10000" value="10" required inputmode="numeric">
+        </label>
+      </div>
+      <label>Note (optional)
+        <input name="note" maxlength="280" placeholder="e.g. Core 2000 cards 150 to 170">
+      </label>
+      <button class="btn" type="submit">Log it</button>
+    </form>
+  </section>
+
+  <section class="panel" aria-labelledby="msg-title">
+    <h2 id="msg-title" class="label">Leave a message for tomorrow's you</h2>
+    <form class="stack" method="post" action="/message" hx-post="/message" hx-target="#world" hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful) this.reset()">
+      <label>Message
+        <textarea name="text" rows="3" maxlength="280" required placeholder="Try て-form ahead"></textarea>
+      </label>
+      <button class="btn" type="submit">Leave it on the ground</button>
+    </form>
+    <h3 class="label" style="margin-top: 18px">Souls per activity</h3>
+    <table>
+      {% for spec in activities %}
+      <tr><td>{{ spec.label }} <span class="muted">· {{ spec.kindling }} lights the fire</span></td><td>+{{ spec.souls_per_unit }} / {{ spec.unit.rstrip('s') }}</td></tr>
+      {% endfor %}
+    </table>
+  </section>
+</div>
+{% endblock %}

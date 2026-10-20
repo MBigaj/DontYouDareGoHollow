@@ -1,0 +1,75 @@
+<div id="world" style="display: flex; flex-direction: column; gap: 16px">
+  {% if flash %}<div class="flash" role="status">{{ flash }}</div>{% endif %}
+
+  {% if state.bloodstain %}
+  <div class="panel blood souls">
+    <img src="{{ url_for('static', path='sprites/item_ember.png') }}" alt="" width="36" height="36">
+    <div>
+      <div style="font-weight: 600; color: var(--blood-ink)">Bloodstain · {{ state.bloodstain.souls }} souls</div>
+      <div style="font-size: 14px; color: var(--ink-2)">Light the bonfire today to get them back. Miss today and they are gone.</div>
+    </div>
+  </div>
+  {% endif %}
+
+  <section class="panel scene" aria-label="Bonfire">
+    {% set h = state.hollowing %}
+    <div class="stage">
+      <img class="knight sprite {{ 'alive' if h < max_hollowing }}" src="{{ url_for('static', path='sprites/knight_front.png') }}"
+           alt="Your knight, {{ state.status | lower }}" width="120" height="156"
+           style="filter: grayscale({{ h * 0.2 }}) brightness({{ 1 - h * 0.1 }})">
+      <div class="fire sprite {{ 'lit' if state.lit_today else 'unlit' }}" role="img"
+           aria-label="{{ 'A lit bonfire' if state.lit_today else 'An unlit bonfire' }}"></div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 14px; width: 100%">
+      <div class="stats">
+        <div class="stat"><span class="label">Souls</span>
+          <span class="value souls"><img src="{{ url_for('static', path='sprites/item_soul.png') }}" alt="" width="27" height="27">{{ "{:,}".format(state.souls) }}</span></div>
+        <div class="stat"><span class="label">Streak</span><span class="value">{{ state.streak }} {{ 'day' if state.streak == 1 else 'days' }}</span></div>
+        <div class="stat"><span class="label">{{ state.status }}</span>
+          <span class="pips" aria-label="Hollowing {{ h }} of {{ max_hollowing }}">{% for i in range(max_hollowing) %}<span class="pip {{ 'on' if i < h }}"></span>{% endfor %}</span></div>
+        <div class="stat"><span class="label">Deaths</span><span class="value" style="color: var(--blood-ink)">{{ state.deaths }}</span></div>
+      </div>
+
+      {% if state.lit_today %}
+        <div class="flash" style="text-align: center">The bonfire is lit for today. Rest, or venture further.</div>
+      {% else %}
+        <form method="post" action="/light" hx-post="/light" hx-target="#world" hx-swap="outerHTML">
+          <button class="btn ember big" type="submit">LIGHT THE BONFIRE</button>
+        </form>
+        <span class="muted" style="font-size: 14px; text-align: center">Logs 10 Anki reviews · about 5 minutes</span>
+      {% endif %}
+    </div>
+  </section>
+
+  {% if state.message %}
+  <div class="message">Message: "<span lang="ja">{{ state.message.text }}</span>" <span class="muted">· left by past you</span></div>
+  {% endif %}
+
+  <section class="panel" aria-label="Today and recent days">
+    <div class="grid-2">
+      <div>
+        <h2 class="label">Today</h2>
+        {% if state.today_totals %}
+        <table>
+          {% for spec in activities if spec.kind in state.today_totals %}
+          <tr><td>{{ spec.label }}: {{ state.today_totals[spec.kind] }} {{ spec.unit }}</td><td>+{{ state.today_totals[spec.kind] * spec.souls_per_unit }}</td></tr>
+          {% endfor %}
+        </table>
+        {% else %}
+        <p class="muted">Nothing logged yet today.</p>
+        {% endif %}
+      </div>
+      <div>
+        <h2 class="label">Last 7 days</h2>
+        <div class="days">
+          {% for day in state.recent_days %}
+          <span class="day {{ 'lit' if day.lit else ('died' if day.died else 'open') }}"
+                title="{{ day.day.isoformat() }}: {{ 'lit' if day.lit else ('died' if day.died else 'still open') }}, +{{ day.souls_earned }} souls">{{ day.day.day }}</span>
+          {% endfor %}
+        </div>
+        <p class="muted" style="font-size: 14px">{{ state.bonfires_lit }} bonfires lit · {{ "{:,}".format(state.souls_earned_total) }} souls earned · {{ "{:,}".format(state.souls_lost) }} lost</p>
+      </div>
+    </div>
+  </section>
+</div>

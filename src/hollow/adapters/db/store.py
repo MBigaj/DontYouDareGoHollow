@@ -1,0 +1,103 @@
+"""SQLAlchemy event store: one append-only table, one row per event."""
+
+from collections.abc import Sequence
+from datetime import UTC, datetime
+from typing import Any
+from uuid import UUID
+
+from sqlalchemy import JSON, DateTime, Engine, String, create_engine, select
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
+from sqlalchemy.pool import StaticPool
+from sqlalchemy.types import TypeDecorator
+
+from hollow.domain.activities import ActivityKind
+from hollow.domain.events import Event, MessageLeft, StudyLogged
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+class UTCDateTime(TypeDecorator[datetime]):
+    """Stores aware datetimes as UTC and always returns them aware (SQLite drops the zone)."""
+
+    impl = DateTime(timezone=True)
+    cache_ok = True
+
+    def process_bind_param(self, value: datetime | None, dialect: Any) -> datetime | None:
+        if value is None:
+            return None
+        if value.tzinfo is None:
+            raise ValueError("naive datetimes are not allowed")
+        return value.astimezone(UTC)
+
+    def process_result_value(self, value: datetime | None, dialect: Any) -> datetime | None:
+        if value is None:
+            return None
+        return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+
+
+class EventRow(Base):
+    __tablename__ = "events"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    type: Mapped[str] = mapped_column(String(32))
+    occurred_at: Mapped[datetime] = mapped_column(UTCDateTime(), index=True)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON)
+
+
+def to_row(event: Event) -> EventRow:
+    if isinstance(event, StudyLogged):
+        payload: dict[str, Any] = {
+            "kind": event.kind.value,
+            "quantity": event.quantity,
+            "note": event.note,
+        }
+        return EventRow(
+            id=str(event.id), type="study_logged", occurred_at=event.occurred_at, payload=payload
+        )
+    return EventRow(
+        id=str(event.id),
+        type="message_left",
+        occurred_at=event.occurred_at,
+        payload={"text": event.text},
+    )
+
+
+def from_row(row: EventRow) -> Event:
+    p = row.payload
+    if row.type == "study_logged":
+        return StudyLogged(
+            occurred_at=row.occurred_at,
+            kind=ActivityKind(p["kind"]),
+            quantity=int(p["quantity"]),
+            note=str(p.get("note", "")),
+            id=UUID(row.id),
+        )
+    if row.type == "message_left":
+        return MessageLeft(occurred_at=row.occurred_at, text=str(p["text"]), id=UUID(row.id))
+    raise ValueError(f"unknown event type: {row.type}")
+
+
+class SqlEventStore:
+    def __init__(self, engine: Engine) -> None:
+        self._engine = engine
+
+    def append(self, event: Event) -> None:
+        with Session(self._engine) as session, session.begin():
+            session.add(to_row(event))
+
+    def all(self) -> Sequence[Event]:
+        with Session(self._engine) as session:
+            rows = session.scalars(select(EventRow).order_by(EventRow.occurred_at, EventRow.id))
+            return [from_row(row) for row in rows]
+
+
+def make_engine(url: str) -> Engine:
+    if url in ("sqlite://", "sqlite:///:memory:"):
+        return create_engine(
+            "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+        )
+    if url.startswith("sqlite"):
+        return create_engine(url, connect_args={"check_same_thread": False})
+    return create_engine(url, pool_pre_ping=True)

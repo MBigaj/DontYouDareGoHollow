@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}DontYouDareGoHollow{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&family=DotGothic16&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', path='hollow.css') }}">
+  <link rel="icon" href="{{ url_for('static', path='sprites/item_ember.png') }}">
+  <script src="{{ url_for('static', path='htmx.min.js') }}" defer></script>
+</head>
+<body>
+  <main class="wrap">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

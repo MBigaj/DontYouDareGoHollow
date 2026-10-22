@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% from "partials/_ja.html" import ja %}
+{% block title %}{{ region.name }} · DontYouDareGoHollow{% endblock %}
+{% block content %}
+<div class="map-layout">
+  <section class="panel map-frame" aria-label="{{ region.name }}">
+    <div class="map-head"><h2 class="label">Region {{ region.number }} · {{ region.name }} · {{ explored }}% explored</h2>
+      <a class="label" href="/map">World map ↑</a></div>
+    {% include "partials/_map.html" %}
+  </section>
+  <aside class="map-side">
+    {% for p in points %}
+    <section class="panel map-panel" data-panel="{{ p.id }}" {{ 'hidden' if p.id != at }}>
+      <div class="label">{{ p.caption }}</div>
+      <h2 class="map-title">{{ p.name }}</h2>
+      {% if p.example %}<div lang="ja" class="map-jp">{% for pair in p.example | batch(2) %}{% if not loop.first %}, {% endif %}{{ ja(*pair[0]) }} → {{ ja(*pair[1]) }}{% endfor %}</div>{% endif %}
+      <p>{{ p.detail }}</p>
+      {% if p.action %}<a class="btn ember wide-link" href="{{ p.action[1] }}" data-action>{{ p.action[0] }}</a>{% endif %}
+    </section>
+    {% endfor %}
+  </aside>
+</div>
+<script src="{{ asset('js/map.js') }}" defer></script>
+{% endblock %}

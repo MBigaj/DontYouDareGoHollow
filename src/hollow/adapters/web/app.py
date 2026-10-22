@@ -1,6 +1,8 @@
 """FastAPI + Jinja + HTMX. Every form works without JavaScript; HTMX swaps the world panel."""
 
+import hashlib
 import secrets
+from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -26,12 +28,37 @@ from hollow.application.lessons import Run as LessonRun
 from hollow.application.ports import Clock, EventStore, SystemClock
 from hollow.config import Settings
 from hollow.domain.activities import ACTIVITIES, ActivityKind, Track
+from hollow.domain.atlas import FIRELINK, FIRELINK_SIZE, REGIONS, WORLD_SIZE, NodeKind
 from hollow.domain.conjugation import Ending, Verb
 from hollow.domain.lessons import LESSONS, Run, grade
 from hollow.domain.progression import STATS, Stat
 from hollow.domain.world import EFFIGIES_PER_WEEK, MAX_HOLLOWING, WorldState
 
 HERE = Path(__file__).parent
+STATIC = HERE / "static"
+
+
+class FreshStaticFiles(StaticFiles):
+    """Static files the browser re-checks before reuse, so a changed sprite always shows."""
+
+    def file_response(self, *args: Any, **kwargs: Any) -> Response:
+        response = super().file_response(*args, **kwargs)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
+@lru_cache(maxsize=256)
+def _fingerprint(path: str, mtime_ns: int) -> str:
+    return hashlib.sha1((STATIC / path).read_bytes()).hexdigest()[:10]
+
+
+def asset(path: str) -> str:
+    """A static file's URL with a content fingerprint: new content, new URL, no stale cache."""
+    file = STATIC / path
+    version = _fingerprint(path, file.stat().st_mtime_ns) if file.is_file() else "0"
+    return f"/static/{path}?v={version}"
+
+
 RUN_LABELS = {Run.FIRST: "New lesson", Run.REFRESHER: "Refresher", Run.PRACTICE: "Practice"}
 HINTS = {
     Ending.RU_VERB: "る-verb: drop る, add て.",
@@ -88,6 +115,7 @@ def create_app(
         else None
     )
     templates = Jinja2Templates(directory=HERE / "templates")
+    templates.env.globals["asset"] = asset
     syncing = anki_sync is not None or github_sync is not None
     """Pages only ask for a background sync when there is something to sync."""
     basic = HTTPBasic(auto_error=False)
@@ -103,7 +131,7 @@ def create_app(
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, headers={"WWW-Authenticate": "Basic"})
 
     app = FastAPI(title="DontYouDareGoHollow", dependencies=[Depends(require_password)])
-    app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
+    app.mount("/static", FreshStaticFiles(directory=STATIC), name="static")
 
     def context(state: WorldState, **extra: Any) -> dict[str, Any]:
         return {
@@ -423,6 +451,119 @@ def create_app(
         ]
         return lesson_page(
             request, current, answers, "result", outcome=outcome, misses=misses, state=state
+        )
+
+    def explored() -> int:
+        cards = lessons.overview()
+        cleared = sum(1 for c in cards if c.progress is not None and c.progress.cleared)
+        return round(100 * cleared / len(cards))
+
+    def percent(point: tuple[int, int], size: tuple[int, int]) -> tuple[float, float]:
+        return round(100 * point[0] / size[0], 2), round(100 * point[1] / size[1], 2)
+
+    @app.get("/map", response_class=HTMLResponse)
+    def world_map(request: Request, at: str | None = None) -> Response:
+        ids = [r.id for r in REGIONS]
+        here = at if at in ids else request.cookies.get("hollow_at_world", "firelink")
+        points = []
+        for r in REGIONS:
+            x, y = percent(r.point, WORLD_SIZE)
+            kind = "bonfire" if r.open else "world"
+            points.append(
+                {
+                    "id": r.id,
+                    "name": r.name,
+                    "kind": kind,
+                    "status": "open" if r.open else "fog",
+                    "x": x,
+                    "y": y,
+                }
+            )
+        return templates.TemplateResponse(
+            request,
+            "map_world.html",
+            context(
+                service.state(),
+                page="map",
+                map_id="world",
+                size=WORLD_SIZE,
+                art="map_bg.png",
+                points=points,
+                regions=REGIONS,
+                at=here if here in ids else "firelink",
+                explored=explored(),
+            ),
+        )
+
+    @app.get("/map/firelink", response_class=HTMLResponse)
+    def firelink(request: Request, at: str | None = None) -> Response:
+        ids = [n.id for n in FIRELINK]
+        here = at if at in ids else request.cookies.get("hollow_at_firelink", "bonfire")
+        cards = {c.spec.id: c for c in lessons.overview()}
+        points = []
+        for number, node in enumerate(FIRELINK):
+            x, y = percent(node.point, FIRELINK_SIZE)
+            point: dict[str, Any] = {"id": node.id, "kind": node.kind.value, "x": x, "y": y}
+            if node.kind is NodeKind.BONFIRE:
+                point |= {
+                    "name": "Firelink bonfire",
+                    "status": "open",
+                    "caption": "Bonfire",
+                    "detail": "Rest here: your souls, streak, Effigies and level.",
+                    "action": ("Rest at the bonfire", "/"),
+                }
+            elif node.kind is NodeKind.BOSS:
+                point |= {
+                    "name": "Fog gate",
+                    "status": "fog",
+                    "caption": "Boss · unavailable",
+                    "detail": "The て-form Warden waits beyond the fog. The fog will not part yet.",
+                }
+            else:
+                assert node.lesson_id is not None
+                card = cards[node.lesson_id]
+                status = card.status.value
+                labels = {"new": "Start", "due": "Refresh", "waiting": "Practise"}
+                if status == "locked":
+                    missing = card.spec.min_verbs - card.verbs
+                    detail = (
+                        f"Unavailable: learn {missing} more verb{'s' if missing != 1 else ''} "
+                        "of this kind in Anki to open it."
+                    )
+                elif status == "waiting" and card.progress and card.progress.due_on:
+                    detail = (
+                        f"Cleared. Back as a refresher on {card.progress.due_on:%A %d %B}; "
+                        "practice now pays 25%."
+                    )
+                elif status == "due":
+                    detail = "A refresher is due: 60% souls, and the next interval if you get 90%."
+                else:
+                    detail = f"{card.questions} questions from {card.verbs} of your verbs."
+                point |= {
+                    "name": card.spec.title,
+                    "status": "cleared" if status == "waiting" else status,
+                    "caption": f"Lesson {number} · て-form",
+                    "example": card.spec.example,
+                    "detail": detail,
+                    "action": (
+                        (labels[status], f"/lessons/{card.spec.id}") if status in labels else None
+                    ),
+                }
+            points.append(point)
+        return templates.TemplateResponse(
+            request,
+            "map_region.html",
+            context(
+                service.state(),
+                page="map",
+                map_id="firelink",
+                size=FIRELINK_SIZE,
+                art="region_firelink.png",
+                points=points,
+                region=REGIONS[0],
+                at=here if here in ids else "bonfire",
+                explored=explored(),
+            ),
         )
 
     @app.post("/message")

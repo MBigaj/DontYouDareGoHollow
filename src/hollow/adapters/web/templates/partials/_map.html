@@ -1,0 +1,14 @@
+{# A walkable map: `points` in walking order, each with x/y in percent and a panel. #}
+<div class="map" data-map="{{ map_id }}" data-at="{{ at }}" data-size="{{ size[0] }}x{{ size[1] }}"
+     style="aspect-ratio: {{ size[0] }} / {{ size[1] }}; background-image: url({{ asset('sprites/' + art) }})">
+  {% for p in points %}
+  <a class="node {{ p.kind }} {{ p.status }} {{ 'here' if p.id == at }}" href="?at={{ p.id }}" data-node="{{ p.id }}"
+     data-x="{{ p.x }}" data-y="{{ p.y }}" style="left: {{ p.x }}%; top: {{ p.y }}%"
+     aria-label="{{ p.name }}{{ ' (unavailable)' if p.status in ('locked', 'fog') }}">
+    <span class="node-mark" aria-hidden="true"></span>
+    <span class="node-label">{{ p.name }}</span>
+  </a>
+  {% endfor %}
+  <div class="map-knight" aria-hidden="true"><img src="{{ asset('sprites/knight_front.png') }}" alt=""></div>
+</div>
+<p class="muted map-help">Click a place, or use ← and → to move. Enter opens it.</p>

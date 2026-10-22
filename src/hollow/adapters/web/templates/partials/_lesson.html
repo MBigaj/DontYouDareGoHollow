@@ -46,7 +46,7 @@
     <div class="result {{ 'ok' if outcome.passed else 'miss' }}">
       <div class="score">{{ outcome.correct }} / {{ outcome.total }}</div>
       <div class="verdict-line">{% if outcome.passed %}{{ 'Lesson cleared' if outcome.run.value == 'first' else ('Refresher cleared' if outcome.run.value == 'refresher' else 'Practice done') }}{% else %}Not cleared yet · clear at 80%{% endif %}</div>
-      <div class="souls"><img src="{{ url_for('static', path='sprites/item_soul.png') }}" alt="" width="27" height="27">+{{ outcome.souls }} souls <span class="muted">({{ run_labels[outcome.run] | lower }})</span></div>
+      <div class="souls"><img src="{{ asset('sprites/item_soul.png') }}" alt="" width="27" height="27">+{{ outcome.souls }} souls <span class="muted">({{ run_labels[outcome.run] | lower }})</span></div>
       {% if progress and progress.due_on %}<p class="muted">Comes back as a refresher on {{ progress.due_on.strftime('%A %d %B') }}.</p>{% endif %}
       {% if state.lit_today %}<p>The bonfire is lit for today.</p>{% endif %}
     </div>

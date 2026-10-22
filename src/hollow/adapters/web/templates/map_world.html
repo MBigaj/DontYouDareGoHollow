@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% from "partials/_ja.html" import ja %}
+{% block title %}World map · DontYouDareGoHollow{% endblock %}
+{% block content %}
+<div class="map-layout">
+  <section class="panel map-frame" aria-label="World map">
+    <h2 class="label">The world · Ronin (Japanese)</h2>
+    {% include "partials/_map.html" %}
+  </section>
+  <aside class="map-side">
+    {% for r in regions %}
+    <section class="panel map-panel" data-panel="{{ r.id }}" {{ 'hidden' if r.id != at }}>
+      <div class="label">Region {{ r.number }}{% if not r.open %} · in the fog{% endif %}</div>
+      <h2 class="map-title">{{ r.name }}</h2>
+      <div lang="ja" class="map-jp">{{ ja(r.jp, r.jp_kana) }}</div>
+      <p>{{ r.blurb }}</p>
+      <table>
+        <tr><td>Words</td><td>{{ r.cards }}</td></tr>
+        <tr><td>Grammar</td><td>{{ r.topics }}</td></tr>
+        <tr><td>Boss</td><td>{{ r.boss }}</td></tr>
+        {% if r.open %}<tr><td>Explored</td><td>{{ explored }}%</td></tr>{% endif %}
+      </table>
+      {% if r.open %}<a class="btn ember wide-link" href="/map/{{ r.id }}" data-action>Enter {{ r.name }}</a>
+      {% else %}<p class="muted">Unavailable for now. It opens after the boss before it falls.</p>{% endif %}
+    </section>
+    {% endfor %}
+    <p class="muted" style="font-size: 13px">The Architect's lands (Python) open with the first dev lessons.</p>
+  </aside>
+</div>
+<script src="{{ asset('js/map.js') }}" defer></script>
+{% endblock %}

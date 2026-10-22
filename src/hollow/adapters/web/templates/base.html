@@ -6,9 +6,9 @@
   <title>{% block title %}DontYouDareGoHollow{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&family=DotGothic16&display=swap">
-  <link rel="stylesheet" href="{{ url_for('static', path='hollow.css') }}">
-  <link rel="icon" href="{{ url_for('static', path='sprites/item_ember.png') }}">
-  <script src="{{ url_for('static', path='htmx.min.js') }}" defer></script>
+  <link rel="stylesheet" href="{{ asset('hollow.css') }}">
+  <link rel="icon" href="{{ asset('sprites/item_ember.png') }}">
+  <script src="{{ asset('htmx.min.js') }}" defer></script>
   <script>
     // After HTMX swaps a panel in, put the cursor where the new panel asks for it
     // (the answer box, or the Next button), so a whole lesson works from the keyboard.
@@ -19,11 +19,12 @@
   </script>
 </head>
 <body>
-  <main class="wrap">
+  <main class="wrap {{ 'wide' if page == 'map' }}">
     <header class="topbar">
       <h1 class="title">DONT YOU DARE GO HOLLOW</h1>
       <nav class="nav" aria-label="Pages">
         <a href="/" {{ 'aria-current="page"' | safe if page == 'bonfire' }}>Bonfire</a>
+        <a href="/map" {{ 'aria-current="page"' | safe if page == 'map' }}>Map</a>
         <a href="/lessons" {{ 'aria-current="page"' | safe if page == 'lessons' }}>Lessons{% if state.lessons_due %} <span class="badge">{{ state.lessons_due }}</span>{% endif %}</a>
         <a href="/character" {{ 'aria-current="page"' | safe if page == 'character' }}>Character</a>
         <span class="label">{{ state.today.strftime("%A %d %B") }}</span>

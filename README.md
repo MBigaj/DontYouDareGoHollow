@@ -79,6 +79,14 @@ Lessons are short typed drills. The first set covers the て-form, one lesson pe
 - Cleared lessons come back as refreshers after 1, 3, 7, 21 and 60 days. A refresher at 90% or better moves to the next interval.
 - The word fields default to the Core 2000 deck (`Vocabulary-Kanji`, `Vocabulary-Kana`, `Vocabulary-English`, `Vocabulary-Pos`). Another deck can set `HOLLOW_ANKI_WORD_FIELD`, `HOLLOW_ANKI_KANA_FIELD`, `HOLLOW_ANKI_MEANING_FIELD` and `HOLLOW_ANKI_POS_FIELD`.
 
+## Maps
+
+`/map` is the world map: the six Japanese regions along one road, from Firelink Shrine to the Kiln. Firelink Shrine is open; the others are in the fog until the boss before them falls.
+
+`/map/firelink` is the first region: the bonfire, one rune stone per て-form lesson and the Warden's fog gate. Click a place, or use the arrow keys, and the knight walks there; Enter (or clicking the place you stand on) opens it. Stones glow gold once cleared and flicker when a refresher is due. The map remembers where you stopped.
+
+The region art is placeholder pixel art from `tools/sprites/region_firelink.py`, drawn on the same grid as the points in `hollow.domain.atlas`.
+
 ## GitHub sync
 
 Every merged pull request you open in your practice repo (by default [`MBigaj/hollow-trials`](https://github.com/MBigaj/hollow-trials)) is worth 100 souls and lights the bonfire on its own.

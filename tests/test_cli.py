@@ -7,7 +7,9 @@ from alembic.config import Config
 
 from hollow import cli
 from hollow.application.anki_sync import AnkiUnavailable
+from hollow.application.github_sync import Checks, GitHubUnavailable
 from hollow.domain.anki import AnkiReview
+from hollow.domain.github import MergedPullRequest
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -109,3 +111,43 @@ def test_check_flags_deck_names_anki_does_not_know(
     monkeypatch.setattr(cli, "AnkiConnect", TypoAnki)
     assert cli.check_anki() == 0
     assert "Not found in Anki: Core 200" in capsys.readouterr().out
+
+
+class StubGitHub:
+    def __init__(self, token: str | None = None) -> None:
+        pass
+
+    def merged_pull_requests(self, repo: str, since: datetime) -> list[MergedPullRequest]:
+        just_now = datetime.now(UTC) - timedelta(seconds=5)
+        return [
+            MergedPullRequest(repo, 1, "Trial", "MBigaj", just_now, "sha1"),
+            MergedPullRequest(repo, 2, "Trial", "MBigaj", just_now, "sha2"),
+        ]
+
+    def checks(self, repo: str, sha: str) -> Checks:
+        return Checks.PASSED if sha == "sha1" else Checks.RUNNING
+
+
+class DownGitHub(StubGitHub):
+    def merged_pull_requests(self, repo: str, since: datetime) -> list[MergedPullRequest]:
+        raise GitHubUnavailable("Could not reach GitHub")
+
+
+@pytest.mark.usefixtures("database")
+def test_github_sync_command_imports_prs(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(cli, "GitHubApi", StubGitHub)
+    assert cli.sync_github() == 0
+    out = capsys.readouterr().out
+    assert "Imported 1 merged pull requests" in out
+    assert "1 merged pull requests are still waiting for CI" in out
+
+
+@pytest.mark.usefixtures("database")
+def test_github_sync_command_fails_cleanly(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(cli, "GitHubApi", DownGitHub)
+    assert cli.sync_github() == 1
+    assert "Could not reach GitHub" in capsys.readouterr().err

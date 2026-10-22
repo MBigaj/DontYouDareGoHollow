@@ -12,8 +12,15 @@ from fastapi.templating import Jinja2Templates
 
 from hollow.adapters.anki_connect import AnkiConnect
 from hollow.adapters.db.store import SqlEventStore, make_engine
+from hollow.adapters.github_api import GitHubApi
 from hollow.application.anki_sync import AnkiSource, AnkiSync, AnkiUnavailable, SyncResult
 from hollow.application.bonfire import BonfireService
+from hollow.application.github_sync import (
+    GitHubResult,
+    GitHubSource,
+    GitHubSync,
+    GitHubUnavailable,
+)
 from hollow.application.ports import Clock, EventStore, SystemClock
 from hollow.config import Settings
 from hollow.domain.activities import ACTIVITIES, ActivityKind, Track
@@ -29,6 +36,7 @@ def create_app(
     store: EventStore | None = None,
     clock: Clock | None = None,
     anki: AnkiSource | None = None,
+    github: GitHubSource | None = None,
 ) -> FastAPI:
     settings = settings or Settings()
     store = store or SqlEventStore(make_engine(settings.database_url))
@@ -37,6 +45,21 @@ def create_app(
     if anki is None and settings.anki_enabled:
         anki = AnkiConnect(settings.anki_url, settings.anki_deck_names())
     anki_sync = AnkiSync(store, anki, clock, settings.calendar()) if anki else None
+    if github is None and settings.github_enabled:
+        token = settings.github_token.get_secret_value() if settings.github_token else None
+        github = GitHubApi(token)
+    github_sync = (
+        GitHubSync(
+            store,
+            github,
+            clock,
+            settings.calendar(),
+            settings.github_repo_names(),
+            settings.github_author,
+        )
+        if github
+        else None
+    )
     templates = Jinja2Templates(directory=HERE / "templates")
     basic = HTTPBasic(auto_error=False)
 
@@ -63,7 +86,12 @@ def create_app(
                 for s in ACTIVITIES.values()
                 if s.track is Track.RONIN and not (anki_sync and s.kind in ANKI_KINDS)
             ],
-            "architect_kinds": [s for s in ACTIVITIES.values() if s.track is Track.ARCHITECT],
+            "architect_kinds": [
+                s
+                for s in ACTIVITIES.values()
+                if s.track is Track.ARCHITECT
+                and not (github_sync and s.kind is ActivityKind.PULL_REQUEST)
+            ],
             "anki_enabled": anki_sync is not None,
             **extra,
         }
@@ -77,41 +105,71 @@ def create_app(
             )
         return RedirectResponse("/", status_code=status.HTTP_303_SEE_OTHER)
 
-    def sync() -> tuple[SyncResult | None, str | None]:
-        """Pulls new Anki reviews. Returns the result, or a warning when Anki can't be reached."""
-        if anki_sync is None:
-            return None, None
-        try:
-            return anki_sync.run(), None
-        except AnkiUnavailable:
-            return None, "Anki is not reachable. Open Anki (with AnkiConnect) and sync again."
+    def sync(force: bool) -> tuple[list[str], list[str]]:
+        """Runs every enabled import. Returns what was found and any warnings."""
+        found: list[str] = []
+        warnings: list[str] = []
+        if anki_sync is not None:
+            try:
+                anki = anki_sync.run()
+            except AnkiUnavailable:
+                warnings.append(
+                    "Anki is not reachable. Open Anki (with AnkiConnect) and sync again."
+                )
+            else:
+                found.append(describe_anki(anki, quiet=not force))
+        if github_sync is not None:
+            try:
+                github = github_sync.run(force=force)
+            except GitHubUnavailable as error:
+                warnings.append(f"GitHub sync failed: {error}.")
+            else:
+                found.append(describe_github(github))
+        return [line for line in found if line], warnings
 
-    def describe(result: SyncResult, state: WorldState) -> str:
-        if result.total == 0:
-            found = "No new Anki reviews."
-        else:
-            found = f"From Anki: {result.reviews} reviews, {result.new_cards} new cards."
+    def describe_anki(result: SyncResult, quiet: bool) -> str:
+        if result.total:
+            return f"From Anki: {result.reviews} reviews, {result.new_cards} new cards."
+        return "" if quiet else "No new Anki reviews."
+
+    def describe_github(result: GitHubResult | None) -> str:
+        if result is None:
+            return ""
+        parts = []
+        if result.merged:
+            plural = "s" if result.merged != 1 else ""
+            parts.append(f"From GitHub: {result.merged} merged PR{plural}.")
+        if result.waiting:
+            plural = "s" if result.waiting != 1 else ""
+            parts.append(f"{result.waiting} merged PR{plural} still waiting for CI.")
+        return " ".join(parts)
+
+    def summary(found: list[str], state: WorldState) -> str | None:
+        if not found:
+            return None
         if state.lit_today:
-            return f"{found} The bonfire is lit."
-        return f"{found} 10 reviews or 5 new cards today will light it."
+            return " ".join([*found, "The bonfire is lit."])
+        return " ".join([*found, "10 reviews or 5 new cards today will light it."])
 
     @app.get("/", response_class=HTMLResponse)
     def home(request: Request) -> Response:
-        result, warning = sync()
+        found, warnings = sync(force=False)
         state = service.state()
-        flash = describe(result, state) if result and result.total else None
         return templates.TemplateResponse(
-            request, "index.html", context(state, flash=flash, warning=warning)
+            request,
+            "index.html",
+            context(state, flash=summary(found, state), warning=" ".join(warnings) or None),
         )
 
     @app.post("/light")
     def light(request: Request) -> Response:
-        if anki_sync is None:
+        if anki_sync is None and github_sync is None:
             return respond(request, service.light(), flash="The bonfire is lit.")
-        result, warning = sync()
+        found, warnings = sync(force=True)
         state = service.state()
-        flash = describe(result, state) if result else None
-        return respond(request, state, flash=flash, warning=warning)
+        return respond(
+            request, state, flash=summary(found, state), warning=" ".join(warnings) or None
+        )
 
     @app.post("/log")
     def log(

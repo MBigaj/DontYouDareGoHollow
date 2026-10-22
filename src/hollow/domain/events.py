@@ -11,6 +11,7 @@ from hollow.domain.activities import ActivityKind
 class Source(StrEnum):
     MANUAL = "manual"
     ANKI = "anki"
+    GITHUB = "github"
 
 
 @dataclass(frozen=True)

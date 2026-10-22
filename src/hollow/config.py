@@ -27,6 +27,18 @@ class Settings(BaseSettings):
     def anki_deck_names(self) -> tuple[str, ...]:
         return tuple(name.strip() for name in self.anki_decks.split(",") if name.strip())
 
+    github_enabled: bool = False
+    """Earn souls for your merged pull requests whose CI passed."""
+    github_repos: str = "MBigaj/hollow-trials"
+    """Comma-separated owner/name repos whose pull requests count."""
+    github_author: str = "MBigaj"
+    """Only pull requests opened by this GitHub user count."""
+    github_token: SecretStr | None = None
+    """A read-only fine-grained token. Needed for private repos; raises the rate limit."""
+
+    def github_repo_names(self) -> tuple[str, ...]:
+        return tuple(name.strip() for name in self.github_repos.split(",") if name.strip())
+
     @field_validator("timezone")
     @classmethod
     def _known_timezone(cls, value: str) -> str:

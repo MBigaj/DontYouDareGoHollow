@@ -1,7 +1,7 @@
 """Game days. A day starts at a configurable hour so late-night study counts for the day before."""
 
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 
@@ -17,3 +17,7 @@ class GameCalendar:
     def day_of(self, moment: datetime) -> date:
         local = moment.astimezone(self.timezone)
         return (local - timedelta(hours=self.day_start_hour)).date()
+
+    def start_of(self, day: date) -> datetime:
+        """The moment a game day begins, e.g. 04:00 local time."""
+        return datetime.combine(day, time(self.day_start_hour), tzinfo=self.timezone)

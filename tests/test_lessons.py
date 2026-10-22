@@ -140,11 +140,11 @@ def test_a_run_is_graded_on_the_server_and_recorded_once(
     answers = [q.te_form.kana for q in resumed.questions]
     answers[0] = "まちがい"
 
-    outcome, state = service.finish(resumed, answers)
+    outcome, _, state = service.finish(resumed, answers)
     assert (outcome.correct, outcome.total, outcome.run) == (4, 5, Run.FIRST)
     assert outcome.passed and state.lit_today
 
-    again, _ = service.finish(resumed, answers)  # a resubmitted finish
+    again, _, _ = service.finish(resumed, answers)  # a resubmitted finish
     assert again == outcome
     assert len([e for e in store.all() if isinstance(e, LessonCompleted)]) == 1
     cards = {c.spec.id: c for c in service.overview()}

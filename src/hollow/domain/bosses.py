@@ -13,10 +13,11 @@ Rules (from the plan):
 import random
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field, replace
-from datetime import date
+from datetime import date, datetime
 from enum import StrEnum
 from uuid import UUID
 
+from hollow.domain.activities import Track
 from hollow.domain.calendar import GameCalendar
 from hollow.domain.conjugation import Verb, normalize
 from hollow.domain.events import Event, FightAction, FightStarted, FightTurn
@@ -53,6 +54,9 @@ class Phase:
 class Boss:
     id: str
     name: str
+    track: Track
+    recommended: int
+    """The weapon level the fight is tuned for; levels above it count half."""
     jp: str
     jp_kana: str
     phases: tuple[Phase, ...]
@@ -62,6 +66,8 @@ class Boss:
 WARDEN = Boss(
     "te-warden",
     "The て-form Warden",
+    Track.RONIN,
+    2,
     "て形の番人",
     "てけいのばんにん",
     (
@@ -143,6 +149,7 @@ class Attempt:
     hp: int
     max_hp: int
     mistake_cost: int
+    damage: int
     estus: int
     wound: float
     """Boss HP multiplier from earlier deaths (1.0 down to 0.7)."""
@@ -171,6 +178,7 @@ class BossRecord:
     boss: Boss
     attempts: list[Attempt] = field(default_factory=list)
     rewards: list[Reward] = field(default_factory=list)
+    defeated_at: datetime | None = None
 
     @property
     def current(self) -> Attempt | None:
@@ -217,6 +225,7 @@ def start(record: BossRecord, event: FightStarted) -> Attempt:
         hp=event.max_hp,
         max_hp=event.max_hp,
         mistake_cost=event.mistake_cost,
+        damage=event.damage,
         estus=ESTUS_FLASKS,
         wound=wound,
     )
@@ -243,7 +252,7 @@ def play(boss: Boss, attempt: Attempt, turn: FightTurn) -> Attempt:
             return replace(attempt, hp=0, misses=attempt.misses + 1, outcome=Outcome.DIED,
                            beat=Beat.DIED)  # fmt: skip
         return replace(attempt, hp=hp, misses=attempt.misses + 1, beat=Beat.MISS)
-    attempt = replace(attempt, hits=attempt.hits + 1, boss_hp=attempt.boss_hp - DAMAGE,
+    attempt = replace(attempt, hits=attempt.hits + 1, boss_hp=attempt.boss_hp - attempt.damage,
                       beat=Beat.HIT)  # fmt: skip
     if attempt.boss_hp > 0:
         return attempt
@@ -285,6 +294,7 @@ def track(events: Iterable[Event], calendar: GameCalendar, today: date) -> dict[
         if after.hits > current.hits:
             record.rewards.append(Reward(day, SOULS_PER_HIT))
         if after.outcome is Outcome.WON and first_win:
+            record.defeated_at = event.occurred_at
             bonus = FIRST_TRY_BONUS if after.number == 1 else 0
             record.rewards.append(Reward(day, VICTORY_SOULS + bonus, lights=True))
     return records

@@ -51,7 +51,8 @@
     {% elif beat == 'won' %}
     <div class="overlay won" role="alert">
       <div class="won-text">WARDEN FELLED</div>
-      {% if first_win %}<p>+{{ victory_souls }} souls{% if a.number == 1 %} · first-try bonus included{% endif %}. The bonfire is lit.</p>{% else %}<p>Felled again. Every hit still paid souls.</p>{% endif %}
+      {% if first_win %}<p>+{{ victory_souls }} souls{% if a.number == 1 %} · first-try bonus included{% endif %}. The bonfire is lit.</p>
+      {% if boss_drops %}<p class="drop">Dropped: {{ boss_drops }}</p>{% endif %}{% else %}<p>Felled again. Every hit still paid souls.</p>{% endif %}
       <div class="row-buttons center"><a class="btn ember" href="/map/firelink?at=warden" autofocus>Back to Firelink</a><a class="btn" href="/">Bonfire</a></div>
     </div>
     {% elif beat == 'gate' %}
@@ -61,6 +62,7 @@
       <div lang="ja" class="map-jp">{{ ja(view.boss.jp, view.boss.jp_kana) }}</div>
       {% if rec.defeated %}<p>Felled. Fight again for practice; every hit pays souls.</p>
       {% else %}<p>Phase 1: the て-form of your verbs against the clock. Phase 2: requests (〜てください) and sequences (〜て、〜).</p>{% endif %}
+      <p>{{ weapon }}</p>
       <p class="muted">{{ rec.deaths }} death{{ 's' if rec.deaths != 1 }}{% if rec.deaths %} · the Warden is {{ ((1 - rec.next_wound) * 100) | round | int }}% weaker{% endif %}{% if rec.furthest_phase %} · you start in phase {{ rec.furthest_phase + 1 }}{% endif %} · 2 Estus flasks per attempt</p>
       {% if ready %}
       <form method="post" action="/boss/{{ view.boss.id }}/enter" hx-post="/boss/{{ view.boss.id }}/enter" hx-target="#fight" hx-swap="outerHTML"><button class="btn ember big" type="submit" autofocus>Enter the fog</button></form>

@@ -1,8 +1,10 @@
 """SQLAlchemy event store: one append-only table, one row per event."""
 
 from collections.abc import Sequence
+from dataclasses import fields
 from datetime import UTC, datetime
-from typing import Any
+from enum import Enum
+from typing import Any, get_type_hints
 from uuid import UUID
 
 from sqlalchemy import JSON, DateTime, Engine, String, create_engine, select
@@ -17,10 +19,14 @@ from hollow.domain.events import (
     FightStarted,
     FightTurn,
     LessonCompleted,
+    MaterialDropped,
     MessageLeft,
     Source,
     StatLevelled,
     StudyLogged,
+    WeaponBought,
+    WeaponEquipped,
+    WeaponUpgraded,
     WordLearned,
 )
 from hollow.domain.progression import Stat
@@ -58,6 +64,40 @@ class EventRow(Base):
     payload: Mapped[dict[str, Any]] = mapped_column(JSON)
 
 
+SIMPLE: dict[str, type[Any]] = {
+    "material_dropped": MaterialDropped,
+    "weapon_bought": WeaponBought,
+    "weapon_upgraded": WeaponUpgraded,
+    "weapon_equipped": WeaponEquipped,
+}
+"""Flat events stored field by field: every field but `occurred_at` and `id` in the payload."""
+SIMPLE_TYPES = {cls: name for name, cls in SIMPLE.items()}
+
+
+def simple_row(event: Any) -> EventRow:
+    payload = {
+        f.name: getattr(event, f.name).value
+        if isinstance(getattr(event, f.name), Enum)
+        else getattr(event, f.name)
+        for f in fields(event)
+        if f.name not in ("occurred_at", "id")
+    }
+    return EventRow(
+        id=str(event.id),
+        type=SIMPLE_TYPES[type(event)],
+        occurred_at=event.occurred_at,
+        payload=payload,
+    )
+
+
+def simple_event(row: EventRow) -> Event:
+    cls = SIMPLE[row.type]
+    hints = get_type_hints(cls)
+    values = {name: hints[name](value) for name, value in row.payload.items()}
+    event: Event = cls(occurred_at=row.occurred_at, id=UUID(row.id), **values)
+    return event
+
+
 def to_row(event: Event) -> EventRow:
     if isinstance(event, StudyLogged):
         payload: dict[str, Any] = {
@@ -79,6 +119,7 @@ def to_row(event: Event) -> EventRow:
                 "seed": event.seed,
                 "max_hp": event.max_hp,
                 "mistake_cost": event.mistake_cost,
+                "damage": event.damage,
             },
         )
     if isinstance(event, FightTurn):
@@ -119,15 +160,19 @@ def to_row(event: Event) -> EventRow:
             occurred_at=event.occurred_at,
             payload={"stat": event.stat.value, "cost": event.cost},
         )
-    return EventRow(
-        id=str(event.id),
-        type="message_left",
-        occurred_at=event.occurred_at,
-        payload={"text": event.text},
-    )
+    if isinstance(event, MessageLeft):
+        return EventRow(
+            id=str(event.id),
+            type="message_left",
+            occurred_at=event.occurred_at,
+            payload={"text": event.text},
+        )
+    return simple_row(event)
 
 
 def from_row(row: EventRow) -> Event:
+    if row.type in SIMPLE:
+        return simple_event(row)
     p = row.payload
     if row.type == "study_logged":
         return StudyLogged(
@@ -145,6 +190,7 @@ def from_row(row: EventRow) -> Event:
             seed=int(p["seed"]),
             max_hp=int(p["max_hp"]),
             mistake_cost=int(p["mistake_cost"]),
+            damage=int(p.get("damage", 10)),
             id=UUID(row.id),
         )
     if row.type == "fight_turn":

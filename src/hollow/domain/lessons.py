@@ -43,7 +43,8 @@ MULTIPLIER = {Run.FIRST: 1.0, Run.REFRESHER: 0.6, Run.PRACTICE: 0.25}
 class LessonSpec:
     id: str
     title: str
-    example: str
+    example: tuple[tuple[str, str], ...]
+    """Pairs of (written, kana): dictionary form → て-form, possibly twice."""
     endings: frozenset[Ending]
     size: int = 10
     min_verbs: int = 2
@@ -72,26 +73,23 @@ class LessonSpec:
 
 
 ALL = frozenset(Ending)
+TE_RU = (("食べる", "たべる"), ("食べて", "たべて"))
+TE_TSU = (("買う", "かう"), ("買って", "かって"))
+TE_NDE = (("飲む", "のむ"), ("飲んで", "のんで"))
+TE_ITE = (("書く", "かく"), ("書いて", "かいて"), ("行く", "いく"), ("行って", "いって"))
+TE_SHITE = (("話す", "はなす"), ("話して", "はなして"))
+TE_IRREGULAR = (("する", "する"), ("して", "して"), ("来る", "くる"), ("来て", "きて"))
+
 LESSONS: dict[str, LessonSpec] = {
     s.id: s
     for s in (
-        LessonSpec("te-ru", "る-verbs", "食べる → 食べて", frozenset({Ending.RU_VERB})),
-        LessonSpec("te-tsu", "う・つ・る → って", "買う → 買って", frozenset({Ending.TSU})),
-        LessonSpec("te-nde", "む・ぶ・ぬ → んで", "飲む → 飲んで", frozenset({Ending.NDE})),
-        LessonSpec(
-            "te-ite",
-            "く・ぐ → いて・いで",
-            "書く → 書いて, 行く → 行って",
-            frozenset({Ending.ITE}),
-        ),
-        LessonSpec("te-shite", "す → して", "話す → 話して", frozenset({Ending.SHITE})),
-        LessonSpec(
-            "te-irregular",
-            "する and 来る",
-            "する → して, 来る → 来て",
-            frozenset({Ending.IRREGULAR}),
-        ),
-        LessonSpec("te-mixed", "Mixed て-form", "Every group, shuffled", ALL, size=12, min_verbs=6),
+        LessonSpec("te-ru", "る-verbs", TE_RU, frozenset({Ending.RU_VERB})),
+        LessonSpec("te-tsu", "う・つ・る → って", TE_TSU, frozenset({Ending.TSU})),
+        LessonSpec("te-nde", "む・ぶ・ぬ → んで", TE_NDE, frozenset({Ending.NDE})),
+        LessonSpec("te-ite", "く・ぐ → いて・いで", TE_ITE, frozenset({Ending.ITE})),
+        LessonSpec("te-shite", "す → して", TE_SHITE, frozenset({Ending.SHITE})),
+        LessonSpec("te-irregular", "する and 来る", TE_IRREGULAR, frozenset({Ending.IRREGULAR})),
+        LessonSpec("te-mixed", "Mixed て-form", (), ALL, size=12, min_verbs=6),
     )
 }
 

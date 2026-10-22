@@ -1,3 +1,4 @@
+{% from "partials/_ja.html" import ja %}
 {% set total = questions | length %}
 <section id="lesson" class="panel lesson" aria-label="{{ spec.title }}">
   <div class="lesson-top">
@@ -19,8 +20,8 @@
     {% set verb = questions[answers | length] %}
     <form class="quiz" method="post" action="/lessons/{{ spec.id }}/answer" hx-post="/lessons/{{ spec.id }}/answer" hx-target="#lesson" hx-swap="outerHTML">
       {{ carry() }}
-      <div class="prompt" lang="ja">{{ verb.written }}</div>
-      {% if verb.written != verb.kana %}<div class="reading" lang="ja">{{ verb.kana }}</div>{% endif %}
+      <div class="prompt" lang="ja">{{ ja(verb.written, verb.kana) }}</div>
+      {% if verb.written != verb.kana %}<div class="reading muted">Hover or tap the word for its reading</div>{% endif %}
       {% if verb.meaning %}<div class="muted meaning">{{ verb.meaning }}</div>{% endif %}
       <label class="answer-label">て-form
         <input name="answer" lang="ja" autocomplete="off" autocapitalize="off" spellcheck="false" required autofocus maxlength="40">
@@ -31,7 +32,7 @@
   {% elif mode == 'feedback' %}
     {% set verb = questions[answers | length - 1] %}
     <div class="verdict {{ 'ok' if correct else 'miss' }}" role="status">
-      <div class="prompt small" lang="ja">{{ verb.written }} → <strong>{{ verb.te_form.written }}</strong>{% if verb.te_form.written != verb.te_form.kana %} <span class="muted">({{ verb.te_form.kana }})</span>{% endif %}</div>
+      <div class="prompt small" lang="ja">{{ ja(verb.written, verb.kana) }} → <strong>{{ ja(verb.te_form.written, verb.te_form.kana) }}</strong></div>
       {% if correct %}<div class="verdict-line">正解 · Correct</div>
       {% else %}<div class="verdict-line">You wrote <span lang="ja">{{ answers[-1] }}</span></div>{% endif %}
       <div class="muted hint">{{ hint }}</div>
@@ -52,7 +53,7 @@
     {% if misses %}
     <h3 class="label">To review</h3>
     <table lang="ja">
-      {% for verb, given in misses %}<tr><td>{{ verb.written }} → {{ verb.te_form.written }}</td><td class="muted">you: {{ given }}</td></tr>{% endfor %}
+      {% for verb, given in misses %}<tr><td>{{ ja(verb.written, verb.kana) }} → {{ ja(verb.te_form.written, verb.te_form.kana) }}</td><td class="muted">you: {{ given }}</td></tr>{% endfor %}
     </table>
     {% endif %}
     <div class="row-buttons">

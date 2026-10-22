@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/_ja.html" import ja %}
 {% block title %}Lessons · DontYouDareGoHollow{% endblock %}
 {% block content %}
 {% if warning %}<div class="panel blood" role="alert" style="color: var(--blood-ink)">{{ warning }}</div>{% endif %}
@@ -15,7 +16,7 @@
       <div class="lesson-head"><strong>{{ card.spec.title }}</strong>
         <span class="chip {{ card.status.value }}">{% if card.status.value == 'new' %}New{% elif card.status.value == 'due' %}Refresher due{% elif card.status.value == 'waiting' %}Back {{ card.progress.due_on.strftime('%a %d %b') }}{% else %}Locked{% endif %}</span>
       </div>
-      <div lang="ja" style="font-size: 18px; margin: 6px 0">{{ card.spec.example }}</div>
+      <div lang="ja" style="font-size: 18px; margin: 6px 0">{% if card.spec.example %}{% for pair in card.spec.example | batch(2) %}{% if not loop.first %}, {% endif %}{{ ja(*pair[0]) }} → {{ ja(*pair[1]) }}{% endfor %}{% else %}Every group, shuffled{% endif %}</div>
       <div class="muted" style="font-size: 13px">
         {% if card.status.value == 'locked' %}Learn {{ card.spec.min_verbs - card.verbs }} more verb{{ 's' if card.spec.min_verbs - card.verbs != 1 }} of this kind in Anki to open it.
         {% else %}{{ card.questions }} questions from {{ card.verbs }} of your verbs{% if card.progress and card.progress.attempts %} · best {{ (card.progress.best * 100) | round | int }}%{% endif %}{% endif %}

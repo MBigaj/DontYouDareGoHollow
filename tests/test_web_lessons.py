@@ -121,3 +121,14 @@ def test_lessons_work_without_javascript(
     fields = hidden(page)
     answered = client.post("/lessons/te-ru/answer", data={**fields, "answer": "たべて"})
     assert "<!doctype html>" in answered.text.lower()
+
+
+def test_kanji_show_their_reading_as_a_tooltip(
+    client: TestClient, store: SqlEventStore, clock: FakeClock
+) -> None:
+    learn(store, clock)
+    listing = client.get("/lessons").text
+    assert 'data-reading="たべる">食べる' in listing
+    page = client.get("/lessons/te-ru").text
+    assert 'class="ja" tabindex="0" data-reading=' in page
+    assert "Hover or tap the word for its reading" in page

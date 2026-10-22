@@ -19,6 +19,8 @@ from datetime import date, timedelta
 from hollow.domain.activities import ACTIVITIES, ActivityKind, Track, lights_bonfire, souls_for
 from hollow.domain.calendar import GameCalendar
 from hollow.domain.events import Event, MessageLeft, StatLevelled, StudyLogged
+from hollow.domain.lessons import LessonOutcome, LessonProgress, track
+from hollow.domain.lessons import Run as LessonRun
 from hollow.domain.progression import (
     STAT_START,
     JobProgress,
@@ -77,6 +79,13 @@ class WorldState:
     """Effigies left this week."""
     effigies_used: int
     jobs: dict[Track, JobProgress]
+    today_souls: dict[ActivityKind, int]
+    lessons: dict[str, LessonProgress]
+    today_lessons: tuple[LessonOutcome, ...]
+
+    @property
+    def lessons_due(self) -> int:
+        return sum(1 for p in self.lessons.values() if p.is_due(self.today))
 
     @property
     def soul_level(self) -> int:
@@ -121,8 +130,11 @@ def replay(
     recent: int = 7,
     effigies_per_week: int = EFFIGIES_PER_WEEK,
 ) -> WorldState:
+    events = list(events)
     totals_by_day: dict[date, dict[ActivityKind, int]] = defaultdict(lambda: defaultdict(int))
     souls_by_day: dict[date, int] = defaultdict(int)
+    today_souls: dict[ActivityKind, int] = defaultdict(int)
+    lessons_cleared_by_day: dict[date, int] = defaultdict(int)
     purchases_by_day: dict[date, list[StatLevelled]] = defaultdict(list)
     xp: dict[Track, int] = dict.fromkeys(Track, 0)
     message: Message | None = None
@@ -136,12 +148,21 @@ def replay(
             totals_by_day[day][event.kind] += event.quantity
             souls_by_day[day] += souls_for(event.kind, event.quantity)
             xp[ACTIVITIES[event.kind].track] += souls_for(event.kind, event.quantity)
+            if day == today:
+                today_souls[event.kind] += souls_for(event.kind, event.quantity)
         elif isinstance(event, StatLevelled):
             purchases_by_day[day].append(event)
         elif isinstance(event, MessageLeft) and day < today:
             key = (day, event.occurred_at.timestamp())
             if message_key is None or key > message_key:
                 message, message_key = Message(event.text.strip(), day), key
+
+    outcomes, lessons = track(events, calendar, today)
+    for outcome in outcomes:
+        souls_by_day[outcome.day] += outcome.souls
+        xp[Track.RONIN] += outcome.souls
+        if outcome.passed and outcome.run is not LessonRun.PRACTICE:
+            lessons_cleared_by_day[outcome.day] += 1
 
     souls = 0
     bloodstain: Bloodstain | None = None
@@ -152,13 +173,13 @@ def replay(
     effigies_used = 0
     history: list[DaySummary] = []
 
-    first_day = min([*totals_by_day, *purchases_by_day], default=today)
+    first_day = min([*totals_by_day, *purchases_by_day, *souls_by_day], default=today)
     day = first_day
     while day <= today:
         if day.weekday() == 0:
             effigies = effigies_per_week
         earned = souls_by_day.get(day, 0)
-        lit = lights_bonfire(dict(totals_by_day.get(day, {})))
+        lit = lights_bonfire(dict(totals_by_day.get(day, {}))) or lessons_cleared_by_day[day] > 0
         souls += earned
         souls_earned_total += earned
         for purchase in purchases_by_day.get(day, []):
@@ -208,7 +229,10 @@ def replay(
         souls_spent=souls_spent,
         effigies=effigies,
         effigies_used=effigies_used,
-        jobs={track: job_progress(track, xp[track]) for track in Track},
+        jobs={t: job_progress(t, xp[t]) for t in Track},
+        today_souls=dict(today_souls),
+        lessons=lessons,
+        today_lessons=tuple(o for o in outcomes if o.day == today),
     )
 
 

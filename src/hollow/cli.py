@@ -4,7 +4,7 @@ import sys
 import time
 from datetime import timedelta
 
-from hollow.adapters.anki_connect import AnkiConnect
+from hollow.adapters.anki_connect import connect
 from hollow.adapters.db.store import SqlEventStore, make_engine
 from hollow.adapters.github_api import GitHubApi
 from hollow.application.anki_sync import AnkiSync, AnkiUnavailable
@@ -19,7 +19,7 @@ def sync_anki() -> int:
     settings = Settings()
     sync = AnkiSync(
         SqlEventStore(make_engine(settings.database_url)),
-        AnkiConnect(settings.anki_url, settings.anki_deck_names()),
+        connect(settings),
         SystemClock(),
         settings.calendar(),
     )
@@ -35,7 +35,7 @@ def sync_anki() -> int:
 def check_anki() -> int:
     """Prints what the app can see in Anki, to debug a sync that looks wrong."""
     settings = Settings()
-    anki = AnkiConnect(settings.anki_url, settings.anki_deck_names())
+    anki = connect(settings)
     calendar = settings.calendar()
     print(f"Anki sync enabled: {settings.anki_enabled}")
     print(f"AnkiConnect URL:   {settings.anki_url}")

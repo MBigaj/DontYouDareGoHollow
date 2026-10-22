@@ -66,4 +66,44 @@ class StatLevelled:
             raise ValueError("occurred_at must be timezone-aware")
 
 
-Event = StudyLogged | MessageLeft | StatLevelled
+@dataclass(frozen=True)
+class WordLearned:
+    """A card you have studied in Anki. Drills and agent texts only use words you know."""
+
+    occurred_at: datetime
+    note_id: int
+    written: str
+    kana: str
+    meaning: str
+    part_of_speech: str
+    id: UUID = field(default_factory=uuid4)
+
+    def __post_init__(self) -> None:
+        if not self.written.strip():
+            raise ValueError("a word cannot be empty")
+        if self.occurred_at.tzinfo is None:
+            raise ValueError("occurred_at must be timezone-aware")
+
+
+@dataclass(frozen=True)
+class LessonCompleted:
+    """One finished run through a lesson. Souls and refresher timing replay from these."""
+
+    occurred_at: datetime
+    lesson_id: str
+    correct: int
+    total: int
+    id: UUID = field(default_factory=uuid4)
+
+    def __post_init__(self) -> None:
+        if not 0 <= self.correct <= self.total or self.total <= 0:
+            raise ValueError("correct must be between 0 and a positive total")
+        if self.occurred_at.tzinfo is None:
+            raise ValueError("occurred_at must be timezone-aware")
+
+    @property
+    def score(self) -> float:
+        return self.correct / self.total
+
+
+Event = StudyLogged | MessageLeft | StatLevelled | WordLearned | LessonCompleted

@@ -2,7 +2,7 @@
 
 A Souls-like study game for Japanese and the senior backend roadmap. Real study earns souls. Missing a day drops them as a bloodstain, and lighting the bonfire the next day gets them back. Miss again and they are gone.
 
-Phase 0 (Kindling) built the bonfire, manual study logging, the souls ledger, bloodstains and hollowing. Phase 1 adds automatic souls from Anki and GitHub, levelling, stats and Effigies.
+Phase 0 (Kindling) built the bonfire, manual study logging, the souls ledger, bloodstains and hollowing. Phase 1 added automatic souls from Anki and GitHub, levelling, stats and Effigies. Phase 2 starts with **lessons**: て-form drills built from the verbs you have learned in Anki.
 
 ## Running it
 
@@ -68,6 +68,16 @@ The Docker setup cannot see an Anki running on your desktop, because AnkiConnect
 | Jobs | Ronin (Japanese) and Architect (Python) level from the souls you earn in them, which are never lost. Level n to n+1 takes 100 x n XP. Character level is the sum of both. |
 | Game day | Days start at 04:00 Europe/Warsaw, so late-night study counts for the day before. |
 | Messages | A message left today shows at the bonfire from tomorrow, "left by past you". |
+
+## Lessons
+
+Lessons are short typed drills. The first set covers the て-form, one lesson per sound change (る-verbs, う・つ・る → って, む・ぶ・ぬ → んで, く・ぐ → いて・いで, す → して, する and 来る) plus a mixed one.
+
+- Questions only use verbs you have learned: every Anki sync imports the notes in your decks whose cards are no longer new. Lessons open once you know enough verbs of that kind.
+- Type the answer with your Japanese keyboard. Kana or kanji both count (食べて or たべて).
+- A lesson clears at 80% and lights the bonfire. First clear pays 5 souls per correct answer; a due refresher pays 60%; practice before it is due pays 25%.
+- Cleared lessons come back as refreshers after 1, 3, 7, 21 and 60 days. A refresher at 90% or better moves to the next interval.
+- The word fields default to the Core 2000 deck (`Vocabulary-Kanji`, `Vocabulary-Kana`, `Vocabulary-English`, `Vocabulary-Pos`). Another deck can set `HOLLOW_ANKI_WORD_FIELD`, `HOLLOW_ANKI_KANA_FIELD`, `HOLLOW_ANKI_MEANING_FIELD` and `HOLLOW_ANKI_POS_FIELD`.
 
 ## GitHub sync
 

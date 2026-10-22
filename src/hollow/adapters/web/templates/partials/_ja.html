@@ -1,0 +1,6 @@
+{# Japanese text with its hiragana reading as a tooltip (hover, or tap/focus on a phone). #}
+{% macro ja(written, kana) -%}
+{%- if kana and kana != written -%}
+<span class="ja" tabindex="0" data-reading="{{ kana }}">{{ written }}<span class="visually-hidden"> ({{ kana }})</span></span>
+{%- else -%}{{ written }}{%- endif -%}
+{%- endmacro %}

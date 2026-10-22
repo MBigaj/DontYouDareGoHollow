@@ -84,3 +84,16 @@ def test_the_character_page_syncs_into_its_own_panel(
     text = anki_client.post("/sync?page=character", headers=HX).text
     assert 'id="character"' in text
     assert "From Anki: 0 reviews, 1 new cards." in text
+
+
+def test_newly_learned_words_are_announced(
+    anki_client: TestClient, anki: FakeAnki, clock: FakeClock
+) -> None:
+    from hollow.domain.vocabulary import LearnedWord
+
+    anki.words = [LearnedWord(1, "食べる", "たべる", "eat", "Verb")]
+    assert "1 newly learned word for lessons." in anki_client.post("/sync", headers=HX).text
+    anki.words.append(LearnedWord(2, "飲む", "のむ", "drink", "Verb"))
+    anki.reviews = [first_sight(clock.now())]
+    text = anki_client.post("/sync", headers=HX).text
+    assert "From Anki: 0 reviews, 1 new cards. 1 newly learned word for lessons." in text

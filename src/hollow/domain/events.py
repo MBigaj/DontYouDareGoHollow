@@ -106,4 +106,49 @@ class LessonCompleted:
         return self.correct / self.total
 
 
-Event = StudyLogged | MessageLeft | StatLevelled | WordLearned | LessonCompleted
+class FightAction(StrEnum):
+    ANSWER = "answer"
+    ESTUS = "estus"
+
+
+@dataclass(frozen=True)
+class FightStarted:
+    """You stepped through a boss's fog gate. A new attempt, with a seed for its questions."""
+
+    occurred_at: datetime
+    boss_id: str
+    seed: int
+    max_hp: int
+    mistake_cost: int
+    """Your Vigor and Endurance when the attempt began, so levelling later never rewrites it."""
+    id: UUID = field(default_factory=uuid4)
+
+    def __post_init__(self) -> None:
+        if self.occurred_at.tzinfo is None:
+            raise ValueError("occurred_at must be timezone-aware")
+
+
+@dataclass(frozen=True)
+class FightTurn:
+    """One answer (right or wrong) or one Estus sip in a fight."""
+
+    occurred_at: datetime
+    attempt_id: UUID
+    action: FightAction
+    correct: bool = False
+    id: UUID = field(default_factory=uuid4)
+
+    def __post_init__(self) -> None:
+        if self.occurred_at.tzinfo is None:
+            raise ValueError("occurred_at must be timezone-aware")
+
+
+Event = (
+    StudyLogged
+    | MessageLeft
+    | StatLevelled
+    | WordLearned
+    | LessonCompleted
+    | FightStarted
+    | FightTurn
+)

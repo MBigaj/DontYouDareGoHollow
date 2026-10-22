@@ -87,6 +87,16 @@ Lessons are short typed drills. The first set covers the て-form, one lesson pe
 
 The region art is placeholder pixel art from `tools/sprites/region_firelink.py`, drawn on the same grid as the points in `hollow.domain.atlas`.
 
+## Boss fights
+
+The fog gate at the top of Firelink Shrine leads to the first boss, the て-form Warden (`/boss/te-warden`). It opens once you know 6 verbs.
+
+- Phase 1, Swift conjugation: the て-form of your verbs, 20 seconds per answer. Phase 2, Requests and sequences: 〜てください and 〜て、〜.
+- Each right answer deals 10 damage and pays 5 souls, even in a lost fight. Each mistake (or running out of time) costs HP: 35, less with Endurance. You have 100 HP (more with Vigor) and 2 Estus flasks of 50 HP.
+- Dying never locks you out: try again straight away. The next attempt starts at the furthest phase you reached, and every death leaves the Warden 10% weaker, down to 70%.
+- Leave mid-fight ("Rest at the fog gate") and the fight waits exactly as you left it.
+- Felling the Warden pays 500 souls (750 on a first try) and lights the bonfire.
+
 ## GitHub sync
 
 Every merged pull request you open in your practice repo (by default [`MBigaj/hollow-trials`](https://github.com/MBigaj/hollow-trials)) is worth 100 souls and lights the bonfire on its own.

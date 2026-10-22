@@ -17,6 +17,7 @@ from hollow.adapters.db.store import SqlEventStore, make_engine
 from hollow.adapters.github_api import GitHubApi
 from hollow.application.anki_sync import AnkiSource, AnkiSync, AnkiUnavailable, SyncResult
 from hollow.application.bonfire import BonfireService, CannotLevelUp
+from hollow.application.fights import FightError, FightService, FightView
 from hollow.application.github_sync import (
     GitHubResult,
     GitHubSource,
@@ -29,6 +30,7 @@ from hollow.application.ports import Clock, EventStore, SystemClock
 from hollow.config import Settings
 from hollow.domain.activities import ACTIVITIES, ActivityKind, Track
 from hollow.domain.atlas import FIRELINK, FIRELINK_SIZE, REGIONS, WORLD_SIZE, NodeKind
+from hollow.domain.bosses import DAMAGE, ESTUS_HEAL, FIRST_TRY_BONUS, VICTORY_SOULS, WARDEN, Outcome
 from hollow.domain.conjugation import Ending, Verb
 from hollow.domain.lessons import LESSONS, Run, grade
 from hollow.domain.progression import STATS, Stat
@@ -96,6 +98,7 @@ def create_app(
     clock = clock or SystemClock()
     service = BonfireService(store, clock, settings.calendar())
     lessons = LessonService(store, clock, settings.calendar())
+    fights = FightService(store, clock, settings.calendar())
     if anki is None and settings.anki_enabled:
         anki = connect(settings)
     anki_sync = AnkiSync(store, anki, clock, settings.calendar()) if anki else None
@@ -513,12 +516,33 @@ def create_app(
                     "action": ("Rest at the bonfire", "/"),
                 }
             elif node.kind is NodeKind.BOSS:
-                point |= {
-                    "name": "Fog gate",
-                    "status": "fog",
-                    "caption": "Boss · unavailable",
-                    "detail": "The て-form Warden waits beyond the fog. The fog will not part yet.",
-                }
+                record = fights.view(WARDEN.id).record
+                if not fights.ready(WARDEN.id):
+                    point |= {
+                        "name": "Fog gate",
+                        "status": "fog",
+                        "caption": "Boss · unavailable",
+                        "detail": f"{WARDEN.name} waits beyond the fog. It will not part until "
+                        f"you know {WARDEN.min_verbs} verbs.",
+                    }
+                else:
+                    if record.current is not None:
+                        label, detail = "Resume the fight", "Your fight is waiting, as you left it."
+                    elif record.defeated:
+                        label, detail = "Fight again", "Felled. Fight again for practice."
+                    else:
+                        label = "Enter the fog"
+                        detail = (
+                            f"{WARDEN.name} waits beyond. Two phases: the て-form against the "
+                            "clock, then requests and sequences."
+                        )
+                    point |= {
+                        "name": "Fog gate",
+                        "status": "cleared" if record.defeated else "due",
+                        "caption": f"Boss · {WARDEN.name}",
+                        "detail": detail,
+                        "action": (label, f"/boss/{WARDEN.id}"),
+                    }
             else:
                 assert node.lesson_id is not None
                 card = cards[node.lesson_id]
@@ -565,6 +589,70 @@ def create_app(
                 explored=explored(),
             ),
         )
+
+    def fight_page(request: Request, view: FightView, gate: bool = False) -> Response:
+        attempt = view.attempt
+        wins = sum(1 for a in view.record.attempts if a.outcome is Outcome.WON)
+        name = "partials/_fight.html" if request.headers.get("HX-Request") else "boss.html"
+        return templates.TemplateResponse(
+            request,
+            name,
+            context(
+                view.state,
+                page="map",
+                view=view,
+                gate=gate,
+                ready=fights.ready(view.boss.id),
+                damage=DAMAGE,
+                heal=ESTUS_HEAL,
+                first_win=wins == 1 and attempt is not None and attempt.outcome is Outcome.WON,
+                victory_souls=VICTORY_SOULS
+                + (FIRST_TRY_BONUS if attempt is not None and attempt.number == 1 else 0),
+            ),
+        )
+
+    @app.get("/boss/{boss_id}", response_class=HTMLResponse)
+    def boss_page(request: Request, boss_id: str) -> Response:
+        try:
+            view = fights.view(boss_id)
+        except FightError as error:
+            raise HTTPException(404, str(error)) from error
+        return fight_page(request, view, gate=view.record.current is None)
+
+    def fight_response(request: Request, boss_id: str, view: FightView) -> Response:
+        if not request.headers.get("HX-Request"):
+            return RedirectResponse(f"/boss/{boss_id}", status_code=status.HTTP_303_SEE_OTHER)
+        return fight_page(request, view, gate=False)
+
+    @app.post("/boss/{boss_id}/enter")
+    def boss_enter(request: Request, boss_id: str) -> Response:
+        try:
+            view = fights.enter(boss_id)
+        except FightError as error:
+            raise HTTPException(422, str(error)) from error
+        return fight_response(request, boss_id, view)
+
+    @app.post("/boss/{boss_id}/answer")
+    def boss_answer(
+        request: Request,
+        boss_id: str,
+        attempt: Annotated[str, Form()],
+        turn: Annotated[int, Form()],
+        answer: Annotated[str, Form()] = "",
+    ) -> Response:
+        try:
+            view = fights.answer(boss_id, attempt, turn, answer)
+        except FightError:
+            view = fights.view(boss_id)
+        return fight_response(request, boss_id, view)
+
+    @app.post("/boss/{boss_id}/estus")
+    def boss_estus(request: Request, boss_id: str, attempt: Annotated[str, Form()]) -> Response:
+        try:
+            view = fights.drink(boss_id, attempt)
+        except FightError:
+            view = fights.view(boss_id)
+        return fight_response(request, boss_id, view)
 
     @app.post("/message")
     def message(request: Request, text: Annotated[str, Form()]) -> Response:

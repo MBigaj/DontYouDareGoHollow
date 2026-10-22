@@ -1,0 +1,111 @@
+{% from "partials/_ja.html" import ja %}
+{% set a = view.attempt %}
+{% set rec = view.record %}
+{% set on = rec.current is not none %}
+{% set beat = a.beat.value if a and (on or a.outcome.value in ('died', 'won')) and not gate else 'gate' %}
+<section id="fight" class="fight beat-{{ beat }}" aria-label="{{ view.boss.name }}">
+  <div class="arena" style="background-image: url({{ url_for('static', path='sprites/arena_bg.png') }})">
+    {% if a and beat != 'gate' %}
+    <div class="hud">
+      <div class="hp">
+        <div class="bar player"><span id="player-chip" class="chip" style="width: {{ (100 * a.hp / a.max_hp) | round(1) }}%"></span><span id="player-fill" class="fill" style="width: {{ (100 * a.hp / a.max_hp) | round(1) }}%"></span></div>
+        <span class="hp-num">{{ a.hp }} / {{ a.max_hp }}</span>
+      </div>
+      <div class="flasks" aria-label="{{ a.estus }} Estus flasks left">
+        {% for i in range(2) %}<img class="flask {{ 'empty' if i >= a.estus }}" src="{{ url_for('static', path='sprites/item_estus.png') }}" alt="" width="36" height="36">{% endfor %}
+      </div>
+      <div class="phase-tag label">Phase {{ a.phase + 1 }} of {{ view.boss.phases | length }} · {{ view.boss.phases[a.phase].name }}{% if a.wound < 1 %} · wounded {{ ((1 - a.wound) * 100) | round | int }}%{% endif %}</div>
+    </div>
+    {% endif %}
+
+    <div class="foe {{ 'gone' if beat == 'won' }}">
+      <img class="foe-body" src="{{ url_for('static', path='sprites/warden_body.png') }}" alt="{{ view.boss.name }}">
+      <img class="foe-weapon" src="{{ url_for('static', path='sprites/warden_weapon.png') }}" alt="">
+      <img class="slash" src="{{ url_for('static', path='sprites/slash.png') }}" alt="">
+      {% if beat in ('hit', 'phase', 'won') %}<span class="pop dmg">-{{ damage }}</span>{% endif %}
+    </div>
+    <div class="hero">
+      <img src="{{ url_for('static', path='sprites/knight_front.png') }}" alt="Your knight">
+      {% if beat in ('miss', 'died') %}<span class="pop hurt">-{{ a.mistake_cost }}</span>{% endif %}
+      {% if beat == 'estus' %}<span class="pop heal">+{{ heal }}</span>{% endif %}
+    </div>
+
+    {% if a and beat != 'gate' %}
+    <div class="boss-bar">
+      <div class="boss-name" lang="ja">{{ view.boss.name }}</div>
+      <div class="bar foe-hp"><span id="boss-chip" class="chip" style="width: {{ (100 * a.boss_hp / a.boss_max_hp) | round(1) }}%"></span><span id="boss-fill" class="fill" style="width: {{ (100 * a.boss_hp / a.boss_max_hp) | round(1) }}%"></span></div>
+    </div>
+    {% endif %}
+    <div class="flash-red" aria-hidden="true"></div>
+
+    {% if beat == 'phase' %}<div class="banner phase-banner" role="status">{{ view.boss.phases[a.phase].name }}</div>{% endif %}
+    {% if beat == 'died' %}
+    <div class="overlay died" role="alert">
+      <div class="died-text">YOU DIED</div>
+      <p>The Warden keeps your wounds: {{ ((1 - rec.next_wound) * 100) | round | int }}% less HP next time{% if rec.furthest_phase %}, and you start in phase {{ rec.furthest_phase + 1 }}{% endif %}.</p>
+      <div class="row-buttons center">
+        <form method="post" action="/boss/{{ view.boss.id }}/enter" hx-post="/boss/{{ view.boss.id }}/enter" hx-target="#fight" hx-swap="outerHTML"><button class="btn ember" type="submit" autofocus>Try again</button></form>
+        <a class="btn" href="/map/firelink?at=warden">Rest at the fog gate</a>
+      </div>
+    </div>
+    {% elif beat == 'won' %}
+    <div class="overlay won" role="alert">
+      <div class="won-text">WARDEN FELLED</div>
+      {% if first_win %}<p>+{{ victory_souls }} souls{% if a.number == 1 %} · first-try bonus included{% endif %}. The bonfire is lit.</p>{% else %}<p>Felled again. Every hit still paid souls.</p>{% endif %}
+      <div class="row-buttons center"><a class="btn ember" href="/map/firelink?at=warden" autofocus>Back to Firelink</a><a class="btn" href="/">Bonfire</a></div>
+    </div>
+    {% elif beat == 'gate' %}
+    <div class="overlay gate">
+      <div class="label">Fog gate · Firelink Shrine</div>
+      <h2 class="gate-title">{{ view.boss.name }}</h2>
+      <div lang="ja" class="map-jp">{{ ja(view.boss.jp, view.boss.jp_kana) }}</div>
+      {% if rec.defeated %}<p>Felled. Fight again for practice; every hit pays souls.</p>
+      {% else %}<p>Phase 1: the て-form of your verbs against the clock. Phase 2: requests (〜てください) and sequences (〜て、〜).</p>{% endif %}
+      <p class="muted">{{ rec.deaths }} death{{ 's' if rec.deaths != 1 }}{% if rec.deaths %} · the Warden is {{ ((1 - rec.next_wound) * 100) | round | int }}% weaker{% endif %}{% if rec.furthest_phase %} · you start in phase {{ rec.furthest_phase + 1 }}{% endif %} · 2 Estus flasks per attempt</p>
+      {% if ready %}
+      <form method="post" action="/boss/{{ view.boss.id }}/enter" hx-post="/boss/{{ view.boss.id }}/enter" hx-target="#fight" hx-swap="outerHTML"><button class="btn ember big" type="submit" autofocus>Enter the fog</button></form>
+      {% else %}<p class="blood-ink">The fog will not part until you know {{ view.boss.min_verbs }} verbs.</p>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  {% if on and beat != 'gate' %}
+  {% set q = view.question %}
+  <div class="duel panel">
+    {% if view.answered %}
+    <div class="verdict-strip {{ 'ok' if view.answered.correct else 'miss' }}" lang="ja">
+      {% if view.answered.correct %}✓ {{ view.answered.question.answers[0] }}{% else %}✗ {{ view.answered.question.answers[0] }} <span class="muted">({{ view.answered.question.answers[1] }}) · you wrote {{ view.answered.given or 'nothing' }}</span>{% endif %}
+    </div>
+    {% endif %}
+    <form class="quiz" method="post" action="/boss/{{ view.boss.id }}/answer" hx-post="/boss/{{ view.boss.id }}/answer" hx-target="#fight" hx-swap="outerHTML" data-fight-form>
+      <input type="hidden" name="attempt" value="{{ a.id }}">
+      <input type="hidden" name="turn" value="{{ a.turns }}">
+      {% if q.kind.value == 'te' %}
+        <div class="ask label">て-form</div>
+        <div class="prompt" lang="ja">{{ ja(q.verbs[0].written, q.verbs[0].kana) }}</div>
+      {% elif q.kind.value == 'request' %}
+        <div class="ask label">Ask politely · 〜てください</div>
+        <div class="prompt mid" lang="ja">{{ ja(q.verbs[0].written, q.verbs[0].kana) }}</div>
+        {% if q.verbs[0].meaning %}<div class="muted meaning">“Please {{ q.verbs[0].meaning.split(',')[0] }}.”</div>{% endif %}
+      {% else %}
+        <div class="ask label">Then · 〜て、〜 (keep the last verb as it is)</div>
+        <div class="prompt mid" lang="ja">{{ ja(q.verbs[0].written, q.verbs[0].kana) }} → {{ ja(q.verbs[1].written, q.verbs[1].kana) }}</div>
+        {% if q.verbs[0].meaning %}<div class="muted meaning">{{ q.verbs[0].meaning.split(',')[0] }}, then {{ q.verbs[1].meaning.split(',')[0] }}</div>{% endif %}
+      {% endif %}
+      {% set secs = view.boss.phases[a.phase].seconds %}
+      {% if secs %}<div class="timer" data-seconds="{{ secs }}" aria-hidden="true"><span></span></div>{% endif %}
+      <input name="answer" lang="ja" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus maxlength="40" aria-label="Your answer">
+      <div class="duel-buttons">
+        <button class="btn ember" type="submit">Strike</button>
+      </div>
+    </form>
+    <div class="duel-side">
+      <form method="post" action="/boss/{{ view.boss.id }}/estus" hx-post="/boss/{{ view.boss.id }}/estus" hx-target="#fight" hx-swap="outerHTML">
+        <input type="hidden" name="attempt" value="{{ a.id }}">
+        <button class="btn" type="submit" {{ 'disabled' if not a.can_drink }}>Drink Estus ({{ a.estus }})</button>
+      </form>
+      <a class="btn" href="/map/firelink?at=warden">Rest at the fog gate</a>
+    </div>
+  </div>
+  {% endif %}
+</section>

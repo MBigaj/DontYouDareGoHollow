@@ -13,6 +13,9 @@ from sqlalchemy.types import TypeDecorator
 from hollow.domain.activities import ActivityKind
 from hollow.domain.events import (
     Event,
+    FightAction,
+    FightStarted,
+    FightTurn,
     LessonCompleted,
     MessageLeft,
     Source,
@@ -66,6 +69,29 @@ def to_row(event: Event) -> EventRow:
         return EventRow(
             id=str(event.id), type="study_logged", occurred_at=event.occurred_at, payload=payload
         )
+    if isinstance(event, FightStarted):
+        return EventRow(
+            id=str(event.id),
+            type="fight_started",
+            occurred_at=event.occurred_at,
+            payload={
+                "boss_id": event.boss_id,
+                "seed": event.seed,
+                "max_hp": event.max_hp,
+                "mistake_cost": event.mistake_cost,
+            },
+        )
+    if isinstance(event, FightTurn):
+        return EventRow(
+            id=str(event.id),
+            type="fight_turn",
+            occurred_at=event.occurred_at,
+            payload={
+                "attempt_id": str(event.attempt_id),
+                "action": event.action.value,
+                "correct": event.correct,
+            },
+        )
     if isinstance(event, LessonCompleted):
         return EventRow(
             id=str(event.id),
@@ -110,6 +136,23 @@ def from_row(row: EventRow) -> Event:
             quantity=int(p["quantity"]),
             note=str(p.get("note", "")),
             source=Source(p.get("source", Source.MANUAL.value)),
+            id=UUID(row.id),
+        )
+    if row.type == "fight_started":
+        return FightStarted(
+            occurred_at=row.occurred_at,
+            boss_id=str(p["boss_id"]),
+            seed=int(p["seed"]),
+            max_hp=int(p["max_hp"]),
+            mistake_cost=int(p["mistake_cost"]),
+            id=UUID(row.id),
+        )
+    if row.type == "fight_turn":
+        return FightTurn(
+            occurred_at=row.occurred_at,
+            attempt_id=UUID(str(p["attempt_id"])),
+            action=FightAction(p["action"]),
+            correct=bool(p["correct"]),
             id=UUID(row.id),
         )
     if row.type == "lesson_completed":

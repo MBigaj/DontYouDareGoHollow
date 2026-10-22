@@ -1,0 +1,124 @@
+"""Running boss fights. Every turn is an event, so a fight survives restarts and resting."""
+
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from random import SystemRandom
+from uuid import UUID
+
+from hollow.application.lessons import LessonError
+from hollow.application.ports import Clock, EventStore
+from hollow.domain.bosses import BOSSES, Attempt, Boss, BossRecord, Question, question
+from hollow.domain.calendar import GameCalendar
+from hollow.domain.conjugation import Verb
+from hollow.domain.events import FightAction, FightStarted, FightTurn
+from hollow.domain.vocabulary import known_verbs
+from hollow.domain.world import WorldState, replay
+
+
+class FightError(LessonError):
+    """An unknown boss, too few verbs, or a turn for a fight that is not on."""
+
+
+@dataclass(frozen=True)
+class Answered:
+    question: Question
+    given: str
+    correct: bool
+
+
+@dataclass(frozen=True)
+class FightView:
+    boss: Boss
+    record: BossRecord
+    state: WorldState
+    question: Question | None
+    """The question waiting for an answer, when a fight is on."""
+    answered: Answered | None = None
+
+    @property
+    def attempt(self) -> Attempt | None:
+        return self.record.current or self.record.last
+
+
+class FightService:
+    def __init__(self, store: EventStore, clock: Clock, calendar: GameCalendar) -> None:
+        self._store = store
+        self._clock = clock
+        self._calendar = calendar
+
+    def _now(self) -> datetime:
+        """Now, but always after the last fight event, so turns replay in the order played."""
+        now = self._clock.now()
+        times = [
+            e.occurred_at for e in self._store.all() if isinstance(e, FightStarted | FightTurn)
+        ]
+        if times and max(times) >= now:
+            return max(times) + timedelta(microseconds=1)
+        return now
+
+    def boss(self, boss_id: str) -> Boss:
+        try:
+            return BOSSES[boss_id]
+        except KeyError:
+            raise FightError(f"There is no boss called {boss_id}.") from None
+
+    def verbs(self) -> list[Verb]:
+        return known_verbs(self._store.all())
+
+    def view(self, boss_id: str, answered: Answered | None = None) -> FightView:
+        boss = self.boss(boss_id)
+        today = self._calendar.day_of(self._clock.now())
+        state = replay(self._store.all(), self._calendar, today)
+        record = state.bosses[boss.id]
+        current = record.current
+        ask = None
+        if current is not None:
+            ask = question(boss, current.phase, current.seed, current.turns, self.verbs())
+        return FightView(boss, record, state, ask, answered)
+
+    def ready(self, boss_id: str) -> bool:
+        return len(self.verbs()) >= self.boss(boss_id).min_verbs
+
+    def enter(self, boss_id: str) -> FightView:
+        """Steps through the fog: resumes the fight that is on, or starts a new attempt."""
+        view = self.view(boss_id)
+        if view.record.current is not None:
+            return view
+        if not self.ready(boss_id):
+            raise FightError(f"{view.boss.name} waits until you know {view.boss.min_verbs} verbs.")
+        self._store.append(
+            FightStarted(
+                self._now(),
+                view.boss.id,
+                SystemRandom().randrange(2**32),
+                view.state.max_hp,
+                view.state.mistake_cost,
+            )
+        )
+        return self.view(boss_id)
+
+    def _current(self, boss_id: str, attempt_id: str) -> FightView:
+        view = self.view(boss_id)
+        current = view.record.current
+        if current is None or str(current.id) != attempt_id:
+            raise FightError("That fight is over. Step through the fog again.")
+        return view
+
+    def answer(self, boss_id: str, attempt_id: str, turn: int, given: str) -> FightView:
+        view = self._current(boss_id, attempt_id)
+        current, ask = view.record.current, view.question
+        assert current is not None and ask is not None
+        if turn != current.turns:
+            return view  # a double submit: that turn is already played
+        correct = ask.accepts(given)
+        self._store.append(FightTurn(self._now(), UUID(attempt_id), FightAction.ANSWER, correct))
+        return self.view(boss_id, Answered(ask, given.strip()[:40], correct))
+
+    def drink(self, boss_id: str, attempt_id: str) -> FightView:
+        view = self._current(boss_id, attempt_id)
+        current = view.record.current
+        assert current is not None
+        if not current.can_drink:
+            return view
+        self._store.append(FightTurn(self._now(), UUID(attempt_id), FightAction.ESTUS))
+        return self.view(boss_id)

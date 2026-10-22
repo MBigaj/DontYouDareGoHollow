@@ -19,6 +19,7 @@ dependencies = [
 [project.scripts]
 hollow-sync-anki = "hollow.cli:sync_anki"
 hollow-anki-check = "hollow.cli:check_anki"
+hollow-sync-github = "hollow.cli:sync_github"
 
 [dependency-groups]
 dev = [

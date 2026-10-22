@@ -1,9 +1,10 @@
 """Pulls new reviews from Anki into the event log."""
 
 from dataclasses import dataclass
-from datetime import datetime, time, timedelta
+from datetime import datetime, timedelta
 from typing import Protocol
 
+from hollow.application.history import game_start
 from hollow.application.ports import Clock, EventStore
 from hollow.domain.activities import ActivityKind
 from hollow.domain.anki import AnkiReview, to_events
@@ -60,16 +61,12 @@ class AnkiSync:
         History from before the game began is not imported: replaying months of old Anki
         days would turn every gap in them into a death.
         """
-        events = self._store.all()
-        first = min((e.occurred_at for e in events), default=self._clock.now())
-        game_start = datetime.combine(
-            self._calendar.day_of(first),
-            time(self._calendar.day_start_hour),
-            tzinfo=self._calendar.timezone,
-        )
+        start = game_start(self._store, self._clock, self._calendar)
         imported = [
-            e.occurred_at for e in events if isinstance(e, StudyLogged) and e.source is Source.ANKI
+            e.occurred_at
+            for e in self._store.all()
+            if isinstance(e, StudyLogged) and e.source is Source.ANKI
         ]
         if not imported:
-            return game_start
-        return max(game_start, max(imported) - LOOKBACK)
+            return start
+        return max(start, max(imported) - LOOKBACK)

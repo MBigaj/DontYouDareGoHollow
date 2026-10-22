@@ -2,7 +2,7 @@
 
 A Souls-like study game for Japanese and the senior backend roadmap. Real study earns souls. Missing a day drops them as a bloodstain, and lighting the bonfire the next day gets them back. Miss again and they are gone.
 
-Phase 0 (Kindling) built the bonfire, manual study logging, the souls ledger, bloodstains and hollowing. Phase 1 adds automatic souls: **Anki sync is in**; GitHub sync and levelling come next.
+Phase 0 (Kindling) built the bonfire, manual study logging, the souls ledger, bloodstains and hollowing. Phase 1 adds automatic souls: **Anki sync and GitHub sync are in**; levelling comes next.
 
 ## Running it
 
@@ -65,6 +65,29 @@ The Docker setup cannot see an Anki running on your desktop, because AnkiConnect
 | Game day | Days start at 04:00 Europe/Warsaw, so late-night study counts for the day before. |
 | Messages | A message left today shows at the bonfire from tomorrow, "left by past you". |
 
+## GitHub sync
+
+Every merged pull request you open in your practice repo (by default [`MBigaj/hollow-trials`](https://github.com/MBigaj/hollow-trials)) is worth 100 souls and lights the bonfire on its own.
+
+A pull request counts only when all of these hold:
+
+- it is in one of `HOLLOW_GITHUB_REPOS`;
+- you opened it (`HOLLOW_GITHUB_AUTHOR`);
+- it was merged, not just closed, after the game began;
+- its CI passed on the merged head commit. A pull request with no CI at all never counts, and one whose CI is still running is picked up by a later sync.
+
+Commits never count on their own, so splitting work into tiny commits earns nothing. Each pull request is imported once, keyed by repo and number.
+
+Setup:
+
+1. Create a fine-grained token (GitHub, Settings, Developer settings, Fine-grained tokens) limited to the practice repo, with read-only **Pull requests**, **Commit statuses** and **Contents** access.
+2. In `.env`, set `HOLLOW_GITHUB_ENABLED=true` and `HOLLOW_GITHUB_TOKEN=` to the token.
+3. Open the app. Page loads sync at most every 5 minutes; the bonfire button always syncs. To sync from a scheduled task instead, run:
+
+```
+uv run hollow-sync-github
+```
+
 ## How it is built
 
 ```mermaid
@@ -76,6 +99,10 @@ flowchart LR
   S --> D[Domain: replay rules]
   S --> P[EventStore port]
   A --> P
+  W --> G[GitHubSync]
+  G --> GP[GitHubSource port]
+  GP --> GA[GitHub REST API]
+  G --> P
   P --> DB[(events table: SQLite or PostgreSQL)]
 ```
 

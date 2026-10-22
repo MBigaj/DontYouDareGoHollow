@@ -6,7 +6,9 @@ from datetime import timedelta
 
 from hollow.adapters.anki_connect import AnkiConnect
 from hollow.adapters.db.store import SqlEventStore, make_engine
+from hollow.adapters.github_api import GitHubApi
 from hollow.application.anki_sync import AnkiSync, AnkiUnavailable
+from hollow.application.github_sync import GitHubSync, GitHubUnavailable
 from hollow.application.ports import SystemClock
 from hollow.config import Settings
 from hollow.domain.activities import ActivityKind
@@ -58,4 +60,27 @@ def check_anki() -> int:
     print(f"Today ({today}):  {len(todays) - new} reviews, {new} new cards in Anki")
     if elapsed_ms > 500:
         print("Slow: use http://127.0.0.1:8765 rather than localhost in HOLLOW_ANKI_URL.")
+    return 0
+
+
+def sync_github() -> int:
+    settings = Settings()
+    token = settings.github_token.get_secret_value() if settings.github_token else None
+    sync = GitHubSync(
+        SqlEventStore(make_engine(settings.database_url)),
+        GitHubApi(token),
+        SystemClock(),
+        settings.calendar(),
+        settings.github_repo_names(),
+        settings.github_author,
+    )
+    try:
+        result = sync.run(force=True)
+    except GitHubUnavailable as error:
+        print(error, file=sys.stderr)
+        return 1
+    assert result is not None  # a forced run is never throttled
+    print(f"Imported {result.merged} merged pull requests from GitHub.")
+    if result.waiting:
+        print(f"{result.waiting} merged pull requests are still waiting for CI.")
     return 0

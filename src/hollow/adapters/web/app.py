@@ -14,7 +14,7 @@ from hollow.adapters.anki_connect import AnkiConnect
 from hollow.adapters.db.store import SqlEventStore, make_engine
 from hollow.adapters.github_api import GitHubApi
 from hollow.application.anki_sync import AnkiSource, AnkiSync, AnkiUnavailable, SyncResult
-from hollow.application.bonfire import BonfireService
+from hollow.application.bonfire import BonfireService, CannotLevelUp
 from hollow.application.github_sync import (
     GitHubResult,
     GitHubSource,
@@ -24,7 +24,8 @@ from hollow.application.github_sync import (
 from hollow.application.ports import Clock, EventStore, SystemClock
 from hollow.config import Settings
 from hollow.domain.activities import ACTIVITIES, ActivityKind, Track
-from hollow.domain.world import MAX_HOLLOWING, WorldState
+from hollow.domain.progression import STATS, Stat
+from hollow.domain.world import EFFIGIES_PER_WEEK, MAX_HOLLOWING, WorldState
 
 HERE = Path(__file__).parent
 ANKI_KINDS = {ActivityKind.ANKI_REVIEWS, ActivityKind.ANKI_NEW_CARDS}
@@ -80,6 +81,8 @@ def create_app(
         return {
             "state": state,
             "max_hollowing": MAX_HOLLOWING,
+            "effigies_per_week": EFFIGIES_PER_WEEK,
+            "stat_specs": list(STATS.values()),
             "activities": list(ACTIVITIES.values()),
             "ronin_kinds": [
                 s
@@ -184,6 +187,23 @@ def create_app(
             raise HTTPException(422, str(error)) from error
         spec = ACTIVITIES[kind]
         return respond(request, state, flash=f"Logged {quantity} {spec.unit} of {spec.label}.")
+
+    @app.post("/level")
+    def level(request: Request, stat: Annotated[Stat, Form()]) -> Response:
+        before = service.state()
+        try:
+            state = service.level_up(stat)
+        except CannotLevelUp as error:
+            return respond(request, before, warning=str(error))
+        spec = STATS[stat]
+        return respond(
+            request,
+            state,
+            flash=(
+                f"{spec.label} rose to {state.stats[stat]}. "
+                f"{before.level_cost:,} souls spent at the bonfire."
+            ),
+        )
 
     @app.post("/message")
     def message(request: Request, text: Annotated[str, Form()]) -> Response:

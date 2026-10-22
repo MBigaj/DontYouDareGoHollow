@@ -30,6 +30,9 @@
         <div class="stat"><span class="label">{{ state.status }}</span>
           <span class="pips" aria-label="Hollowing {{ h }} of {{ max_hollowing }}">{% for i in range(max_hollowing) %}<span class="pip {{ 'on' if i < h }}"></span>{% endfor %}</span></div>
         <div class="stat"><span class="label">Deaths</span><span class="value" style="color: var(--blood-ink)">{{ state.deaths }}</span></div>
+        <div class="stat"><span class="label">Effigies</span>
+          <span class="pips" aria-label="{{ state.effigies }} of {{ effigies_per_week }} Effigies left this week" title="A missed day uses an Effigy instead of killing you. Refills every Monday.">{% for i in range(effigies_per_week) %}<span class="pip effigy {{ 'on' if i < state.effigies }}"></span>{% endfor %}</span></div>
+        <div class="stat"><span class="label">Level</span><span class="value">{{ state.character_level }}</span></div>
       </div>
 
       {% if state.lit_today %}
@@ -74,11 +77,53 @@
         <h2 class="label">Last 7 days</h2>
         <div class="days">
           {% for day in state.recent_days %}
-          <span class="day {{ 'lit' if day.lit else ('died' if day.died else 'open') }}"
-                title="{{ day.day.isoformat() }}: {{ 'lit' if day.lit else ('died' if day.died else 'still open') }}, +{{ day.souls_earned }} souls">{{ day.day.day }}</span>
+          {% set kind = 'lit' if day.lit else ('died' if day.died else ('spared' if day.spared else 'open')) %}
+          <span class="day {{ kind }}"
+                title="{{ day.day.isoformat() }}: {{ {'lit': 'lit', 'died': 'died', 'spared': 'missed, an Effigy took the death', 'open': 'still open'}[kind] }}, +{{ day.souls_earned }} souls">{{ day.day.day }}</span>
           {% endfor %}
         </div>
         <p class="muted" style="font-size: 14px">{{ state.bonfires_lit }} bonfires lit · {{ "{:,}".format(state.souls_earned_total) }} souls earned · {{ "{:,}".format(state.souls_lost) }} lost</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" aria-label="Character">
+    <div class="grid-2">
+      <div>
+        <h2 class="label">Character · level {{ state.character_level }}</h2>
+        {% for job in state.jobs.values() %}
+        <div class="job">
+          <div class="job-head"><span>{{ 'Ronin' if job.track.value == 'ronin' else 'Architect' }} <span class="muted">· {{ 'Japanese' if job.track.value == 'ronin' else 'Python' }}</span></span><span>Lv {{ job.level }}</span></div>
+          <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="{{ job.needed }}" aria-valuenow="{{ job.into_level }}" aria-label="{{ job.track.value | title }} XP"><span style="width: {{ job.percent }}%"></span></div>
+          <div class="muted" style="font-size: 13px">{{ "{:,}".format(job.into_level) }} / {{ "{:,}".format(job.needed) }} XP to level {{ job.level + 1 }}</div>
+        </div>
+        {% endfor %}
+        <p class="muted" style="font-size: 14px">Jobs level from every soul you earn in them. Spending or losing souls never lowers them.</p>
+      </div>
+      <div>
+        <h2 class="label">Level up · soul level {{ state.soul_level }}</h2>
+        <p style="margin: 4px 0 10px; font-size: 14px">Next level costs <strong class="souls-ink">{{ "{:,}".format(state.level_cost) }}</strong> souls{% if not state.can_level_up %} <span class="muted">· {{ "{:,}".format(state.level_cost - state.souls) }} more to go</span>{% endif %}</p>
+        <div class="statlist">
+          {% for spec in stat_specs %}
+          {% set lvl = state.stats[spec.stat] %}
+          <div class="statrow">
+            <div>
+              <div><strong>{{ spec.label }}</strong> {{ lvl }}</div>
+              <div class="muted" style="font-size: 13px">
+                {% if spec.stat.value == 'vigor' %}{{ state.max_hp }} HP in boss fights
+                {% elif spec.stat.value == 'endurance' %}Mistakes cost {{ state.mistake_cost }} HP
+                {% else %}{% set next = spec.perks | selectattr('level', 'gt', lvl) | first %}{{ spec.perks | selectattr('level', 'le', lvl) | list | length }} of {{ spec.perks | length }} extras{% if next %} · next at {{ next.level }}: {{ next.text }}{% endif %}
+                {% endif %}
+              </div>
+            </div>
+            <form method="post" action="/level" hx-post="/level" hx-target="#world" hx-swap="outerHTML" hx-disabled-elt="find button">
+              <input type="hidden" name="stat" value="{{ spec.stat.value }}">
+              <button class="btn" type="submit" {{ 'disabled' if not state.can_level_up }} aria-label="Raise {{ spec.label }}">+1</button>
+            </form>
+          </div>
+          {% endfor %}
+        </div>
+        <p class="muted" style="font-size: 13px">Stats never lock study. Vigor and Endurance count in boss fights (Phase 2); Faith and Intelligence extras arrive with the agents.</p>
       </div>
     </div>
   </section>

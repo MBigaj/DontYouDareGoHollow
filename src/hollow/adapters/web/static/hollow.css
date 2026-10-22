@@ -101,3 +101,15 @@ td:last-child { text-align: right; color: var(--ember-hi); }
 .htmx-request .btn .busy { display: inline; }
 .htmx-request .btn .idle { display: none; }
 @media (prefers-reduced-motion: reduce) { .fire.lit, .knight.alive { animation: none; } }
+
+.day.spared { background: #3a3f4a; color: var(--blue); }
+.pip.effigy.on { background: var(--blue); }
+.souls-ink { color: var(--gold); }
+.job { display: flex; flex-direction: column; gap: 4px; margin: 8px 0 12px; }
+.job-head { display: flex; justify-content: space-between; font-weight: 600; }
+.bar { height: 14px; background: #2a231b; outline: 3px solid var(--bg); }
+.bar > span { display: block; height: 100%; background: var(--gold); transition: width .6s ease-out; }
+.statlist { display: flex; flex-direction: column; gap: 8px; }
+.statrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.statrow .btn { min-width: 52px; }
+.btn[disabled] { opacity: .45; cursor: not-allowed; }

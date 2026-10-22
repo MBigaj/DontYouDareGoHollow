@@ -3,10 +3,18 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
+from hollow.domain import world
 from hollow.domain.activities import ActivityKind, lights_bonfire, souls_for
 from hollow.domain.calendar import GameCalendar
 from hollow.domain.events import Event, MessageLeft, StudyLogged
-from hollow.domain.world import MAX_HOLLOWING, replay
+from hollow.domain.world import MAX_HOLLOWING, WorldState
+
+
+def replay(*args: object, **kwargs: object) -> WorldState:
+    """The death rules without Effigies; tests/test_progression.py covers Effigies."""
+    kwargs.setdefault("effigies_per_week", 0)
+    return world.replay(*args, **kwargs)  # type: ignore[arg-type]
+
 
 WARSAW = ZoneInfo("Europe/Warsaw")
 CAL = GameCalendar(WARSAW, day_start_hour=4)

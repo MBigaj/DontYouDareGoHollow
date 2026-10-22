@@ -1,11 +1,16 @@
 from hollow.application.ports import Clock, EventStore
 from hollow.domain.activities import LIGHT_THE_BONFIRE, ActivityKind
 from hollow.domain.calendar import GameCalendar
-from hollow.domain.events import MessageLeft, StudyLogged
+from hollow.domain.events import MessageLeft, StatLevelled, StudyLogged
+from hollow.domain.progression import STAT_MAX, Stat
 from hollow.domain.world import WorldState, replay
 
 MAX_QUANTITY = 10_000
 MAX_TEXT = 280
+
+
+class CannotLevelUp(Exception):
+    """Not enough souls, or the stat is already at its maximum."""
 
 
 class BonfireService:
@@ -31,4 +36,15 @@ class BonfireService:
 
     def leave_message(self, text: str) -> WorldState:
         self._store.append(MessageLeft(self._clock.now(), text[:MAX_TEXT]))
+        return self.state()
+
+    def level_up(self, stat: Stat) -> WorldState:
+        """Spends souls at the bonfire to raise one stat by one level."""
+        state = self.state()
+        if state.stats[stat] >= STAT_MAX:
+            raise CannotLevelUp(f"{stat.value.title()} is already at {STAT_MAX}.")
+        if not state.can_level_up:
+            missing = state.level_cost - state.souls
+            raise CannotLevelUp(f"You need {missing:,} more souls.")
+        self._store.append(StatLevelled(self._clock.now(), stat, state.level_cost))
         return self.state()

@@ -47,7 +47,7 @@ def test_log_rejects_bad_input(client: TestClient) -> None:
 
 def test_missed_day_shows_bloodstain_then_recovery(client: TestClient, clock: FakeClock) -> None:
     client.post("/light")
-    clock.advance(days=2)
+    clock.advance(days=4)  # two misses use this week's Effigies, the third is a death
     page = client.get("/").text
     assert "Bloodstain · 20 souls" in page
 

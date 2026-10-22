@@ -11,7 +11,8 @@ from sqlalchemy.pool import StaticPool
 from sqlalchemy.types import TypeDecorator
 
 from hollow.domain.activities import ActivityKind
-from hollow.domain.events import Event, MessageLeft, Source, StudyLogged
+from hollow.domain.events import Event, MessageLeft, Source, StatLevelled, StudyLogged
+from hollow.domain.progression import Stat
 
 
 class Base(DeclarativeBase):
@@ -57,6 +58,13 @@ def to_row(event: Event) -> EventRow:
         return EventRow(
             id=str(event.id), type="study_logged", occurred_at=event.occurred_at, payload=payload
         )
+    if isinstance(event, StatLevelled):
+        return EventRow(
+            id=str(event.id),
+            type="stat_levelled",
+            occurred_at=event.occurred_at,
+            payload={"stat": event.stat.value, "cost": event.cost},
+        )
     return EventRow(
         id=str(event.id),
         type="message_left",
@@ -75,6 +83,10 @@ def from_row(row: EventRow) -> Event:
             note=str(p.get("note", "")),
             source=Source(p.get("source", Source.MANUAL.value)),
             id=UUID(row.id),
+        )
+    if row.type == "stat_levelled":
+        return StatLevelled(
+            occurred_at=row.occurred_at, stat=Stat(p["stat"]), cost=int(p["cost"]), id=UUID(row.id)
         )
     if row.type == "message_left":
         return MessageLeft(occurred_at=row.occurred_at, text=str(p["text"]), id=UUID(row.id))

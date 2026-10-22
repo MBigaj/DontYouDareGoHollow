@@ -2,9 +2,15 @@
 
 from dataclasses import dataclass, field
 from datetime import datetime
+from enum import StrEnum
 from uuid import UUID, uuid4
 
 from hollow.domain.activities import ActivityKind
+
+
+class Source(StrEnum):
+    MANUAL = "manual"
+    ANKI = "anki"
 
 
 @dataclass(frozen=True)
@@ -13,7 +19,9 @@ class StudyLogged:
     kind: ActivityKind
     quantity: int
     note: str = ""
+    source: Source = Source.MANUAL
     id: UUID = field(default_factory=uuid4)
+    """Imported events get a deterministic id, so importing the same thing twice is a no-op."""
 
     def __post_init__(self) -> None:
         if self.quantity <= 0:

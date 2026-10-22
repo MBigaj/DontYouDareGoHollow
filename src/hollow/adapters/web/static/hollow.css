@@ -96,5 +96,8 @@ table { width: 100%; border-collapse: collapse; font-size: 15px; }
 td { padding: 6px 0; border-bottom: 2px dashed #2a231b; }
 td:last-child { text-align: right; color: var(--ember-hi); }
 .muted { color: var(--ink-3); }
-.htmx-request .btn { opacity: .6; }
+.htmx-request .btn { opacity: .6; cursor: progress; }
+.btn .busy { display: none; }
+.htmx-request .btn .busy { display: inline; }
+.htmx-request .btn .idle { display: none; }
 @media (prefers-reduced-motion: reduce) { .fire.lit, .knight.alive { animation: none; } }

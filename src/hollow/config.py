@@ -17,6 +17,16 @@ class Settings(BaseSettings):
     password: SecretStr | None = None
     """When set, every page asks for it (HTTP basic auth). Set it before deploying publicly."""
 
+    anki_enabled: bool = False
+    """Read reviews from Anki through the AnkiConnect add-on instead of logging them by hand."""
+    anki_url: str = "http://127.0.0.1:8765"
+    """127.0.0.1, not localhost: on Windows, localhost tries IPv6 first and stalls ~2s per call."""
+    anki_decks: str = ""
+    """Comma-separated deck names to count, e.g. "Core 2000". Empty counts every deck."""
+
+    def anki_deck_names(self) -> tuple[str, ...]:
+        return tuple(name.strip() for name in self.anki_decks.split(",") if name.strip())
+
     @field_validator("timezone")
     @classmethod
     def _known_timezone(cls, value: str) -> str:

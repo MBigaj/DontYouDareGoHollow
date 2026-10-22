@@ -4,7 +4,7 @@
 {% set on = rec.current is not none %}
 {% set beat = a.beat.value if a and (on or a.outcome.value in ('died', 'won')) and not gate else 'gate' %}
 <section id="fight" class="fight beat-{{ beat }}" aria-label="{{ view.boss.name }}">
-  <div class="arena" style="background-image: url({{ url_for('static', path='sprites/arena_bg.png') }})">
+  <div class="arena" style="background-image: url({{ asset('sprites/arena_bg.png') }})">
     {% if a and beat != 'gate' %}
     <div class="hud">
       <div class="hp">
@@ -12,20 +12,20 @@
         <span class="hp-num">{{ a.hp }} / {{ a.max_hp }}</span>
       </div>
       <div class="flasks" aria-label="{{ a.estus }} Estus flasks left">
-        {% for i in range(2) %}<img class="flask {{ 'empty' if i >= a.estus }}" src="{{ url_for('static', path='sprites/item_estus.png') }}" alt="" width="36" height="36">{% endfor %}
+        {% for i in range(2) %}<img class="flask {{ 'empty' if i >= a.estus }}" src="{{ asset('sprites/item_estus.png') }}" alt="" width="36" height="36">{% endfor %}
       </div>
       <div class="phase-tag label">Phase {{ a.phase + 1 }} of {{ view.boss.phases | length }} · {{ view.boss.phases[a.phase].name }}{% if a.wound < 1 %} · wounded {{ ((1 - a.wound) * 100) | round | int }}%{% endif %}</div>
     </div>
     {% endif %}
 
     <div class="foe {{ 'gone' if beat == 'won' }}">
-      <img class="foe-body" src="{{ url_for('static', path='sprites/warden_body.png') }}" alt="{{ view.boss.name }}">
-      <img class="foe-weapon" src="{{ url_for('static', path='sprites/warden_weapon.png') }}" alt="">
-      <img class="slash" src="{{ url_for('static', path='sprites/slash.png') }}" alt="">
+      <img class="foe-body" src="{{ asset('sprites/warden_body.png') }}" alt="{{ view.boss.name }}">
+      <img class="foe-weapon" src="{{ asset('sprites/warden_weapon.png') }}" alt="">
+      <img class="slash" src="{{ asset('sprites/slash.png') }}" alt="">
       {% if beat in ('hit', 'phase', 'won') %}<span class="pop dmg">-{{ damage }}</span>{% endif %}
     </div>
     <div class="hero">
-      <img src="{{ url_for('static', path='sprites/knight_front.png') }}" alt="Your knight">
+      <img src="{{ asset('sprites/knight_front.png') }}" alt="Your knight">
       {% if beat in ('miss', 'died') %}<span class="pop hurt">-{{ a.mistake_cost }}</span>{% endif %}
       {% if beat == 'estus' %}<span class="pop heal">+{{ heal }}</span>{% endif %}
     </div>

@@ -2,5 +2,5 @@
 {% block title %}{{ view.boss.name }} · DontYouDareGoHollow{% endblock %}
 {% block content %}
 {% include "partials/_fight.html" %}
-<script src="{{ url_for('static', path='js/fight.js') }}" defer></script>
+<script src="{{ asset('js/fight.js') }}" defer></script>
 {% endblock %}

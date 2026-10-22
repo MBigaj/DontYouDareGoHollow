@@ -9,7 +9,8 @@ from hollow.application.ports import Clock, EventStore
 from hollow.domain.activities import ActivityKind
 from hollow.domain.anki import AnkiReview, to_events
 from hollow.domain.calendar import GameCalendar
-from hollow.domain.events import Source, StudyLogged
+from hollow.domain.events import Source, StudyLogged, WordLearned
+from hollow.domain.vocabulary import LearnedWord, to_event
 
 LOOKBACK = timedelta(days=3)
 """How far before the newest imported review each sync looks again.
@@ -28,11 +29,17 @@ class AnkiSource(Protocol):
         """Every review strictly after `after`, across the configured decks."""
         ...
 
+    def learned_words(self, skip: frozenset[int]) -> list[LearnedWord]:
+        """Notes with a studied card in the configured decks, except the `skip` note ids."""
+        ...
+
 
 @dataclass(frozen=True)
 class SyncResult:
     reviews: int
     new_cards: int
+    words: int = 0
+    """Newly learned words, which drills can now use."""
 
     @property
     def total(self) -> int:
@@ -53,7 +60,12 @@ class AnkiSync:
         new_cards = sum(
             1 for e in added if isinstance(e, StudyLogged) and e.kind is ActivityKind.ANKI_NEW_CARDS
         )
-        return SyncResult(reviews=len(added) - new_cards, new_cards=new_cards)
+        known = frozenset(e.note_id for e in self._store.all() if isinstance(e, WordLearned))
+        now = self._clock.now()
+        words = self._store.append_new(
+            [to_event(word, now) for word in self._source.learned_words(known)]
+        )
+        return SyncResult(reviews=len(added) - new_cards, new_cards=new_cards, words=len(words))
 
     def _cursor(self) -> datetime:
         """A few days before the newest imported review, but never before the game began.

@@ -10,6 +10,7 @@ from hollow.application.anki_sync import AnkiUnavailable
 from hollow.application.github_sync import Checks, GitHubUnavailable
 from hollow.domain.anki import AnkiReview
 from hollow.domain.github import MergedPullRequest
+from hollow.domain.vocabulary import LearnedWord
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -17,6 +18,9 @@ ROOT = Path(__file__).resolve().parents[1]
 class StubAnki:
     def __init__(self, *args: object, **kwargs: object) -> None:
         pass
+
+    def learned_words(self, skip: frozenset[int]) -> list[LearnedWord]:
+        return [LearnedWord(1, "食べる", "たべる", "eat", "Verb")]
 
     def version(self) -> int:
         return 6
@@ -63,7 +67,7 @@ def database(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 def test_sync_command_imports_reviews(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setattr(cli, "AnkiConnect", StubAnki)
+    monkeypatch.setattr(cli, "connect", StubAnki)
     assert cli.sync_anki() == 0
     assert "Imported 1 reviews and 0 new cards" in capsys.readouterr().out
 
@@ -72,7 +76,7 @@ def test_sync_command_imports_reviews(
 def test_sync_command_fails_cleanly_when_anki_is_closed(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setattr(cli, "AnkiConnect", ClosedAnki)
+    monkeypatch.setattr(cli, "connect", ClosedAnki)
     assert cli.sync_anki() == 1
     assert "Could not reach AnkiConnect" in capsys.readouterr().err
 
@@ -80,7 +84,7 @@ def test_sync_command_fails_cleanly_when_anki_is_closed(
 def test_check_reports_what_anki_sees(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setattr(cli, "AnkiConnect", StubAnki)
+    monkeypatch.setattr(cli, "connect", StubAnki)
     assert cli.check_anki() == 0
     out = capsys.readouterr().out
     assert "version 6" in out
@@ -92,7 +96,7 @@ def test_check_reports_what_anki_sees(
 def test_check_flags_a_slow_connection(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setattr(cli, "AnkiConnect", SlowAnki)
+    monkeypatch.setattr(cli, "connect", SlowAnki)
     assert cli.check_anki() == 0
     assert "use http://127.0.0.1:8765" in capsys.readouterr().out
 
@@ -100,7 +104,7 @@ def test_check_flags_a_slow_connection(
 def test_check_explains_a_closed_anki(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setattr(cli, "AnkiConnect", ClosedAnki)
+    monkeypatch.setattr(cli, "connect", ClosedAnki)
     assert cli.check_anki() == 1
     assert "Could not reach AnkiConnect" in capsys.readouterr().err
 
@@ -108,7 +112,7 @@ def test_check_explains_a_closed_anki(
 def test_check_flags_deck_names_anki_does_not_know(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setattr(cli, "AnkiConnect", TypoAnki)
+    monkeypatch.setattr(cli, "connect", TypoAnki)
     assert cli.check_anki() == 0
     assert "Not found in Anki: Core 200" in capsys.readouterr().out
 

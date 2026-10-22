@@ -1,0 +1,64 @@
+{% set total = questions | length %}
+<section id="lesson" class="panel lesson" aria-label="{{ spec.title }}">
+  <div class="lesson-top">
+    <span class="label">{{ spec.title }} · {{ run_labels[run_kind] }}</span>
+    <span class="label">{{ [answers | length + (0 if mode == 'feedback' else 1), total] | min if mode != 'result' else total }} / {{ total }}</span>
+  </div>
+  <div class="track" aria-hidden="true">
+    {% for ok in marks %}<span class="mark {{ 'ok' if ok else 'miss' }}"></span>{% endfor %}
+    {% for _ in range(total - marks | length) %}<span class="mark"></span>{% endfor %}
+  </div>
+
+  {% macro carry() %}
+    <input type="hidden" name="run" value="{{ run_id }}">
+    {% for q in questions %}<input type="hidden" name="q" value="{{ q.written }}">{% endfor %}
+    {% for a in answers %}<input type="hidden" name="a" value="{{ a }}">{% endfor %}
+  {% endmacro %}
+
+  {% if mode == 'question' %}
+    {% set verb = questions[answers | length] %}
+    <form class="quiz" method="post" action="/lessons/{{ spec.id }}/answer" hx-post="/lessons/{{ spec.id }}/answer" hx-target="#lesson" hx-swap="outerHTML">
+      {{ carry() }}
+      <div class="prompt" lang="ja">{{ verb.written }}</div>
+      {% if verb.written != verb.kana %}<div class="reading" lang="ja">{{ verb.kana }}</div>{% endif %}
+      {% if verb.meaning %}<div class="muted meaning">{{ verb.meaning }}</div>{% endif %}
+      <label class="answer-label">て-form
+        <input name="answer" lang="ja" autocomplete="off" autocapitalize="off" spellcheck="false" required autofocus maxlength="40">
+      </label>
+      <button class="btn ember" type="submit">Answer</button>
+    </form>
+
+  {% elif mode == 'feedback' %}
+    {% set verb = questions[answers | length - 1] %}
+    <div class="verdict {{ 'ok' if correct else 'miss' }}" role="status">
+      <div class="prompt small" lang="ja">{{ verb.written }} → <strong>{{ verb.te_form.written }}</strong>{% if verb.te_form.written != verb.te_form.kana %} <span class="muted">({{ verb.te_form.kana }})</span>{% endif %}</div>
+      {% if correct %}<div class="verdict-line">正解 · Correct</div>
+      {% else %}<div class="verdict-line">You wrote <span lang="ja">{{ answers[-1] }}</span></div>{% endif %}
+      <div class="muted hint">{{ hint }}</div>
+    </div>
+    <form method="post" action="/lessons/{{ spec.id }}/{{ 'finish' if answers | length == total else 'next' }}" hx-post="/lessons/{{ spec.id }}/{{ 'finish' if answers | length == total else 'next' }}" hx-target="#lesson" hx-swap="outerHTML">
+      {{ carry() }}
+      <button class="btn ember wide" type="submit" autofocus>{{ 'Finish' if answers | length == total else 'Next' }} <span class="muted-dark">· Enter</span></button>
+    </form>
+
+  {% else %}
+    <div class="result {{ 'ok' if outcome.passed else 'miss' }}">
+      <div class="score">{{ outcome.correct }} / {{ outcome.total }}</div>
+      <div class="verdict-line">{% if outcome.passed %}{{ 'Lesson cleared' if outcome.run.value == 'first' else ('Refresher cleared' if outcome.run.value == 'refresher' else 'Practice done') }}{% else %}Not cleared yet · clear at 80%{% endif %}</div>
+      <div class="souls"><img src="{{ url_for('static', path='sprites/item_soul.png') }}" alt="" width="27" height="27">+{{ outcome.souls }} souls <span class="muted">({{ run_labels[outcome.run] | lower }})</span></div>
+      {% if progress and progress.due_on %}<p class="muted">Comes back as a refresher on {{ progress.due_on.strftime('%A %d %B') }}.</p>{% endif %}
+      {% if state.lit_today %}<p>The bonfire is lit for today.</p>{% endif %}
+    </div>
+    {% if misses %}
+    <h3 class="label">To review</h3>
+    <table lang="ja">
+      {% for verb, given in misses %}<tr><td>{{ verb.written }} → {{ verb.te_form.written }}</td><td class="muted">you: {{ given }}</td></tr>{% endfor %}
+    </table>
+    {% endif %}
+    <div class="row-buttons">
+      <a class="btn ember" href="/lessons/{{ spec.id }}">Again</a>
+      <a class="btn" href="/lessons">Lessons</a>
+      <a class="btn" href="/">Bonfire</a>
+    </div>
+  {% endif %}
+</section>

@@ -11,7 +11,15 @@ from sqlalchemy.pool import StaticPool
 from sqlalchemy.types import TypeDecorator
 
 from hollow.domain.activities import ActivityKind
-from hollow.domain.events import Event, MessageLeft, Source, StatLevelled, StudyLogged
+from hollow.domain.events import (
+    Event,
+    LessonCompleted,
+    MessageLeft,
+    Source,
+    StatLevelled,
+    StudyLogged,
+    WordLearned,
+)
 from hollow.domain.progression import Stat
 
 
@@ -58,6 +66,26 @@ def to_row(event: Event) -> EventRow:
         return EventRow(
             id=str(event.id), type="study_logged", occurred_at=event.occurred_at, payload=payload
         )
+    if isinstance(event, LessonCompleted):
+        return EventRow(
+            id=str(event.id),
+            type="lesson_completed",
+            occurred_at=event.occurred_at,
+            payload={"lesson_id": event.lesson_id, "correct": event.correct, "total": event.total},
+        )
+    if isinstance(event, WordLearned):
+        return EventRow(
+            id=str(event.id),
+            type="word_learned",
+            occurred_at=event.occurred_at,
+            payload={
+                "note_id": event.note_id,
+                "written": event.written,
+                "kana": event.kana,
+                "meaning": event.meaning,
+                "part_of_speech": event.part_of_speech,
+            },
+        )
     if isinstance(event, StatLevelled):
         return EventRow(
             id=str(event.id),
@@ -82,6 +110,24 @@ def from_row(row: EventRow) -> Event:
             quantity=int(p["quantity"]),
             note=str(p.get("note", "")),
             source=Source(p.get("source", Source.MANUAL.value)),
+            id=UUID(row.id),
+        )
+    if row.type == "lesson_completed":
+        return LessonCompleted(
+            occurred_at=row.occurred_at,
+            lesson_id=str(p["lesson_id"]),
+            correct=int(p["correct"]),
+            total=int(p["total"]),
+            id=UUID(row.id),
+        )
+    if row.type == "word_learned":
+        return WordLearned(
+            occurred_at=row.occurred_at,
+            note_id=int(p["note_id"]),
+            written=str(p["written"]),
+            kana=str(p["kana"]),
+            meaning=str(p["meaning"]),
+            part_of_speech=str(p["part_of_speech"]),
             id=UUID(row.id),
         )
     if row.type == "stat_levelled":

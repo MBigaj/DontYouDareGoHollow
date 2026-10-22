@@ -63,10 +63,13 @@
     <div class="grid-2">
       <div>
         <h2 class="label">Today</h2>
-        {% if state.today_totals %}
+        {% if state.today_totals or state.today_lessons %}
         <table>
           {% for spec in activities if spec.kind in state.today_totals %}
-          <tr><td>{{ spec.label }}: {{ state.today_totals[spec.kind] }} {{ spec.unit }}</td><td>+{{ state.today_totals[spec.kind] * spec.souls_per_unit }}</td></tr>
+          <tr><td>{{ spec.label }}: {{ state.today_totals[spec.kind] }} {{ spec.unit }}</td><td>+{{ state.today_souls.get(spec.kind, 0) }}</td></tr>
+          {% endfor %}
+          {% for o in state.today_lessons %}
+          <tr><td>Lesson · {{ lessons[o.lesson_id].title }}: {{ o.correct }}/{{ o.total }} <span class="muted">{{ run_labels[o.run] | lower }}</span></td><td>+{{ o.souls }}</td></tr>
           {% endfor %}
         </table>
         {% else %}
@@ -86,6 +89,16 @@
       </div>
     </div>
   </section>
+
+  <a class="panel charlink" href="/lessons">
+    <img src="{{ url_for('static', path='sprites/item_tome.png') }}" alt="" width="36" height="36">
+    <span><strong>Lessons</strong>
+      <span class="muted"> · て-form drills from your Anki verbs</span><br>
+      {% if state.lessons_due %}<span class="souls-ink">{{ state.lessons_due }} refresher{{ 's' if state.lessons_due != 1 }} due today</span>
+      {% else %}<span class="muted">A cleared lesson also lights the bonfire</span>{% endif %}
+    </span>
+    <span class="go" aria-hidden="true">›</span>
+  </a>
 
   <a class="panel charlink" href="/character">
     <img src="{{ url_for('static', path='sprites/item_soul.png') }}" alt="" width="36" height="36">

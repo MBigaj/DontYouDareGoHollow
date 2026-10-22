@@ -24,6 +24,12 @@ class Settings(BaseSettings):
     anki_decks: str = ""
     """Comma-separated deck names to count, e.g. "Core 2000". Empty counts every deck."""
 
+    anki_word_field: str = "Vocabulary-Kanji"
+    anki_kana_field: str = "Vocabulary-Kana"
+    anki_meaning_field: str = "Vocabulary-English"
+    anki_pos_field: str = "Vocabulary-Pos"
+    """Note fields that hold each learned word. The defaults fit the Core 2000 deck."""
+
     def anki_deck_names(self) -> tuple[str, ...]:
         return tuple(name.strip() for name in self.anki_decks.split(",") if name.strip())
 

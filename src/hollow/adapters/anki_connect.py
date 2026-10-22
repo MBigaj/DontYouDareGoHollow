@@ -1,14 +1,48 @@
 """AnkiConnect client: https://foosoft.net/projects/anki-connect/ (add-on code 2055492159)."""
 
+import html
+import re
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
 import httpx
 
 from hollow.application.anki_sync import AnkiUnavailable
+from hollow.config import Settings
 from hollow.domain.anki import AnkiReview
+from hollow.domain.vocabulary import LearnedWord
 
 API_VERSION = 6
+BATCH = 200
+TAG = re.compile(r"<[^>]+>")
+
+
+@dataclass(frozen=True)
+class WordFields:
+    """Which note fields hold a word. The defaults fit the Core 2000 (Optimized) deck."""
+
+    written: str = "Vocabulary-Kanji"
+    kana: str = "Vocabulary-Kana"
+    meaning: str = "Vocabulary-English"
+    part_of_speech: str = "Vocabulary-Pos"
+
+
+def clean(value: str) -> str:
+    """Field text without HTML tags, entities or furigana brackets."""
+    text = html.unescape(TAG.sub("", value)).replace("\xa0", " ")
+    return re.sub(r"\[[^\]]*\]", "", text).strip()
+
+
+def connect(settings: Settings) -> "AnkiConnect":
+    """The AnkiConnect client the settings describe."""
+    fields = WordFields(
+        settings.anki_word_field,
+        settings.anki_kana_field,
+        settings.anki_meaning_field,
+        settings.anki_pos_field,
+    )
+    return AnkiConnect(settings.anki_url, settings.anki_deck_names(), fields=fields)
 
 
 class AnkiConnect:
@@ -19,9 +53,11 @@ class AnkiConnect:
         timeout: float = 3.0,
         connect_timeout: float = 1.0,
         transport: httpx.BaseTransport | None = None,
+        fields: WordFields | None = None,
     ) -> None:
         self._url = url
         self._decks = decks
+        self._fields = fields or WordFields()
         self._client = httpx.Client(
             timeout=httpx.Timeout(timeout, connect=connect_timeout), transport=transport
         )
@@ -43,6 +79,32 @@ class AnkiConnect:
                 for row in rows
             )
         return reviews
+
+    def learned_words(self, skip: frozenset[int]) -> list[LearnedWord]:
+        """Notes with at least one card that is no longer new, read once each."""
+        decks = " OR ".join(f'"deck:{name}"' for name in self.decks())
+        if not decks:
+            return []
+        note_ids: list[int] = self._call("findNotes", query=f"({decks}) -is:new")
+        new = [note_id for note_id in note_ids if note_id not in skip]
+        words: list[LearnedWord] = []
+        f = self._fields
+        for start in range(0, len(new), BATCH):
+            for note in self._call("notesInfo", notes=new[start : start + BATCH]):
+                fields = {name: clean(field["value"]) for name, field in note["fields"].items()}
+                written = fields.get(f.written) or fields.get(f.kana, "")
+                if not written:
+                    continue
+                words.append(
+                    LearnedWord(
+                        note_id=int(note["noteId"]),
+                        written=written,
+                        kana=fields.get(f.kana, written),
+                        meaning=fields.get(f.meaning, ""),
+                        part_of_speech=fields.get(f.part_of_speech, ""),
+                    )
+                )
+        return words
 
     def decks(self) -> tuple[str, ...]:
         """Every deck a sync reads: all of them, or the configured ones with their subdecks.

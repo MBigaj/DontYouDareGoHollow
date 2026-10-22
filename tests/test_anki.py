@@ -14,6 +14,7 @@ from hollow.domain.activities import ActivityKind
 from hollow.domain.anki import AnkiReview, ReviewType, to_events
 from hollow.domain.calendar import GameCalendar
 from hollow.domain.events import Source, StudyLogged
+from hollow.domain.vocabulary import LearnedWord
 from tests.conftest import FakeClock
 
 CAL = GameCalendar(ZoneInfo("Europe/Warsaw"), 4)
@@ -36,12 +37,16 @@ class FakeAnki:
     reviews: list[AnkiReview] = field(default_factory=list)
     asked_after: list[datetime] = field(default_factory=list)
     down: bool = False
+    words: list[LearnedWord] = field(default_factory=list)
 
     def reviews_since(self, after: datetime) -> list[AnkiReview]:
         if self.down:
             raise AnkiUnavailable("closed")
         self.asked_after.append(after)
         return [r for r in self.reviews if r.reviewed_at > after]
+
+    def learned_words(self, skip: frozenset[int]) -> list[LearnedWord]:
+        return [w for w in self.words if w.note_id not in skip]
 
 
 # --- mapping ------------------------------------------------------------------

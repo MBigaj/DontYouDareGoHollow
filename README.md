@@ -14,7 +14,7 @@ uv run alembic upgrade head      # creates hollow.db (SQLite) by default
 uv run uvicorn hollow.main:app --reload
 ```
 
-Open http://localhost:8000.
+Open http://127.0.0.1:8000.
 
 With Docker and PostgreSQL instead:
 
@@ -29,7 +29,7 @@ Settings come from `HOLLOW_*` environment variables or a `.env` file; see `.env.
 Souls for Anki come straight from your review log through the [AnkiConnect](https://ankiweb.net/shared/info/2055492159) add-on.
 
 1. In Anki, install AnkiConnect (Tools, Add-ons, Get Add-ons, code `2055492159`) and restart Anki.
-2. Copy `.env.example` to `.env`. Keep `HOLLOW_ANKI_ENABLED=true`, and set `HOLLOW_ANKI_DECKS` if you only want some decks to count (for example `Core 2000`).
+2. Copy `.env.example` to `.env`. Keep `HOLLOW_ANKI_ENABLED=true`, and set `HOLLOW_ANKI_DECKS` if you only want some decks to count (for example `Core 2000`). A deck counts together with its subdecks, and names must match Anki exactly.
 3. With Anki open, open the app. Every page load syncs, and so does the bonfire button.
 
 Rules for imported reviews:
@@ -43,6 +43,12 @@ To sync without opening the page, for example from Windows Task Scheduler:
 
 ```sh
 uv run hollow-sync-anki
+```
+
+If the sync looks wrong or slow, this prints what the app sees in Anki: whether AnkiConnect answers and how fast, which decks are read, and today's reviews:
+
+```sh
+uv run hollow-anki-check
 ```
 
 The Docker setup cannot see an Anki running on your desktop, because AnkiConnect only listens on localhost by default. Run the app with uv while using Anki sync.
@@ -66,7 +72,7 @@ flowchart LR
   W[Web: FastAPI, Jinja, HTMX] --> S[BonfireService]
   W --> A[AnkiSync]
   A --> AP[AnkiSource port]
-  AP --> AC[AnkiConnect on localhost:8765]
+  AP --> AC[AnkiConnect on 127.0.0.1:8765]
   S --> D[Domain: replay rules]
   S --> P[EventStore port]
   A --> P

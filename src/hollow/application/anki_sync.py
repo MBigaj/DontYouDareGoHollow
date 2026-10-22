@@ -1,7 +1,7 @@
 """Pulls new reviews from Anki into the event log."""
 
 from dataclasses import dataclass
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from typing import Protocol
 
 from hollow.application.ports import Clock, EventStore
@@ -9,6 +9,13 @@ from hollow.domain.activities import ActivityKind
 from hollow.domain.anki import AnkiReview, to_events
 from hollow.domain.calendar import GameCalendar
 from hollow.domain.events import Source, StudyLogged
+
+LOOKBACK = timedelta(days=3)
+"""How far before the newest imported review each sync looks again.
+
+Reviews done on a phone reach desktop Anki only when it syncs with AnkiWeb, so they can
+arrive after newer ones were imported. Imports are idempotent, so re-reading is safe.
+"""
 
 
 class AnkiUnavailable(Exception):
@@ -48,19 +55,21 @@ class AnkiSync:
         return SyncResult(reviews=len(added) - new_cards, new_cards=new_cards)
 
     def _cursor(self) -> datetime:
-        """The newest imported review, or the start of the game for the first sync.
+        """A few days before the newest imported review, but never before the game began.
 
         History from before the game began is not imported: replaying months of old Anki
         days would turn every gap in them into a death.
         """
         events = self._store.all()
+        first = min((e.occurred_at for e in events), default=self._clock.now())
+        game_start = datetime.combine(
+            self._calendar.day_of(first),
+            time(self._calendar.day_start_hour),
+            tzinfo=self._calendar.timezone,
+        )
         imported = [
             e.occurred_at for e in events if isinstance(e, StudyLogged) and e.source is Source.ANKI
         ]
-        if imported:
-            return max(imported)
-        first = min((e.occurred_at for e in events), default=self._clock.now())
-        start_day = self._calendar.day_of(first)
-        return datetime.combine(
-            start_day, time(self._calendar.day_start_hour), tzinfo=self._calendar.timezone
-        )
+        if not imported:
+            return game_start
+        return max(game_start, max(imported) - LOOKBACK)

@@ -9,7 +9,7 @@ import pytest
 
 from hollow.adapters.anki_connect import AnkiConnect
 from hollow.adapters.db.store import SqlEventStore
-from hollow.application.anki_sync import AnkiSync, AnkiUnavailable, SyncResult
+from hollow.application.anki_sync import LOOKBACK, AnkiSync, AnkiUnavailable, SyncResult
 from hollow.domain.activities import ActivityKind
 from hollow.domain.anki import AnkiReview, ReviewType, to_events
 from hollow.domain.calendar import GameCalendar
@@ -124,7 +124,22 @@ def test_syncing_twice_imports_nothing_new(store: SqlEventStore, clock: FakeCloc
     assert sync.run().total == 3
     assert sync.run().total == 0
     assert len(store.all()) == 3
-    assert anki.asked_after[1] == clock.now()
+    # the second sync looks back, but never before the game began (04:00 Warsaw today)
+    assert anki.asked_after[1] == datetime(2026, 10, 20, 2, tzinfo=UTC)
+
+
+def test_late_phone_reviews_are_still_imported(store: SqlEventStore, clock: FakeClock) -> None:
+    """A phone review reaches desktop Anki after newer desktop reviews were already imported."""
+    store.append(StudyLogged(clock.now() - timedelta(days=5), ActivityKind.DEV_STUDY, 30))
+    desktop = review(clock.now(), card=1)
+    phone_yesterday = review(clock.now() - timedelta(days=1), card=2)
+    anki = FakeAnki([desktop])
+    sync = AnkiSync(store, anki, clock, CAL)
+    assert sync.run().reviews == 1
+
+    anki.reviews.append(phone_yesterday)  # arrives with the next AnkiWeb sync
+    assert sync.run().reviews == 1
+    assert anki.asked_after[1] == clock.now() - LOOKBACK
 
 
 def test_overlapping_results_are_not_counted_twice(store: SqlEventStore, clock: FakeClock) -> None:
@@ -166,35 +181,59 @@ def row(review_id: int, *, card: int = 7, last: int = 4, kind: int = 1) -> list[
     return [review_id, card, -1, 3, 10, last, 2500, 6000, kind]
 
 
-def test_adapter_reads_reviews_from_top_level_decks_only() -> None:
+DECKS = ["Default", "Japanese", "Japanese::Core 2000", "Japanese::Core 2000::Kanji", "Rust"]
+# Like the real cardReviews, each deck only returns reviews of cards sitting directly in it.
+REVIEWS_BY_DECK = {
+    "Default": [],
+    "Japanese": [],
+    "Japanese::Core 2000": [row(1_760_950_000_000), row(1_760_950_001_000, last=0, kind=0)],
+    "Japanese::Core 2000::Kanji": [row(1_760_950_002_000, card=8)],
+    "Rust": [row(1_760_950_003_000, card=9)],
+}
+
+
+def queried_decks(calls: list[dict[str, Any]]) -> list[str]:
+    return [c["params"]["deck"] for c in calls if c["action"] == "cardReviews"]
+
+
+def test_adapter_reads_every_deck_including_subdecks() -> None:
     calls: list[dict[str, Any]] = []
-    transport = anki_server(
-        ["Core 2000", "Core 2000::Kanji", "Default"],
-        {
-            "Core 2000": [row(1_760_950_000_000)],
-            "Default": [row(1_760_950_001_000, last=0, kind=0)],
-        },
-        calls,
-    )
-    anki = AnkiConnect(transport=transport)
+    anki = AnkiConnect(transport=anki_server(DECKS, REVIEWS_BY_DECK, calls))
     after = datetime(2025, 1, 1, tzinfo=UTC)
 
     reviews = anki.reviews_since(after)
 
-    assert [r.review_id for r in reviews] == [1_760_950_000_000, 1_760_950_001_000]
+    assert len(reviews) == 4
     assert reviews[1].is_first_sight
-    queried = [c["params"]["deck"] for c in calls if c["action"] == "cardReviews"]
-    assert queried == ["Core 2000", "Default"]
+    assert queried_decks(calls) == DECKS
     assert all(c["version"] == 6 for c in calls)
-    assert calls[1]["params"]["startID"] == ms(after)
+    assert all(c["params"]["startID"] == ms(after) for c in calls if c["action"] == "cardReviews")
 
 
-def test_adapter_can_be_limited_to_named_decks() -> None:
+def test_a_named_deck_counts_with_its_subdecks() -> None:
     calls: list[dict[str, Any]] = []
-    anki = AnkiConnect(decks=("Core 2000",), transport=anki_server([], {"Core 2000": []}, calls))
-    assert anki.reviews_since(datetime(2025, 1, 1, tzinfo=UTC)) == []
-    assert [c["action"] for c in calls] == ["cardReviews"]
+    anki = AnkiConnect(
+        decks=("Japanese::Core 2000",), transport=anki_server(DECKS, REVIEWS_BY_DECK, calls)
+    )
+
+    reviews = anki.reviews_since(datetime(2025, 1, 1, tzinfo=UTC))
+
+    assert len(reviews) == 3
+    assert queried_decks(calls) == ["Japanese::Core 2000", "Japanese::Core 2000::Kanji"]
+    assert anki.missing_decks() == ()
     assert anki.version() == 6
+
+
+def test_unknown_deck_names_are_never_queried() -> None:
+    """AnkiConnect would create a deck for a name it does not know."""
+    calls: list[dict[str, Any]] = []
+    anki = AnkiConnect(
+        decks=("Core 2000", "Rust"), transport=anki_server(DECKS, REVIEWS_BY_DECK, calls)
+    )
+
+    assert len(anki.reviews_since(datetime(2025, 1, 1, tzinfo=UTC))) == 1
+    assert queried_decks(calls) == ["Rust"]
+    assert anki.missing_decks() == ("Core 2000",)
 
 
 @pytest.mark.parametrize(

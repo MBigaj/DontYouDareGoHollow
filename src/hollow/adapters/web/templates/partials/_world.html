@@ -35,13 +35,13 @@
       {% if state.lit_today %}
         <div class="flash" style="text-align: center">The bonfire is lit for today. Rest, or venture further.</div>
         {% if anki_enabled %}
-        <form method="post" action="/light" hx-post="/light" hx-target="#world" hx-swap="outerHTML">
-          <button class="btn" type="submit" style="width: 100%">Sync Anki</button>
+        <form method="post" action="/light" hx-post="/light" hx-target="#world" hx-swap="outerHTML" hx-disabled-elt="find button">
+          <button class="btn" type="submit" style="width: 100%"><span class="idle">Sync Anki</span><span class="busy">Syncing Anki…</span></button>
         </form>
         {% endif %}
       {% else %}
-        <form method="post" action="/light" hx-post="/light" hx-target="#world" hx-swap="outerHTML">
-          <button class="btn ember big" type="submit">LIGHT THE BONFIRE</button>
+        <form method="post" action="/light" hx-post="/light" hx-target="#world" hx-swap="outerHTML" hx-disabled-elt="find button">
+          <button class="btn ember big" type="submit"><span class="idle">LIGHT THE BONFIRE</span><span class="busy">{{ 'SYNCING ANKI…' if anki_enabled else 'KINDLING…' }}</span></button>
         </form>
         {% if anki_enabled %}
         <span class="muted" style="font-size: 14px; text-align: center">Do 10 reviews in Anki, then press to sync</span>

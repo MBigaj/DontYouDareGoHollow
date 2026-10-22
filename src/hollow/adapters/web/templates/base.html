@@ -19,11 +19,12 @@
   </script>
 </head>
 <body>
-  <main class="wrap">
+  <main class="wrap {{ 'wide' if page == 'map' }}">
     <header class="topbar">
       <h1 class="title">DONT YOU DARE GO HOLLOW</h1>
       <nav class="nav" aria-label="Pages">
         <a href="/" {{ 'aria-current="page"' | safe if page == 'bonfire' }}>Bonfire</a>
+        <a href="/map" {{ 'aria-current="page"' | safe if page == 'map' }}>Map</a>
         <a href="/lessons" {{ 'aria-current="page"' | safe if page == 'lessons' }}>Lessons{% if state.lessons_due %} <span class="badge">{{ state.lessons_due }}</span>{% endif %}</a>
         <a href="/character" {{ 'aria-current="page"' | safe if page == 'character' }}>Character</a>
         <span class="label">{{ state.today.strftime("%A %d %B") }}</span>

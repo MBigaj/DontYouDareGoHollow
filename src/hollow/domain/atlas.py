@@ -1,0 +1,94 @@
+"""The world maps: regions on the world map, and the points inside a region.
+
+Coordinates are in map pixels (the art's native pixel grid), so the art script and the
+pages place things in the same spots. Pages turn them into percentages.
+"""
+
+from dataclasses import dataclass
+from enum import StrEnum
+
+WORLD_SIZE = (260, 225)
+"""Native size of the world map art (map_bg.png, drawn at 4x)."""
+FIRELINK_SIZE = (260, 150)
+"""Native size of the Firelink Shrine art (region_firelink.png, drawn at 4x)."""
+
+
+@dataclass(frozen=True)
+class Region:
+    id: str
+    number: int
+    name: str
+    jp: str
+    jp_kana: str
+    blurb: str
+    cards: str
+    topics: str
+    boss: str
+    point: tuple[int, int]
+    open: bool = False
+
+
+REGIONS: tuple[Region, ...] = (
+    Region(
+        "firelink", 1, "Firelink Shrine", "始まりの火", "はじまりのひ",
+        "Where every journey starts: the first 250 core words and the grammar that holds "
+        "simple sentences together.",
+        "Core 2000 cards 1-250", "Polite forms, particles, て-form", "The て-form Warden",
+        (52, 175), open=True,
+    ),
+    Region(
+        "undead-village", 2, "Undead Village", "静かな村", "しずかなむら",
+        "Quiet streets where things are always happening. Describe what is going on and what "
+        "already happened.",
+        "Cards 251-500", "〜ている, 〜た, plain form", "The Plain-Form Gargoyle", (97, 152),
+    ),
+    Region(
+        "kanji-catacombs", 3, "Kanji Catacombs", "漢字の地下", "かんじのちか",
+        "Old stones carved with characters. Readings matter here more than anywhere.",
+        "Cards 501-800", "〜たい, 〜ない, comparisons", "The Bone Scribe", (75, 117),
+    ),
+    Region(
+        "sens-fortress", 4, "Sen's Fortress", "出来る力", "できるちから",
+        "Traps everywhere. Say what you can and cannot do, and what you think.",
+        "Cards 801-1100", "Potential form, 〜と思う", "The Iron Golem of Ability", (140, 120),
+    ),
+    Region(
+        "anor-keigo", 5, "Anor Keigo", "もし", "もし",
+        "A golden city of conditions. Nothing here happens unless something else does first.",
+        "Cards 1101-1500", "ば, たら, と, なら", "Ornstein and Smough of If", (190, 80),
+    ),
+    Region(
+        "the-kiln", 6, "The Kiln", "最後の火", "さいごのひ",
+        "The first flame burns at the top of the world. Clearing it lines up with JLPT N4.",
+        "Cards 1501-2000", "Passive, causative, intro to keigo", "Lord of Conjugation",
+        (225, 37),
+    ),
+)  # fmt: skip
+
+
+class NodeKind(StrEnum):
+    BONFIRE = "bonfire"
+    LESSON = "lesson"
+    BOSS = "boss"
+
+
+@dataclass(frozen=True)
+class Node:
+    id: str
+    kind: NodeKind
+    point: tuple[int, int]
+    lesson_id: str | None = None
+
+
+FIRELINK: tuple[Node, ...] = (
+    Node("bonfire", NodeKind.BONFIRE, (32, 124)),
+    Node("te-ru", NodeKind.LESSON, (64, 112), "te-ru"),
+    Node("te-tsu", NodeKind.LESSON, (98, 122), "te-tsu"),
+    Node("te-nde", NodeKind.LESSON, (130, 106), "te-nde"),
+    Node("te-ite", NodeKind.LESSON, (104, 86), "te-ite"),
+    Node("te-shite", NodeKind.LESSON, (138, 72), "te-shite"),
+    Node("te-irregular", NodeKind.LESSON, (174, 84), "te-irregular"),
+    Node("te-mixed", NodeKind.LESSON, (196, 62), "te-mixed"),
+    Node("warden", NodeKind.BOSS, (226, 42)),
+)
+"""The path through Firelink Shrine, in walking order."""

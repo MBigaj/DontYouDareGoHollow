@@ -5,7 +5,7 @@
   <section class="panel" aria-label="Character">
     <div class="grid-2">
       <div class="hero">
-        <img class="sprite" src="{{ url_for('static', path='sprites/knight_front.png') }}" alt="Your knight, {{ state.status | lower }}" width="120" height="156"
+        <img class="sprite" src="{{ url_for('static', path='sprites/knight_front.png') }}" alt="Your knight, {{ state.status | lower }}" width="96" height="180"
              style="filter: grayscale({{ state.hollowing * 0.2 }}) brightness({{ 1 - state.hollowing * 0.1 }})">
         <div class="stats">
           <div class="stat"><span class="label">Level</span><span class="value">{{ state.character_level }}</span></div>

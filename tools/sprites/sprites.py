@@ -651,7 +651,10 @@ def arena():
 
 
 # ---------------- emit ----------------
-save(knight_front(), "knight_front.png", 8)
+# The hero is hand-made art now (tools/sprites/art/knight_front_64.png, 32x60 from the
+# 64 px export of the ASHEN pipeline), drawn at 3x to match the 3-4 px grain of the scenes.
+save(Image.open(Path(__file__).parent / "art" / "knight_front_64.png").convert("RGBA"),
+     "knight_front.png", 3)
 save(knight_back(), "knight_back.png", 5)
 wb = warden_body()
 ww = warden_weapon()

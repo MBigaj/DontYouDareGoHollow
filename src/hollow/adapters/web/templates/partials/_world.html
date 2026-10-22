@@ -16,7 +16,7 @@
     {% set h = state.hollowing %}
     <div class="stage">
       <img class="knight sprite {{ 'alive' if h < max_hollowing }}" src="{{ url_for('static', path='sprites/knight_front.png') }}"
-           alt="Your knight, {{ state.status | lower }}" width="120" height="156"
+           alt="Your knight, {{ state.status | lower }}" width="96" height="180"
            style="filter: grayscale({{ h * 0.2 }}) brightness({{ 1 - h * 0.1 }})">
       <div class="fire sprite {{ 'lit' if state.lit_today else 'unlit' }}" role="img"
            aria-label="{{ 'A lit bonfire' if state.lit_today else 'An unlit bonfire' }}"></div>

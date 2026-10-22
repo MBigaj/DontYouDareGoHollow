@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}{{ view.boss.name }} · DontYouDareGoHollow{% endblock %}
+{% block content %}
+{% include "partials/_fight.html" %}
+<script src="{{ asset('js/fight.js') }}" defer></script>
+{% endblock %}

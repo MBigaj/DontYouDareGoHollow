@@ -17,8 +17,8 @@ class FakeClock:
     def now(self) -> datetime:
         return self.current
 
-    def advance(self, days: int = 0, hours: int = 0) -> None:
-        self.current += timedelta(days=days, hours=hours)
+    def advance(self, days: int = 0, hours: int = 0, seconds: int = 0) -> None:
+        self.current += timedelta(days=days, hours=hours, seconds=seconds)
 
 
 @pytest.fixture

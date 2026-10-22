@@ -17,6 +17,8 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 
 from hollow.domain.activities import ACTIVITIES, ActivityKind, Track, lights_bonfire, souls_for
+from hollow.domain.bosses import BossRecord
+from hollow.domain.bosses import track as track_bosses
 from hollow.domain.calendar import GameCalendar
 from hollow.domain.events import Event, MessageLeft, StatLevelled, StudyLogged
 from hollow.domain.lessons import LessonOutcome, LessonProgress, track
@@ -82,6 +84,8 @@ class WorldState:
     today_souls: dict[ActivityKind, int]
     lessons: dict[str, LessonProgress]
     today_lessons: tuple[LessonOutcome, ...]
+    bosses: dict[str, BossRecord]
+    today_boss_souls: int
 
     @property
     def lessons_due(self) -> int:
@@ -164,6 +168,17 @@ def replay(
         if outcome.passed and outcome.run is not LessonRun.PRACTICE:
             lessons_cleared_by_day[outcome.day] += 1
 
+    bosses = track_bosses(events, calendar, today)
+    today_boss_souls = 0
+    for record in bosses.values():
+        for reward in record.rewards:
+            souls_by_day[reward.day] += reward.souls
+            xp[Track.RONIN] += reward.souls
+            if reward.lights:
+                lessons_cleared_by_day[reward.day] += 1
+            if reward.day == today:
+                today_boss_souls += reward.souls
+
     souls = 0
     bloodstain: Bloodstain | None = None
     hollowing = 0
@@ -233,6 +248,8 @@ def replay(
         today_souls=dict(today_souls),
         lessons=lessons,
         today_lessons=tuple(o for o in outcomes if o.day == today),
+        bosses=bosses,
+        today_boss_souls=today_boss_souls,
     )
 
 

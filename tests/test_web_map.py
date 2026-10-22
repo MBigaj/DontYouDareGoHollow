@@ -42,8 +42,8 @@ def test_firelink_shows_every_point_in_walking_order(
     order = re.findall(r'data-node="([\w-]+)"', page)
     assert order == [n.id for n in FIRELINK]
     assert node_class(page, "te-ru") == "lesson new"
-    assert "fog" in node_class(page, "warden")
-    assert "The fog will not part yet." in page
+    assert node_class(page, "warden") == "boss due"
+    assert 'href="/boss/te-warden" data-action>Enter the fog' in page
     assert 'href="/lessons/te-ru" data-action>Start' in page
     assert visible_panel(page) == "bonfire"
     x = 100 * FIRELINK[0].point[0] / FIRELINK_SIZE[0]
@@ -66,6 +66,8 @@ def test_locked_lessons_are_unavailable(client: TestClient) -> None:
     assert "locked" in node_class(page, "te-nde")
     assert visible_panel(page) == "te-nde"
     assert "Unavailable: learn 2 more verbs" in page
+    assert "fog" in node_class(page, "warden")
+    assert "It will not part until you know 6 verbs." in page
 
 
 def test_the_knight_starts_where_you_left_it(client: TestClient) -> None:

@@ -6,6 +6,9 @@ Rules (from the plan):
 - Lighting the bonfire on a later day recovers the bloodstain. Miss again first and it is gone.
 - Each missed day adds one step of hollowing (max 5); each lit day removes one.
 - Today is never a death: it is still in progress.
+- An Effigy spares a missed day: no death, no bloodstain, no hollowing, but the streak breaks.
+  You get 2 a week; they refill when the game week starts (Monday 04:00) and do not stack.
+- Souls spent on stats leave your held souls. Job XP is souls earned per track, never lost.
 """
 
 from collections import defaultdict
@@ -13,11 +16,21 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date, timedelta
 
-from hollow.domain.activities import ActivityKind, lights_bonfire, souls_for
+from hollow.domain.activities import ACTIVITIES, ActivityKind, Track, lights_bonfire, souls_for
 from hollow.domain.calendar import GameCalendar
-from hollow.domain.events import Event, MessageLeft, StudyLogged
+from hollow.domain.events import Event, MessageLeft, StatLevelled, StudyLogged
+from hollow.domain.progression import (
+    STAT_START,
+    JobProgress,
+    Stat,
+    job_progress,
+    level_cost,
+    max_hp,
+    mistake_cost,
+)
 
 MAX_HOLLOWING = 5
+EFFIGIES_PER_WEEK = 2
 
 
 @dataclass(frozen=True)
@@ -32,6 +45,8 @@ class DaySummary:
     souls_earned: int
     lit: bool
     died: bool
+    spared: bool = False
+    """Missed, but an Effigy took the death."""
 
 
 @dataclass(frozen=True)
@@ -56,6 +71,37 @@ class WorldState:
     recent_days: tuple[DaySummary, ...]
     message: Message | None
     """The newest message left before today, shown at the bonfire as 'left by past you'."""
+    stats: dict[Stat, int]
+    souls_spent: int
+    effigies: int
+    """Effigies left this week."""
+    effigies_used: int
+    jobs: dict[Track, JobProgress]
+
+    @property
+    def soul_level(self) -> int:
+        """Stat levels bought so far."""
+        return sum(level - STAT_START for level in self.stats.values())
+
+    @property
+    def character_level(self) -> int:
+        return sum(job.level for job in self.jobs.values())
+
+    @property
+    def level_cost(self) -> int:
+        return level_cost(self.soul_level)
+
+    @property
+    def can_level_up(self) -> bool:
+        return self.souls >= self.level_cost
+
+    @property
+    def max_hp(self) -> int:
+        return max_hp(self.stats[Stat.VIGOR])
+
+    @property
+    def mistake_cost(self) -> int:
+        return mistake_cost(self.stats[Stat.ENDURANCE])
 
     @property
     def status(self) -> str:
@@ -69,10 +115,16 @@ class WorldState:
 
 
 def replay(
-    events: Iterable[Event], calendar: GameCalendar, today: date, recent: int = 7
+    events: Iterable[Event],
+    calendar: GameCalendar,
+    today: date,
+    recent: int = 7,
+    effigies_per_week: int = EFFIGIES_PER_WEEK,
 ) -> WorldState:
     totals_by_day: dict[date, dict[ActivityKind, int]] = defaultdict(lambda: defaultdict(int))
     souls_by_day: dict[date, int] = defaultdict(int)
+    purchases_by_day: dict[date, list[StatLevelled]] = defaultdict(list)
+    xp: dict[Track, int] = dict.fromkeys(Track, 0)
     message: Message | None = None
     message_key: tuple[date, float] | None = None
 
@@ -83,6 +135,9 @@ def replay(
         if isinstance(event, StudyLogged):
             totals_by_day[day][event.kind] += event.quantity
             souls_by_day[day] += souls_for(event.kind, event.quantity)
+            xp[ACTIVITIES[event.kind].track] += souls_for(event.kind, event.quantity)
+        elif isinstance(event, StatLevelled):
+            purchases_by_day[day].append(event)
         elif isinstance(event, MessageLeft) and day < today:
             key = (day, event.occurred_at.timestamp())
             if message_key is None or key > message_key:
@@ -91,17 +146,27 @@ def replay(
     souls = 0
     bloodstain: Bloodstain | None = None
     hollowing = 0
-    bonfires_lit = deaths = souls_lost = souls_earned_total = 0
+    bonfires_lit = deaths = souls_lost = souls_earned_total = souls_spent = 0
+    stats = dict.fromkeys(Stat, STAT_START)
+    effigies = effigies_per_week
+    effigies_used = 0
     history: list[DaySummary] = []
 
-    first_day = min(totals_by_day, default=today)
+    first_day = min([*totals_by_day, *purchases_by_day], default=today)
     day = first_day
     while day <= today:
+        if day.weekday() == 0:
+            effigies = effigies_per_week
         earned = souls_by_day.get(day, 0)
         lit = lights_bonfire(dict(totals_by_day.get(day, {})))
         souls += earned
         souls_earned_total += earned
-        died = False
+        for purchase in purchases_by_day.get(day, []):
+            stats[purchase.stat] += 1
+            spent = min(souls, purchase.cost)
+            souls -= spent
+            souls_spent += spent
+        died = spared = False
 
         if lit:
             bonfires_lit += 1
@@ -109,6 +174,10 @@ def replay(
             if bloodstain is not None:
                 souls += bloodstain.souls
                 bloodstain = None
+        elif day < today and effigies > 0:
+            spared = True
+            effigies -= 1
+            effigies_used += 1
         elif day < today:
             died = True
             deaths += 1
@@ -118,7 +187,7 @@ def replay(
             bloodstain = Bloodstain(souls, day) if souls > 0 else None
             souls = 0
 
-        history.append(DaySummary(day, earned, lit, died))
+        history.append(DaySummary(day, earned, lit, died, spared))
         day += timedelta(days=1)
 
     return WorldState(
@@ -135,6 +204,11 @@ def replay(
         today_totals=dict(totals_by_day.get(today, {})),
         recent_days=tuple(reversed(history[-recent:])),
         message=message,
+        stats=stats,
+        souls_spent=souls_spent,
+        effigies=effigies,
+        effigies_used=effigies_used,
+        jobs={track: job_progress(track, xp[track]) for track in Track},
     )
 
 

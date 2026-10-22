@@ -14,7 +14,7 @@ from hollow.adapters.anki_connect import AnkiConnect
 from hollow.adapters.db.store import SqlEventStore, make_engine
 from hollow.adapters.github_api import GitHubApi
 from hollow.application.anki_sync import AnkiSource, AnkiSync, AnkiUnavailable, SyncResult
-from hollow.application.bonfire import BonfireService
+from hollow.application.bonfire import BonfireService, CannotLevelUp
 from hollow.application.github_sync import (
     GitHubResult,
     GitHubSource,
@@ -24,7 +24,8 @@ from hollow.application.github_sync import (
 from hollow.application.ports import Clock, EventStore, SystemClock
 from hollow.config import Settings
 from hollow.domain.activities import ACTIVITIES, ActivityKind, Track
-from hollow.domain.world import MAX_HOLLOWING, WorldState
+from hollow.domain.progression import STATS, Stat
+from hollow.domain.world import EFFIGIES_PER_WEEK, MAX_HOLLOWING, WorldState
 
 HERE = Path(__file__).parent
 ANKI_KINDS = {ActivityKind.ANKI_REVIEWS, ActivityKind.ANKI_NEW_CARDS}
@@ -61,6 +62,8 @@ def create_app(
         else None
     )
     templates = Jinja2Templates(directory=HERE / "templates")
+    syncing = anki_sync is not None or github_sync is not None
+    """Pages only ask for a background sync when there is something to sync."""
     basic = HTTPBasic(auto_error=False)
 
     def require_password(
@@ -80,6 +83,8 @@ def create_app(
         return {
             "state": state,
             "max_hollowing": MAX_HOLLOWING,
+            "effigies_per_week": EFFIGIES_PER_WEEK,
+            "stat_specs": list(STATS.values()),
             "activities": list(ACTIVITIES.values()),
             "ronin_kinds": [
                 s
@@ -95,6 +100,53 @@ def create_app(
             "anki_enabled": anki_sync is not None,
             **extra,
         }
+
+    def equipment(state: WorldState) -> list[dict[str, Any]]:
+        rings = 2 if state.stats[Stat.INTELLIGENCE] >= 10 else 1
+        return [
+            {
+                "name": "Ronin weapon",
+                "sprite": "item_katana.png",
+                "item": None,
+                "note": "Deals damage in Japanese fights.",
+            },
+            {
+                "name": "Architect weapon",
+                "sprite": "item_hammer.png",
+                "item": None,
+                "note": "Deals damage in dev fights.",
+            },
+            {
+                "name": f"Rings · {rings} slot{'s' if rings > 1 else ''}",
+                "sprite": "item_ring.png",
+                "item": None,
+                "note": "Passive bonuses. Intelligence 10 opens a second slot.",
+            },
+            {
+                "name": "Titanite",
+                "sprite": "item_titanite.png",
+                "item": "None yet",
+                "empty": True,
+                "note": "Drops from lessons, refreshers and bosses.",
+            },
+        ]
+
+    def character_page(
+        request: Request, state: WorldState, flash: str | None = None, warning: str | None = None
+    ) -> Response:
+        name = "partials/_character.html" if request.headers.get("HX-Request") else "character.html"
+        return templates.TemplateResponse(
+            request,
+            name,
+            context(
+                state,
+                page="character",
+                equipment=equipment(state),
+                syncing=syncing,
+                flash=flash,
+                warning=warning,
+            ),
+        )
 
     def respond(
         request: Request, state: WorldState, flash: str | None = None, warning: str | None = None
@@ -153,12 +205,9 @@ def create_app(
 
     @app.get("/", response_class=HTMLResponse)
     def home(request: Request) -> Response:
-        found, warnings = sync(force=False)
-        state = service.state()
+        """Renders straight from the event log; the page then calls /sync in the background."""
         return templates.TemplateResponse(
-            request,
-            "index.html",
-            context(state, flash=summary(found, state), warning=" ".join(warnings) or None),
+            request, "index.html", context(service.state(), page="bonfire", syncing=syncing)
         )
 
     @app.post("/light")
@@ -184,6 +233,47 @@ def create_app(
             raise HTTPException(422, str(error)) from error
         spec = ACTIVITIES[kind]
         return respond(request, state, flash=f"Logged {quantity} {spec.unit} of {spec.label}.")
+
+    @app.get("/character", response_class=HTMLResponse)
+    def character(request: Request) -> Response:
+        return character_page(request, service.state())
+
+    @app.post("/sync")
+    def background_sync(request: Request, page: str = "bonfire") -> Response:
+        """Called by each page right after it loads. Answers 204 (nothing to redraw) unless
+        the sync brought something new or failed, in which case it returns the page's panel."""
+        found, warnings = sync(force=False)
+        if not found and not warnings:
+            return Response(status_code=status.HTTP_204_NO_CONTENT)
+        state = service.state()
+        flash = summary(found, state)
+        warning = " ".join(warnings) or None
+        if page == "character":
+            return character_page(request, state, flash=flash, warning=warning)
+        return templates.TemplateResponse(
+            request, "partials/_world.html", context(state, flash=flash, warning=warning)
+        )
+
+    @app.post("/level")
+    def level(request: Request, stat: Annotated[Stat, Form()]) -> Response:
+        before = service.state()
+        try:
+            state = service.level_up(stat)
+        except CannotLevelUp as error:
+            if not request.headers.get("HX-Request"):
+                return RedirectResponse("/character", status_code=status.HTTP_303_SEE_OTHER)
+            return character_page(request, before, warning=str(error))
+        if not request.headers.get("HX-Request"):
+            return RedirectResponse("/character", status_code=status.HTTP_303_SEE_OTHER)
+        spec = STATS[stat]
+        return character_page(
+            request,
+            state,
+            flash=(
+                f"{spec.label} rose to {state.stats[stat]}. "
+                f"{before.level_cost:,} souls spent at the bonfire."
+            ),
+        )
 
     @app.post("/message")
     def message(request: Request, text: Annotated[str, Form()]) -> Response:

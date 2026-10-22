@@ -51,3 +51,14 @@ def test_append_new_skips_events_already_stored(store: SqlEventStore) -> None:
     assert store.append_new([]) == []
     assert {e.id for e in store.all()} == {first.id, second.id}
     assert all(isinstance(e, StudyLogged) and e.source is Source.ANKI for e in store.all())
+
+
+def test_stat_purchases_round_trip(store: SqlEventStore) -> None:
+    from datetime import UTC, datetime
+
+    from hollow.domain.events import StatLevelled
+    from hollow.domain.progression import Stat
+
+    event = StatLevelled(datetime(2026, 10, 22, 18, tzinfo=UTC), Stat.ENDURANCE, 240)
+    store.append(event)
+    assert store.all() == [event]

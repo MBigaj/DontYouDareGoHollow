@@ -2,7 +2,7 @@
 
 A Souls-like study game for Japanese and the senior backend roadmap. Real study earns souls. Missing a day drops them as a bloodstain, and lighting the bonfire the next day gets them back. Miss again and they are gone.
 
-Phase 0 (Kindling) built the bonfire, manual study logging, the souls ledger, bloodstains and hollowing. Phase 1 adds automatic souls: **Anki sync and GitHub sync are in**; levelling comes next.
+Phase 0 (Kindling) built the bonfire, manual study logging, the souls ledger, bloodstains and hollowing. Phase 1 adds automatic souls from Anki and GitHub, levelling, stats and Effigies.
 
 ## Running it
 
@@ -59,9 +59,13 @@ The Docker setup cannot see an Anki running on your desktop, because AnkiConnect
 | --- | --- |
 | Lighting the bonfire | A day is lit when any one activity reaches its kindling amount: 10 Anki reviews, 5 new cards, 1 grammar drill, 5 minutes of study, or 1 merged PR. The big button syncs Anki, or logs 10 reviews when Anki sync is off. |
 | Souls | 2 per review, 5 per new card, 20 per drill, 2 per study minute, 100 per merged PR. |
-| Death | A day that ends unlit is a death: held souls drop as a bloodstain, and any older bloodstain is lost. |
+| Effigies | You get 2 a week, refilled every Monday at 04:00 (they do not stack). A missed day uses one instead of killing you: no bloodstain, no hollowing, but the streak breaks. |
+| Death | A day that ends unlit, with no Effigy left, is a death: held souls drop as a bloodstain, and any older bloodstain is lost. |
 | Recovery | Light the bonfire on the next day to recover the bloodstain. |
 | Hollowing | Each death adds one step (max 5) and fades your knight; each lit day removes one. |
+| Levelling | Spend held souls at the bonfire to raise a stat by one. Each level bought costs more: 200 + 40 x soul level. Spent souls are safe from bloodstains. |
+| Stats | Vigor: +10 max HP in boss fights. Endurance: mistakes cost 1 HP less (35 down to 20). Faith and Intelligence unlock extras for the Ronin and the Architect. No stat ever locks study. |
+| Jobs | Ronin (Japanese) and Architect (Python) level from the souls you earn in them, which are never lost. Level n to n+1 takes 100 x n XP. Character level is the sum of both. |
 | Game day | Days start at 04:00 Europe/Warsaw, so late-night study counts for the day before. |
 | Messages | A message left today shows at the bonfire from tomorrow, "left by past you". |
 

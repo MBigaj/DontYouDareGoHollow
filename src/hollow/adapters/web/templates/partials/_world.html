@@ -30,6 +30,9 @@
         <div class="stat"><span class="label">{{ state.status }}</span>
           <span class="pips" aria-label="Hollowing {{ h }} of {{ max_hollowing }}">{% for i in range(max_hollowing) %}<span class="pip {{ 'on' if i < h }}"></span>{% endfor %}</span></div>
         <div class="stat"><span class="label">Deaths</span><span class="value" style="color: var(--blood-ink)">{{ state.deaths }}</span></div>
+        <div class="stat"><span class="label">Effigies</span>
+          <span class="pips" aria-label="{{ state.effigies }} of {{ effigies_per_week }} Effigies left this week" title="A missed day uses an Effigy instead of killing you. Refills every Monday.">{% for i in range(effigies_per_week) %}<span class="pip effigy {{ 'on' if i < state.effigies }}"></span>{% endfor %}</span></div>
+        <div class="stat"><span class="label">Level</span><span class="value">{{ state.character_level }}</span></div>
       </div>
 
       {% if state.lit_today %}
@@ -74,12 +77,23 @@
         <h2 class="label">Last 7 days</h2>
         <div class="days">
           {% for day in state.recent_days %}
-          <span class="day {{ 'lit' if day.lit else ('died' if day.died else 'open') }}"
-                title="{{ day.day.isoformat() }}: {{ 'lit' if day.lit else ('died' if day.died else 'still open') }}, +{{ day.souls_earned }} souls">{{ day.day.day }}</span>
+          {% set kind = 'lit' if day.lit else ('died' if day.died else ('spared' if day.spared else 'open')) %}
+          <span class="day {{ kind }}"
+                title="{{ day.day.isoformat() }}: {{ {'lit': 'lit', 'died': 'died', 'spared': 'missed, an Effigy took the death', 'open': 'still open'}[kind] }}, +{{ day.souls_earned }} souls">{{ day.day.day }}</span>
           {% endfor %}
         </div>
         <p class="muted" style="font-size: 14px">{{ state.bonfires_lit }} bonfires lit · {{ "{:,}".format(state.souls_earned_total) }} souls earned · {{ "{:,}".format(state.souls_lost) }} lost</p>
       </div>
     </div>
   </section>
+
+  <a class="panel charlink" href="/character">
+    <img src="{{ url_for('static', path='sprites/item_soul.png') }}" alt="" width="36" height="36">
+    <span><strong>Character · level {{ state.character_level }}</strong>
+      <span class="muted"> · Ronin {{ state.jobs['ronin'].level }} · Architect {{ state.jobs['architect'].level }}</span><br>
+      {% if state.can_level_up %}<span class="souls-ink">You can level up: {{ "{:,}".format(state.level_cost) }} souls</span>
+      {% else %}<span class="muted">Next level up at {{ "{:,}".format(state.level_cost) }} souls</span>{% endif %}
+    </span>
+    <span class="go" aria-hidden="true">›</span>
+  </a>
 </div>

@@ -6,6 +6,7 @@ from enum import StrEnum
 from uuid import UUID, uuid4
 
 from hollow.domain.activities import ActivityKind
+from hollow.domain.progression import Stat
 
 
 class Source(StrEnum):
@@ -46,4 +47,23 @@ class MessageLeft:
             raise ValueError("occurred_at must be timezone-aware")
 
 
-Event = StudyLogged | MessageLeft
+@dataclass(frozen=True)
+class StatLevelled:
+    """Souls spent at the bonfire to raise a stat by one level.
+
+    The price is recorded, so retuning the cost curve never changes past purchases.
+    """
+
+    occurred_at: datetime
+    stat: Stat
+    cost: int
+    id: UUID = field(default_factory=uuid4)
+
+    def __post_init__(self) -> None:
+        if self.cost < 0:
+            raise ValueError("cost cannot be negative")
+        if self.occurred_at.tzinfo is None:
+            raise ValueError("occurred_at must be timezone-aware")
+
+
+Event = StudyLogged | MessageLeft | StatLevelled

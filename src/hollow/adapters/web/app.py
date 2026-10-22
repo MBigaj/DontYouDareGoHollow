@@ -99,6 +99,48 @@ def create_app(
             **extra,
         }
 
+    def equipment(state: WorldState) -> list[dict[str, Any]]:
+        rings = 2 if state.stats[Stat.INTELLIGENCE] >= 10 else 1
+        return [
+            {
+                "name": "Ronin weapon",
+                "sprite": "item_katana.png",
+                "item": None,
+                "note": "Deals damage in Japanese fights.",
+            },
+            {
+                "name": "Architect weapon",
+                "sprite": "item_hammer.png",
+                "item": None,
+                "note": "Deals damage in dev fights.",
+            },
+            {
+                "name": f"Rings · {rings} slot{'s' if rings > 1 else ''}",
+                "sprite": "item_ring.png",
+                "item": None,
+                "note": "Passive bonuses. Intelligence 10 opens a second slot.",
+            },
+            {
+                "name": "Titanite",
+                "sprite": "item_titanite.png",
+                "item": "None yet",
+                "empty": True,
+                "note": "Drops from lessons, refreshers and bosses.",
+            },
+        ]
+
+    def character_page(
+        request: Request, state: WorldState, flash: str | None = None, warning: str | None = None
+    ) -> Response:
+        name = "partials/_character.html" if request.headers.get("HX-Request") else "character.html"
+        return templates.TemplateResponse(
+            request,
+            name,
+            context(
+                state, page="character", equipment=equipment(state), flash=flash, warning=warning
+            ),
+        )
+
     def respond(
         request: Request, state: WorldState, flash: str | None = None, warning: str | None = None
     ) -> Response:
@@ -161,7 +203,12 @@ def create_app(
         return templates.TemplateResponse(
             request,
             "index.html",
-            context(state, flash=summary(found, state), warning=" ".join(warnings) or None),
+            context(
+                state,
+                page="bonfire",
+                flash=summary(found, state),
+                warning=" ".join(warnings) or None,
+            ),
         )
 
     @app.post("/light")
@@ -188,15 +235,27 @@ def create_app(
         spec = ACTIVITIES[kind]
         return respond(request, state, flash=f"Logged {quantity} {spec.unit} of {spec.label}.")
 
+    @app.get("/character", response_class=HTMLResponse)
+    def character(request: Request) -> Response:
+        found, warnings = sync(force=False)
+        state = service.state()
+        return character_page(
+            request, state, flash=summary(found, state), warning=" ".join(warnings) or None
+        )
+
     @app.post("/level")
     def level(request: Request, stat: Annotated[Stat, Form()]) -> Response:
         before = service.state()
         try:
             state = service.level_up(stat)
         except CannotLevelUp as error:
-            return respond(request, before, warning=str(error))
+            if not request.headers.get("HX-Request"):
+                return RedirectResponse("/character", status_code=status.HTTP_303_SEE_OTHER)
+            return character_page(request, before, warning=str(error))
+        if not request.headers.get("HX-Request"):
+            return RedirectResponse("/character", status_code=status.HTTP_303_SEE_OTHER)
         spec = STATS[stat]
-        return respond(
+        return character_page(
             request,
             state,
             flash=(

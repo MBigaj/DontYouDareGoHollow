@@ -1,0 +1,81 @@
+<div id="character" style="display: flex; flex-direction: column; gap: 16px">
+  {% if flash %}<div class="flash" role="status">{{ flash }}</div>{% endif %}
+  {% if warning %}<div class="panel blood" role="alert" style="color: var(--blood-ink)">{{ warning }}</div>{% endif %}
+
+  <section class="panel" aria-label="Character">
+    <div class="grid-2">
+      <div class="hero">
+        <img class="sprite" src="{{ url_for('static', path='sprites/knight_front.png') }}" alt="Your knight, {{ state.status | lower }}" width="120" height="156"
+             style="filter: grayscale({{ state.hollowing * 0.2 }}) brightness({{ 1 - state.hollowing * 0.1 }})">
+        <div class="stats">
+          <div class="stat"><span class="label">Level</span><span class="value">{{ state.character_level }}</span></div>
+          <div class="stat"><span class="label">Souls</span><span class="value souls"><img src="{{ url_for('static', path='sprites/item_soul.png') }}" alt="" width="27" height="27">{{ "{:,}".format(state.souls) }}</span></div>
+          <div class="stat"><span class="label">Spent</span><span class="value">{{ "{:,}".format(state.souls_spent) }}</span></div>
+          <div class="stat"><span class="label">State</span><span class="value">{{ state.status }}</span></div>
+        </div>
+      </div>
+      <div>
+        <h2 class="label">Jobs</h2>
+        {% for job in state.jobs.values() %}
+        <div class="job">
+          <div class="job-head"><span>{{ 'Ronin' if job.track.value == 'ronin' else 'Architect' }} <span class="muted">· {{ 'Japanese' if job.track.value == 'ronin' else 'Python' }}</span></span><span>Lv {{ job.level }}</span></div>
+          <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="{{ job.needed }}" aria-valuenow="{{ job.into_level }}" aria-label="{{ job.track.value | title }} XP"><span style="width: {{ job.percent }}%"></span></div>
+          <div class="muted" style="font-size: 13px">{{ "{:,}".format(job.into_level) }} / {{ "{:,}".format(job.needed) }} XP to level {{ job.level + 1 }}</div>
+        </div>
+        {% endfor %}
+        <p class="muted" style="font-size: 14px">Jobs level from every soul you earn in them. Spending or losing souls never lowers them.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="grid-2">
+    <section class="panel" aria-label="Level up">
+      <h2 class="label">Level up · soul level {{ state.soul_level }}</h2>
+      <p style="margin: 4px 0 10px; font-size: 14px">Next level costs <strong class="souls-ink">{{ "{:,}".format(state.level_cost) }}</strong> souls{% if not state.can_level_up %} <span class="muted">· {{ "{:,}".format(state.level_cost - state.souls) }} more to go</span>{% endif %}</p>
+      <div class="statlist">
+        {% for spec in stat_specs %}
+        {% set lvl = state.stats[spec.stat] %}
+        <div class="statrow">
+          <div>
+            <div><strong>{{ spec.label }}</strong> {{ lvl }}</div>
+            <div class="muted" style="font-size: 13px">
+              {% if spec.stat.value == 'vigor' %}{{ state.max_hp }} HP in boss fights
+              {% elif spec.stat.value == 'endurance' %}Mistakes cost {{ state.mistake_cost }} HP
+              {% else %}{% set next = spec.perks | selectattr('level', 'gt', lvl) | first %}{{ spec.perks | selectattr('level', 'le', lvl) | list | length }} of {{ spec.perks | length }} extras{% if next %} · next at {{ next.level }}: {{ next.text }}{% endif %}
+              {% endif %}
+            </div>
+          </div>
+          <form method="post" action="/level" hx-post="/level" hx-target="#character" hx-swap="outerHTML" hx-disabled-elt="find button">
+            <input type="hidden" name="stat" value="{{ spec.stat.value }}">
+            <button class="btn" type="submit" {{ 'disabled' if not state.can_level_up }} aria-label="Raise {{ spec.label }}">+1</button>
+          </form>
+        </div>
+        {% endfor %}
+      </div>
+      <p class="muted" style="font-size: 13px">Stats never lock study. Vigor and Endurance count in boss fights (Phase 2); Faith and Intelligence extras arrive with the agents.</p>
+    </section>
+
+    <section class="panel" aria-label="Equipment">
+      <h2 class="label">Equipment</h2>
+      <div class="slots">
+        {% for slot in equipment %}
+        <div class="slot {{ 'empty' if slot.empty or not slot.item }}">
+          <img src="{{ url_for('static', path='sprites/' + slot.sprite) }}" alt="" width="54" height="54">
+          <div>
+            <div class="label">{{ slot.name }}</div>
+            <div><strong>{{ slot.item or 'Empty' }}</strong></div>
+            <div class="muted" style="font-size: 13px">{{ slot.note }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <h3 class="label" style="margin-top: 16px">In boss fights</h3>
+      <table>
+        <tr><td>Max HP</td><td>{{ state.max_hp }}</td></tr>
+        <tr><td>HP lost per mistake</td><td>{{ state.mistake_cost }}</td></tr>
+        <tr><td>Estus flasks per attempt</td><td>2 × 50 HP</td></tr>
+      </table>
+      <p class="muted" style="font-size: 13px">Weapons, the blacksmith and titanite arrive with boss fights in Phase 2.</p>
+    </section>
+  </div>
+</div>

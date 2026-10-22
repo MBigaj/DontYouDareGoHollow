@@ -164,13 +164,33 @@ def test_level_up_from_the_page(client: TestClient) -> None:
     assert "disabled" in text
 
 
-def test_character_panel_shows_jobs_and_effigies(client: TestClient) -> None:
+def test_bonfire_links_to_the_character_page(client: TestClient) -> None:
     client.post("/log", data={"kind": "dev_study", "quantity": "75"})
     page = client.get("/").text
     assert "Character · level 3" in page
-    assert "50 / 200 XP to level 3" in page
+    assert "Next level up at 200 souls" in page
     assert "2 of 2 Effigies left this week" in page
+
+    client.post("/log", data={"kind": "dev_study", "quantity": "50"})
+    assert "You can level up: 200 souls" in client.get("/").text
+
+
+def test_character_page_shows_jobs_stats_and_equipment(client: TestClient) -> None:
+    client.post("/log", data={"kind": "dev_study", "quantity": "75"})
+    page = client.get("/character").text
+    assert 'href="/character" aria-current="page"' in page
+    assert "50 / 200 XP to level 3" in page
+    assert "Ronin weapon" in page and "Rings · 1 slot" in page
+    assert "100</td>" in page  # max HP
     assert client.post("/level", data={"stat": "luck"}).status_code == 422
+
+
+def test_level_up_without_javascript_returns_to_the_character_page(client: TestClient) -> None:
+    client.post("/log", data={"kind": "dev_study", "quantity": "100"})
+    for _ in range(2):  # the second one cannot be afforded
+        response = client.post("/level", data={"stat": "vigor"}, follow_redirects=False)
+        assert response.status_code == 303
+        assert response.headers["location"] == "/character"
 
 
 def test_purchases_reject_bad_input() -> None:

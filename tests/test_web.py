@@ -77,3 +77,20 @@ def test_password_protects_every_page(store: SqlEventStore, clock: FakeClock) ->
     assert client.get("/").status_code == 401
     assert client.get("/", auth=("me", "wrong")).status_code == 401
     assert client.get("/", auth=("me", "estus")).status_code == 200
+
+
+def test_static_links_carry_a_content_fingerprint(client: TestClient) -> None:
+    import re
+
+    page = client.get("/").text
+    match = re.search(r'src="/static/sprites/knight_front.png\?v=(\w+)"', page)
+    assert match and len(match.group(1)) == 10
+    response = client.get(f"/static/sprites/knight_front.png?v={match.group(1)}")
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-cache"
+
+
+def test_missing_static_files_still_get_a_link() -> None:
+    from hollow.adapters.web.app import asset
+
+    assert asset("sprites/nope.png") == "/static/sprites/nope.png?v=0"

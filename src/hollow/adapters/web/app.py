@@ -1,6 +1,8 @@
 """FastAPI + Jinja + HTMX. Every form works without JavaScript; HTMX swaps the world panel."""
 
+import hashlib
 import secrets
+from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -33,6 +35,30 @@ from hollow.domain.progression import STATS, Stat
 from hollow.domain.world import EFFIGIES_PER_WEEK, MAX_HOLLOWING, WorldState
 
 HERE = Path(__file__).parent
+STATIC = HERE / "static"
+
+
+class FreshStaticFiles(StaticFiles):
+    """Static files the browser re-checks before reuse, so a changed sprite always shows."""
+
+    def file_response(self, *args: Any, **kwargs: Any) -> Response:
+        response = super().file_response(*args, **kwargs)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
+@lru_cache(maxsize=256)
+def _fingerprint(path: str, mtime_ns: int) -> str:
+    return hashlib.sha1((STATIC / path).read_bytes()).hexdigest()[:10]
+
+
+def asset(path: str) -> str:
+    """A static file's URL with a content fingerprint: new content, new URL, no stale cache."""
+    file = STATIC / path
+    version = _fingerprint(path, file.stat().st_mtime_ns) if file.is_file() else "0"
+    return f"/static/{path}?v={version}"
+
+
 RUN_LABELS = {Run.FIRST: "New lesson", Run.REFRESHER: "Refresher", Run.PRACTICE: "Practice"}
 HINTS = {
     Ending.RU_VERB: "る-verb: drop る, add て.",
@@ -89,6 +115,7 @@ def create_app(
         else None
     )
     templates = Jinja2Templates(directory=HERE / "templates")
+    templates.env.globals["asset"] = asset
     syncing = anki_sync is not None or github_sync is not None
     """Pages only ask for a background sync when there is something to sync."""
     basic = HTTPBasic(auto_error=False)
@@ -104,7 +131,7 @@ def create_app(
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, headers={"WWW-Authenticate": "Basic"})
 
     app = FastAPI(title="DontYouDareGoHollow", dependencies=[Depends(require_password)])
-    app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
+    app.mount("/static", FreshStaticFiles(directory=STATIC), name="static")
 
     def context(state: WorldState, **extra: Any) -> dict[str, Any]:
         return {

@@ -5,11 +5,11 @@
   <section class="panel" aria-label="Character">
     <div class="grid-2">
       <div class="hero">
-        <img class="sprite" src="{{ url_for('static', path='sprites/knight_front.png') }}" alt="Your knight, {{ state.status | lower }}" width="96" height="180"
+        <img class="sprite" src="{{ asset('sprites/knight_front.png') }}" alt="Your knight, {{ state.status | lower }}" width="96" height="180"
              style="filter: grayscale({{ state.hollowing * 0.2 }}) brightness({{ 1 - state.hollowing * 0.1 }})">
         <div class="stats">
           <div class="stat"><span class="label">Level</span><span class="value">{{ state.character_level }}</span></div>
-          <div class="stat"><span class="label">Souls</span><span class="value souls"><img src="{{ url_for('static', path='sprites/item_soul.png') }}" alt="" width="27" height="27">{{ "{:,}".format(state.souls) }}</span></div>
+          <div class="stat"><span class="label">Souls</span><span class="value souls"><img src="{{ asset('sprites/item_soul.png') }}" alt="" width="27" height="27">{{ "{:,}".format(state.souls) }}</span></div>
           <div class="stat"><span class="label">Spent</span><span class="value">{{ "{:,}".format(state.souls_spent) }}</span></div>
           <div class="stat"><span class="label">State</span><span class="value">{{ state.status }}</span></div>
         </div>
@@ -60,7 +60,7 @@
       <div class="slots">
         {% for slot in equipment %}
         <div class="slot {{ 'empty' if slot.empty or not slot.item }}">
-          <img src="{{ url_for('static', path='sprites/' + slot.sprite) }}" alt="" width="54" height="54">
+          <img src="{{ asset('sprites/' + slot.sprite) }}" alt="" width="54" height="54">
           <div>
             <div class="label">{{ slot.name }}</div>
             <div><strong>{{ slot.item or 'Empty' }}</strong></div>

@@ -62,6 +62,8 @@ def create_app(
         else None
     )
     templates = Jinja2Templates(directory=HERE / "templates")
+    syncing = anki_sync is not None or github_sync is not None
+    """Pages only ask for a background sync when there is something to sync."""
     basic = HTTPBasic(auto_error=False)
 
     def require_password(
@@ -137,7 +139,12 @@ def create_app(
             request,
             name,
             context(
-                state, page="character", equipment=equipment(state), flash=flash, warning=warning
+                state,
+                page="character",
+                equipment=equipment(state),
+                syncing=syncing,
+                flash=flash,
+                warning=warning,
             ),
         )
 
@@ -198,17 +205,9 @@ def create_app(
 
     @app.get("/", response_class=HTMLResponse)
     def home(request: Request) -> Response:
-        found, warnings = sync(force=False)
-        state = service.state()
+        """Renders straight from the event log; the page then calls /sync in the background."""
         return templates.TemplateResponse(
-            request,
-            "index.html",
-            context(
-                state,
-                page="bonfire",
-                flash=summary(found, state),
-                warning=" ".join(warnings) or None,
-            ),
+            request, "index.html", context(service.state(), page="bonfire", syncing=syncing)
         )
 
     @app.post("/light")
@@ -237,10 +236,22 @@ def create_app(
 
     @app.get("/character", response_class=HTMLResponse)
     def character(request: Request) -> Response:
+        return character_page(request, service.state())
+
+    @app.post("/sync")
+    def background_sync(request: Request, page: str = "bonfire") -> Response:
+        """Called by each page right after it loads. Answers 204 (nothing to redraw) unless
+        the sync brought something new or failed, in which case it returns the page's panel."""
         found, warnings = sync(force=False)
+        if not found and not warnings:
+            return Response(status_code=status.HTTP_204_NO_CONTENT)
         state = service.state()
-        return character_page(
-            request, state, flash=summary(found, state), warning=" ".join(warnings) or None
+        flash = summary(found, state)
+        warning = " ".join(warnings) or None
+        if page == "character":
+            return character_page(request, state, flash=flash, warning=warning)
+        return templates.TemplateResponse(
+            request, "partials/_world.html", context(state, flash=flash, warning=warning)
         )
 
     @app.post("/level")

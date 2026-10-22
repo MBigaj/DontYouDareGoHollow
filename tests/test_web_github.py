@@ -32,7 +32,7 @@ def test_a_merged_pr_lights_the_bonfire(
     github_client: TestClient, github: FakeGitHub, clock: FakeClock
 ) -> None:
     github.pulls = [pr(1, at=clock.now())]
-    page = github_client.get("/").text
+    page = github_client.post("/sync", headers=HX).text
     assert "From GitHub: 1 merged PR. The bonfire is lit." in page
 
 
@@ -57,7 +57,7 @@ def test_light_reports_prs_waiting_for_ci(
 
 def test_github_problems_show_a_warning(github_client: TestClient, github: FakeGitHub) -> None:
     github.down = True
-    page = github_client.get("/")
+    page = github_client.post("/sync", headers=HX)
     assert page.status_code == 200
     assert "GitHub sync failed: Could not reach GitHub." in page.text
 
@@ -90,7 +90,7 @@ def test_settings_build_the_real_client(
         database_url="sqlite://", github_enabled=True, github_token="t0ken", _env_file=None
     )
     with TestClient(create_app(settings, store=store, clock=clock)) as client:
-        assert client.get("/").status_code == 200
+        assert client.post("/sync", headers=HX).status_code == 204
     assert built == ["t0ken"]
     assert settings.github_repo_names() == ("MBigaj/hollow-trials",)
 
@@ -98,6 +98,6 @@ def test_settings_build_the_real_client(
 def test_page_loads_check_github_at_most_every_few_minutes(
     github_client: TestClient, github: FakeGitHub
 ) -> None:
-    github_client.get("/")
-    github_client.get("/")
+    github_client.post("/sync", headers=HX)
+    github_client.post("/sync", headers=HX)
     assert len(github.asked_since) == 1

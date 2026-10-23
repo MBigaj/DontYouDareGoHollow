@@ -305,3 +305,27 @@ td:last-child { text-align: right; color: var(--ember-hi); }
   .fight *, .fight .arena { animation-duration: 1ms !important; animation-iteration-count: 1 !important; }
   .bar .fill, .bar .chip { transition: none; }
 }
+.drop { display: inline-flex; align-items: center; gap: 8px; margin: 8px auto 0; padding: 4px 10px; background: #1f2630; box-shadow: inset 0 0 0 2px #34506a; color: var(--b4, #d8e7f3); animation: rise .4s ease-out .2s both; }
+
+/* ---- blacksmith ---- */
+.forge { display: flex; flex-direction: column; gap: 16px; }
+.forge-head { display: grid; grid-template-columns: 160px minmax(0, 1fr) auto; gap: 16px; align-items: center; }
+@media (max-width: 720px) { .forge-head { grid-template-columns: minmax(0, 1fr); } .anvil { display: none; } }
+.forge-head p { margin: 6px 0 0; font-size: 14px; }
+.forge-souls { display: flex; flex-direction: column; gap: 2px; }
+.forge-souls .value { font-size: 26px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+.mats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 860px) { .mats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.mat { display: flex; gap: 10px; align-items: center; padding: 8px; background: #1a1612; outline: 3px solid var(--bg); box-shadow: inset 0 0 0 2px var(--edge); }
+.mat.none { opacity: .55; }
+.mat.tier-2 img { filter: hue-rotate(10deg) saturate(1.3) brightness(1.15); }
+.mat.tier-3 img { filter: sepia(.6) hue-rotate(160deg) saturate(1.6) brightness(1.2); }
+.mat.tier-4 img { filter: sepia(1) saturate(2.4) hue-rotate(-10deg) brightness(1.25); }
+.weapons { display: flex; flex-direction: column; gap: 10px; }
+.weapon { display: flex; gap: 12px; padding: 10px; background: #1a1612; outline: 3px solid var(--bg); box-shadow: inset 0 0 0 2px var(--edge); }
+.weapon.equipped { box-shadow: inset 0 0 0 2px var(--ember); }
+.weapon.unowned img { filter: grayscale(1) brightness(.6); }
+.weapon-body { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.weapon-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.weapon-actions form { margin: 0; }
+.skill { font-size: 13px; color: var(--gold); }

@@ -13,7 +13,7 @@ Rewards and timing (from the plan):
 import random
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from enum import StrEnum
 from uuid import UUID
 
@@ -97,6 +97,7 @@ LESSONS: dict[str, LessonSpec] = {
 @dataclass(frozen=True)
 class LessonOutcome:
     event_id: UUID
+    at: datetime
     lesson_id: str
     day: date
     run: Run
@@ -154,6 +155,7 @@ def track(
         run = p.run_on(day)
         outcome = LessonOutcome(
             event.id,
+            event.occurred_at,
             event.lesson_id,
             day,
             run,

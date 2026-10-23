@@ -1,12 +1,12 @@
 """Running boss fights. Every turn is an event, so a fight survives restarts and resting."""
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from random import SystemRandom
 from uuid import UUID
 
 from hollow.application.lessons import LessonError
-from hollow.application.ports import Clock, EventStore
+from hollow.application.ports import Clock, EventStore, next_moment
 from hollow.domain.bosses import BOSSES, Attempt, Boss, BossRecord, Question, question
 from hollow.domain.calendar import GameCalendar
 from hollow.domain.conjugation import Verb
@@ -47,14 +47,8 @@ class FightService:
         self._calendar = calendar
 
     def _now(self) -> datetime:
-        """Now, but always after the last fight event, so turns replay in the order played."""
-        now = self._clock.now()
-        times = [
-            e.occurred_at for e in self._store.all() if isinstance(e, FightStarted | FightTurn)
-        ]
-        if times and max(times) >= now:
-            return max(times) + timedelta(microseconds=1)
-        return now
+        """Now, but after the last event, so turns replay in the order they were played."""
+        return next_moment(self._store, self._clock)
 
     def boss(self, boss_id: str) -> Boss:
         try:
@@ -76,6 +70,12 @@ class FightService:
             ask = question(boss, current.phase, current.seed, current.turns, self.verbs())
         return FightView(boss, record, state, ask, answered)
 
+    @staticmethod
+    def damage(boss: Boss, state: WorldState) -> int:
+        """Your equipped weapon's damage against this boss."""
+        weapon, level = state.armory.weapon(boss.track)
+        return weapon.damage(level, boss.recommended)
+
     def ready(self, boss_id: str) -> bool:
         return len(self.verbs()) >= self.boss(boss_id).min_verbs
 
@@ -93,6 +93,7 @@ class FightService:
                 SystemRandom().randrange(2**32),
                 view.state.max_hp,
                 view.state.mistake_cost,
+                self.damage(view.boss, view.state),
             )
         )
         return self.view(boss_id)

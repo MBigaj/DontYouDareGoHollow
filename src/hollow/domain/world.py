@@ -17,10 +17,19 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 
 from hollow.domain.activities import ACTIVITIES, ActivityKind, Track, lights_bonfire, souls_for
+from hollow.domain.armory import SIPHON_PERCENT, WEAPONS, Armory, Skill
+from hollow.domain.armory import build as build_armory
 from hollow.domain.bosses import BossRecord
 from hollow.domain.bosses import track as track_bosses
 from hollow.domain.calendar import GameCalendar
-from hollow.domain.events import Event, MessageLeft, StatLevelled, StudyLogged
+from hollow.domain.events import (
+    Event,
+    MessageLeft,
+    StatLevelled,
+    StudyLogged,
+    WeaponBought,
+    WeaponUpgraded,
+)
 from hollow.domain.lessons import LessonOutcome, LessonProgress, track
 from hollow.domain.lessons import Run as LessonRun
 from hollow.domain.progression import (
@@ -86,6 +95,7 @@ class WorldState:
     today_lessons: tuple[LessonOutcome, ...]
     bosses: dict[str, BossRecord]
     today_boss_souls: int
+    armory: Armory
 
     @property
     def lessons_due(self) -> int:
@@ -139,7 +149,9 @@ def replay(
     souls_by_day: dict[date, int] = defaultdict(int)
     today_souls: dict[ActivityKind, int] = defaultdict(int)
     lessons_cleared_by_day: dict[date, int] = defaultdict(int)
-    purchases_by_day: dict[date, list[StatLevelled]] = defaultdict(list)
+    purchases_by_day: dict[date, list[StatLevelled | WeaponBought | WeaponUpgraded]] = defaultdict(
+        list
+    )
     xp: dict[Track, int] = dict.fromkeys(Track, 0)
     message: Message | None = None
     message_key: tuple[date, float] | None = None
@@ -154,19 +166,12 @@ def replay(
             xp[ACTIVITIES[event.kind].track] += souls_for(event.kind, event.quantity)
             if day == today:
                 today_souls[event.kind] += souls_for(event.kind, event.quantity)
-        elif isinstance(event, StatLevelled):
+        elif isinstance(event, StatLevelled | WeaponBought | WeaponUpgraded):
             purchases_by_day[day].append(event)
         elif isinstance(event, MessageLeft) and day < today:
             key = (day, event.occurred_at.timestamp())
             if message_key is None or key > message_key:
                 message, message_key = Message(event.text.strip(), day), key
-
-    outcomes, lessons = track(events, calendar, today)
-    for outcome in outcomes:
-        souls_by_day[outcome.day] += outcome.souls
-        xp[Track.RONIN] += outcome.souls
-        if outcome.passed and outcome.run is not LessonRun.PRACTICE:
-            lessons_cleared_by_day[outcome.day] += 1
 
     bosses = track_bosses(events, calendar, today)
     today_boss_souls = 0
@@ -178,6 +183,19 @@ def replay(
                 lessons_cleared_by_day[reward.day] += 1
             if reward.day == today:
                 today_boss_souls += reward.souls
+
+    defeated = {b: r.defeated_at for b, r in bosses.items() if r.defeated_at is not None}
+    armory = build_armory([e for e in events if calendar.day_of(e.occurred_at) <= today], defeated)
+
+    outcomes, lessons = track(events, calendar, today)
+    for outcome in outcomes:
+        souls = outcome.souls
+        if WEAPONS[armory.equipped_at(Track.RONIN, outcome.at)].skill is Skill.SOUL_SIPHON:
+            souls += (souls * SIPHON_PERCENT + 50) // 100
+        souls_by_day[outcome.day] += souls
+        xp[Track.RONIN] += souls
+        if outcome.passed and outcome.run is not LessonRun.PRACTICE:
+            lessons_cleared_by_day[outcome.day] += 1
 
     souls = 0
     bloodstain: Bloodstain | None = None
@@ -198,7 +216,8 @@ def replay(
         souls += earned
         souls_earned_total += earned
         for purchase in purchases_by_day.get(day, []):
-            stats[purchase.stat] += 1
+            if isinstance(purchase, StatLevelled):
+                stats[purchase.stat] += 1
             spent = min(souls, purchase.cost)
             souls -= spent
             souls_spent += spent
@@ -250,6 +269,7 @@ def replay(
         today_lessons=tuple(o for o in outcomes if o.day == today),
         bosses=bosses,
         today_boss_souls=today_boss_souls,
+        armory=armory,
     )
 
 

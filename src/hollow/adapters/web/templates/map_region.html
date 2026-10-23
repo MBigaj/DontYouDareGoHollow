@@ -16,6 +16,7 @@
       {% if p.example %}<div lang="ja" class="map-jp">{% for pair in p.example | batch(2) %}{% if not loop.first %}, {% endif %}{{ ja(*pair[0]) }} → {{ ja(*pair[1]) }}{% endfor %}</div>{% endif %}
       <p>{{ p.detail }}</p>
       {% if p.action %}<a class="btn ember wide-link" href="{{ p.action[1] }}" data-action>{{ p.action[0] }}</a>{% endif %}
+      {% if p.extra %}<a class="btn wide-link" href="{{ p.extra[1] }}">{{ p.extra[0] }}</a>{% endif %}
     </section>
     {% endfor %}
   </aside>

@@ -11,11 +11,13 @@ from enum import StrEnum
 from random import SystemRandom
 from uuid import UUID, uuid4, uuid5
 
-from hollow.application.ports import Clock, EventStore
+from hollow.application.ports import Clock, EventStore, next_moment
+from hollow.domain.armory import dry_streak, lesson_drop
 from hollow.domain.calendar import GameCalendar
 from hollow.domain.conjugation import Verb
-from hollow.domain.events import LessonCompleted
+from hollow.domain.events import LessonCompleted, Material, MaterialDropped
 from hollow.domain.lessons import LESSONS, LessonOutcome, LessonProgress, LessonSpec, grade
+from hollow.domain.lessons import Run as LessonRunKind
 from hollow.domain.vocabulary import known_verbs
 from hollow.domain.world import WorldState, replay
 
@@ -116,7 +118,10 @@ class LessonService:
             raise LessonError("This lesson run has the wrong number of questions.")
         return Run(run, spec, questions)
 
-    def finish(self, run: Run, answers: Sequence[str]) -> tuple[LessonOutcome, WorldState]:
+    def finish(
+        self, run: Run, answers: Sequence[str], roll: float | None = None
+    ) -> tuple[LessonOutcome, Material | None, WorldState]:
+        """Records the run once, and rolls for titanite. Returns the outcome and any drop."""
         if len(answers) != len(run.questions):
             raise LessonError("Answer every question before finishing.")
         correct = sum(grade(run.questions, answers))
@@ -127,7 +132,27 @@ class LessonService:
             len(run.questions),
             id=uuid5(RUNS_NAMESPACE, str(run.id)),
         )
-        self._store.append_new([event])
+        before = self.state()
+        source = f"lesson:{event.id}"
+        if self._store.append_new([event]):
+            progress = before.lessons.get(run.spec.id)
+            kind = progress.run_on(before.today) if progress else LessonRunKind.FIRST
+            outcomes = [o for p in before.lessons.values() for o in p.history]
+            dropped = {d.source for d in before.armory.drops}
+            material = lesson_drop(
+                refresher=kind is LessonRunKind.REFRESHER,
+                practice=kind is LessonRunKind.PRACTICE,
+                correct=correct,
+                total=len(run.questions),
+                step=progress.step if progress else -1,
+                dry=dry_streak(outcomes, dropped),
+                roll=SystemRandom().random() if roll is None else roll,
+            )
+            if material is not None:
+                self._store.append(
+                    MaterialDropped(next_moment(self._store, self._clock), material, 1, source)
+                )
         state = self.state()
         outcome = next(o for o in state.lessons[run.spec.id].history if o.event_id == event.id)
-        return outcome, state
+        drop = next((d.material for d in state.armory.drops if d.source == source), None)
+        return outcome, drop, state

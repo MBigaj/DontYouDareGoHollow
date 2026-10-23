@@ -16,6 +16,7 @@ from hollow.adapters.anki_connect import connect
 from hollow.adapters.db.store import SqlEventStore, make_engine
 from hollow.adapters.github_api import GitHubApi
 from hollow.application.anki_sync import AnkiSource, AnkiSync, AnkiUnavailable, SyncResult
+from hollow.application.blacksmith import Blacksmith, BlacksmithError
 from hollow.application.bonfire import BonfireService, CannotLevelUp
 from hollow.application.fights import FightError, FightService, FightView
 from hollow.application.github_sync import (
@@ -29,9 +30,18 @@ from hollow.application.lessons import Run as LessonRun
 from hollow.application.ports import Clock, EventStore, SystemClock
 from hollow.config import Settings
 from hollow.domain.activities import ACTIVITIES, ActivityKind, Track
+from hollow.domain.armory import (
+    BOSS_MATERIALS,
+    BOSS_WEAPONS,
+    MATERIAL_NAMES,
+    SKILLS,
+    WEAPONS,
+    upgrade_cost,
+)
 from hollow.domain.atlas import FIRELINK, FIRELINK_SIZE, REGIONS, WORLD_SIZE, NodeKind
-from hollow.domain.bosses import DAMAGE, ESTUS_HEAL, FIRST_TRY_BONUS, VICTORY_SOULS, WARDEN, Outcome
+from hollow.domain.bosses import BOSSES, ESTUS_HEAL, FIRST_TRY_BONUS, VICTORY_SOULS, WARDEN, Outcome
 from hollow.domain.conjugation import Ending, Verb
+from hollow.domain.events import Material
 from hollow.domain.lessons import LESSONS, Run, grade
 from hollow.domain.progression import STATS, Stat
 from hollow.domain.world import EFFIGIES_PER_WEEK, MAX_HOLLOWING, WorldState
@@ -99,6 +109,7 @@ def create_app(
     service = BonfireService(store, clock, settings.calendar())
     lessons = LessonService(store, clock, settings.calendar())
     fights = FightService(store, clock, settings.calendar())
+    smith = Blacksmith(store, clock, settings.calendar())
     if anki is None and settings.anki_enabled:
         anki = connect(settings)
     anki_sync = AnkiSync(store, anki, clock, settings.calendar()) if anki else None
@@ -162,19 +173,25 @@ def create_app(
 
     def equipment(state: WorldState) -> list[dict[str, Any]]:
         rings = 2 if state.stats[Stat.INTELLIGENCE] >= 10 else 1
-        return [
-            {
-                "name": "Ronin weapon",
-                "sprite": "item_katana.png",
-                "item": None,
-                "note": "Deals damage in Japanese fights.",
-            },
-            {
-                "name": "Architect weapon",
-                "sprite": "item_hammer.png",
-                "item": None,
-                "note": "Deals damage in dev fights.",
-            },
+        slots: list[dict[str, Any]] = []
+        for track, subject in ((Track.RONIN, "Japanese"), (Track.ARCHITECT, "dev")):
+            weapon, level = state.armory.weapon(track)
+            note = f"Deals damage in {subject} fights."
+            if track is Track.RONIN:
+                note = (
+                    f"{weapon.damage(level, WARDEN.recommended)} damage per hit against the Warden."
+                )
+            slots.append(
+                {
+                    "name": f"{'Ronin' if track is Track.RONIN else 'Architect'} weapon",
+                    "sprite": weapon.sprite,
+                    "item": f"{weapon.name} +{level}",
+                    "note": note + (f" {SKILLS[weapon.skill]}." if weapon.skill else ""),
+                }
+            )
+        mats = state.armory.materials
+        total = sum(mats.values())
+        slots += [
             {
                 "name": f"Rings · {rings} slot{'s' if rings > 1 else ''}",
                 "sprite": "item_ring.png",
@@ -184,11 +201,13 @@ def create_app(
             {
                 "name": "Titanite",
                 "sprite": "item_titanite.png",
-                "item": "None yet",
-                "empty": True,
-                "note": "Drops from lessons, refreshers and bosses.",
+                "item": ", ".join(f"{n} {MATERIAL_NAMES[m]}" for m, n in mats.items() if n)
+                or "None yet",
+                "empty": total == 0,
+                "note": "Reinforce weapons at the blacksmith.",
             },
         ]
+        return slots
 
     def character_page(
         request: Request, state: WorldState, flash: str | None = None, warning: str | None = None
@@ -442,7 +461,7 @@ def create_app(
         current = resume(lesson_id, run, q)
         answers = list(a or [])
         try:
-            outcome, state = lessons.finish(current, answers)
+            outcome, drop, state = lessons.finish(current, answers)
         except LessonError as error:
             raise HTTPException(422, str(error)) from error
         misses = [
@@ -453,7 +472,14 @@ def create_app(
             if not ok
         ]
         return lesson_page(
-            request, current, answers, "result", outcome=outcome, misses=misses, state=state
+            request,
+            current,
+            answers,
+            "result",
+            outcome=outcome,
+            misses=misses,
+            state=state,
+            drop=MATERIAL_NAMES[drop] if drop else None,
         )
 
     def explored() -> int:
@@ -514,6 +540,7 @@ def create_app(
                     "caption": "Bonfire",
                     "detail": "Rest here: your souls, streak, Effigies and level.",
                     "action": ("Rest at the bonfire", "/"),
+                    "extra": ("Visit the blacksmith", "/blacksmith"),
                 }
             elif node.kind is NodeKind.BOSS:
                 record = fights.view(WARDEN.id).record
@@ -590,6 +617,18 @@ def create_app(
             ),
         )
 
+    def boss_drops(boss_id: str) -> str:
+        parts = [WEAPONS[BOSS_WEAPONS[boss_id]].name] if boss_id in BOSS_WEAPONS else []
+        for material, count in BOSS_MATERIALS.get(boss_id, ()):
+            plural = "s" if count != 1 else ""
+            parts.append(f"{count} {MATERIAL_NAMES[material]}{plural}")
+        return ", ".join(parts)
+
+    def weapon_line(view: FightView) -> str:
+        weapon, level = view.state.armory.weapon(view.boss.track)
+        damage = FightService.damage(view.boss, view.state)
+        return f"Your {weapon.name} +{level} deals {damage} per hit here."
+
     def fight_page(request: Request, view: FightView, gate: bool = False) -> Response:
         attempt = view.attempt
         wins = sum(1 for a in view.record.attempts if a.outcome is Outcome.WON)
@@ -603,9 +642,11 @@ def create_app(
                 view=view,
                 gate=gate,
                 ready=fights.ready(view.boss.id),
-                damage=DAMAGE,
+                damage=attempt.damage if attempt is not None else 0,
                 heal=ESTUS_HEAL,
                 first_win=wins == 1 and attempt is not None and attempt.outcome is Outcome.WON,
+                boss_drops=boss_drops(view.boss.id),
+                weapon=weapon_line(view),
                 victory_souls=VICTORY_SOULS
                 + (FIRST_TRY_BONUS if attempt is not None and attempt.number == 1 else 0),
             ),
@@ -653,6 +694,129 @@ def create_app(
         except FightError:
             view = fights.view(boss_id)
         return fight_response(request, boss_id, view)
+
+    MATERIAL_INFO = (
+        (Material.SHARD, "+1 to +3", "perfect lessons and refreshers"),
+        (Material.LARGE_SHARD, "+4 to +6", "refreshers from 7 days on, bosses"),
+        (Material.CHUNK, "+7 to +9", "bosses, merged PRs, every 100 new cards"),
+        (Material.SLAB, "+10", "bosses, your first merged PR"),
+    )
+
+    def describe_source(source: str) -> str:
+        if source.startswith("lesson:"):
+            return "a lesson"
+        if source.startswith("boss:"):
+            boss_id = source.removeprefix("boss:")
+            return BOSSES[boss_id].name if boss_id in BOSSES else "a boss"
+        if source == "pull-request":
+            return "a merged pull request"
+        if source.startswith("milestone:"):
+            return source.removeprefix("milestone:").replace("-", " ")
+        return source
+
+    def forge_page(
+        request: Request,
+        state: WorldState,
+        flash: str | None = None,
+        warning: str | None = None,
+    ) -> Response:
+        arm = state.armory
+        tracks = []
+        for track, title, subject in (
+            (Track.RONIN, "Ronin", "Japanese fights"),
+            (Track.ARCHITECT, "Architect", "dev fights"),
+        ):
+            weapons = []
+            for spec in WEAPONS.values():
+                if spec.track is not track:
+                    continue
+                owned = arm.owns(spec.id)
+                level = arm.levels.get(spec.id, 0)
+                cost = upgrade_cost(min(level + 1, spec.max_level))
+                vs = WARDEN if track is Track.RONIN else None
+                source = next(
+                    (BOSSES[b].name for b, w in BOSS_WEAPONS.items() if w == spec.id), "a boss"
+                )
+                weapons.append(
+                    {
+                        "spec": spec,
+                        "owned": owned,
+                        "level": level,
+                        "equipped": arm.equipped.get(track) == spec.id,
+                        "skill": SKILLS[spec.skill] if spec.skill else None,
+                        "damage": spec.damage(level, vs.recommended) if vs else None,
+                        "next_damage": spec.damage(level + 1, vs.recommended) if vs else None,
+                        "vs": vs.name if vs else "",
+                        "cost": cost,
+                        "cost_name": MATERIAL_NAMES[cost[1]]
+                        + ("s" if cost[2] != 1 and not cost[1].value.endswith("slab") else ""),
+                        "can_upgrade": owned
+                        and level < spec.max_level
+                        and state.souls >= cost[0]
+                        and arm.materials[cost[1]] >= cost[2],
+                        "source": f"Dropped by {source}.",
+                    }
+                )
+            tracks.append({"title": title, "subject": subject, "weapons": weapons})
+        recent = [
+            {
+                "count": d.count,
+                "name": MATERIAL_NAMES[d.material],
+                "source": describe_source(d.source),
+                "when": settings.calendar().day_of(d.at).strftime("%a %d %b"),
+            }
+            for d in reversed(arm.drops[-8:])
+        ]
+        materials = [
+            {"material": m, "name": MATERIAL_NAMES[m], "levels": lv, "source": src}
+            for m, lv, src in MATERIAL_INFO
+        ]
+        name = "partials/_forge.html" if request.headers.get("HX-Request") else "blacksmith.html"
+        return templates.TemplateResponse(
+            request,
+            name,
+            context(
+                state,
+                page="blacksmith",
+                tracks=tracks,
+                recent=recent,
+                materials=materials,
+                flash=flash,
+                warning=warning,
+            ),
+        )
+
+    @app.get("/blacksmith", response_class=HTMLResponse)
+    def blacksmith(request: Request) -> Response:
+        return forge_page(request, service.state())
+
+    def forge_action(request: Request, action: str, weapon: str) -> Response:
+        try:
+            if action == "buy":
+                state = smith.buy(weapon)
+                flash = f"Bought the {WEAPONS[weapon].name}."
+            elif action == "upgrade":
+                state = smith.upgrade(weapon)
+                level = state.armory.levels[weapon]
+                flash = f"The {WEAPONS[weapon].name} is now +{level}."
+            else:
+                state = smith.equip(weapon)
+                flash = f"The {WEAPONS[weapon].name} is in your hand."
+        except BlacksmithError as error:
+            if not request.headers.get("HX-Request"):
+                return RedirectResponse("/blacksmith", status_code=status.HTTP_303_SEE_OTHER)
+            return forge_page(request, service.state(), warning=str(error))
+        if not request.headers.get("HX-Request"):
+            return RedirectResponse("/blacksmith", status_code=status.HTTP_303_SEE_OTHER)
+        return forge_page(request, state, flash=flash)
+
+    @app.post("/blacksmith/{action}")
+    def blacksmith_action(
+        request: Request, action: str, weapon: Annotated[str, Form()]
+    ) -> Response:
+        if action not in ("buy", "upgrade", "equip"):
+            raise HTTPException(404, "The blacksmith does not do that.")
+        return forge_action(request, action, weapon)
 
     @app.post("/message")
     def message(request: Request, text: Annotated[str, Form()]) -> Response:

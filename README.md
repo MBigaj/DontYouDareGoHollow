@@ -97,6 +97,21 @@ The fog gate at the top of Firelink Shrine leads to the first boss, the て-form
 - Leave mid-fight ("Rest at the fog gate") and the fight waits exactly as you left it.
 - Felling the Warden pays 500 souls (750 on a first try) and lights the bonfire.
 
+## Weapons and the blacksmith
+
+Each job has its own weapon: Ronin weapons deal damage in Japanese fights, Architect weapons in dev fights. You start with a Rusted Katana and a Worn Hammer (10 damage per hit). The blacksmith (`/blacksmith`, from the Character page or the Firelink bonfire) sells better basic weapons, and bosses drop their own: the て-form Warden drops the Warden's Maul, whose Soul Siphon adds 15% to Ronin lesson souls while it is equipped.
+
+Reinforcing costs souls (200 x the new level) and titanite:
+
+| Material | Reinforces | Where it drops |
+| --- | --- | --- |
+| Titanite Shard | +1 to +3 | Lessons scored 90% or better: a due refresher always on a perfect run (60% at 90%+), a new lesson 50% when perfect (25% at 90%+). After 4 good runs with no drop, the next good one drops for sure. Practice runs never drop. |
+| Large Titanite Shard | +4 to +6 | Due refreshers from the 7-day interval on, bosses |
+| Titanite Chunk | +7 to +9 | Bosses, every merged PR, every 100 new Anki cards |
+| Titanite Slab | +10 | Bosses, your very first merged PR |
+
+Each level adds 1 damage up to a boss's recommended level (+2 for the Warden) and half that beyond it, and every boss still needs at least 60% of its hits (at most 16 damage). A fight keeps the damage your weapon had when it began. Random drops are saved when they are rolled, so replays never change your loot.
+
 ## GitHub sync
 
 Every merged pull request you open in your practice repo (by default [`MBigaj/hollow-trials`](https://github.com/MBigaj/hollow-trials)) is worth 100 souls and lights the bonfire on its own.

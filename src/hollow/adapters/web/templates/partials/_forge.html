@@ -1,0 +1,67 @@
+{% set arm = state.armory %}
+<div id="forge" class="forge">
+  {% if flash %}<div class="flash" role="status">{{ flash }}</div>{% endif %}
+  {% if warning %}<div class="panel blood" role="alert" style="color: var(--blood-ink)">{{ warning }}</div>{% endif %}
+
+  <section class="panel forge-head">
+    <img class="anvil" src="{{ asset('sprites/anvil.png') }}" alt="" width="160">
+    <div>
+      <div class="label">Firelink Shrine · the blacksmith</div>
+      <h2 class="map-title">"Bring me titanite, and souls. I'll see to the rest."</h2>
+      <p class="muted">Reinforcing makes right answers hit harder in that job's fights. Bosses scale by region, so a weapon ahead of pace helps half as much, and every boss still needs 60% of its hits.</p>
+    </div>
+    <div class="forge-souls"><span class="label">Souls</span><span class="value souls"><img src="{{ asset('sprites/item_soul.png') }}" alt="" width="27" height="27">{{ "{:,}".format(state.souls) }}</span></div>
+  </section>
+
+  <section class="panel" aria-label="Titanite">
+    <h2 class="label">Titanite</h2>
+    <div class="mats">
+      {% for m in materials %}
+      <div class="mat tier-{{ loop.index }} {{ 'none' if arm.materials[m.material] == 0 }}">
+        <img src="{{ asset('sprites/item_titanite.png') }}" alt="" width="40" height="40">
+        <div><strong>{{ arm.materials[m.material] }}</strong> {{ m.name }}<div class="muted" style="font-size: 13px">{{ m.levels }} · {{ m.source }}</div></div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <div class="grid-2">
+    {% for track in tracks %}
+    <section class="panel" aria-label="{{ track.title }} weapons">
+      <h2 class="label">{{ track.title }} · {{ track.subject }}</h2>
+      <div class="weapons">
+        {% for w in track.weapons %}
+        <div class="weapon {{ 'equipped' if w.equipped }} {{ 'unowned' if not w.owned }}">
+          <img src="{{ asset('sprites/' + w.spec.sprite) }}" alt="" width="54" height="54">
+          <div class="weapon-body">
+            <div><strong>{{ w.spec.name }}</strong>{% if w.owned %} +{{ w.level }}{% endif %}{% if w.equipped %} <span class="chip new">Equipped</span>{% endif %}</div>
+            <div class="muted" style="font-size: 13px">{{ w.spec.blurb }}</div>
+            {% if w.skill %}<div class="skill">{{ w.skill }}</div>{% endif %}
+            {% if w.damage %}<div style="font-size: 13px">{{ w.damage }} damage per hit against {{ w.vs }}{% if w.next_damage and w.next_damage != w.damage %} · {{ w.next_damage }} at +{{ w.level + 1 }}{% endif %}</div>{% endif %}
+            <div class="weapon-actions">
+              {% if w.owned %}
+                {% if not w.equipped %}
+                <form method="post" action="/blacksmith/equip" hx-post="/blacksmith/equip" hx-target="#forge" hx-swap="outerHTML"><input type="hidden" name="weapon" value="{{ w.spec.id }}"><button class="btn" type="submit">Equip</button></form>
+                {% endif %}
+                {% if w.level < w.spec.max_level %}
+                <form method="post" action="/blacksmith/upgrade" hx-post="/blacksmith/upgrade" hx-target="#forge" hx-swap="outerHTML" hx-disabled-elt="find button"><input type="hidden" name="weapon" value="{{ w.spec.id }}"><button class="btn {{ 'ember' if w.can_upgrade }}" type="submit" {{ 'disabled' if not w.can_upgrade }}>Reinforce to +{{ w.level + 1 }} · {{ "{:,}".format(w.cost[0]) }} souls · {{ w.cost[2] }} {{ w.cost_name }}</button></form>
+                {% else %}<span class="muted">Fully reinforced.</span>{% endif %}
+              {% elif w.spec.price %}
+                <form method="post" action="/blacksmith/buy" hx-post="/blacksmith/buy" hx-target="#forge" hx-swap="outerHTML"><input type="hidden" name="weapon" value="{{ w.spec.id }}"><button class="btn {{ 'ember' if state.souls >= w.spec.price }}" type="submit" {{ 'disabled' if state.souls < w.spec.price }}>Buy · {{ "{:,}".format(w.spec.price) }} souls</button></form>
+              {% else %}<span class="muted">{{ w.source }}</span>{% endif %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endfor %}
+  </div>
+
+  <section class="panel" aria-label="Recent titanite">
+    <h2 class="label">Recent finds</h2>
+    {% if recent %}
+    <table>{% for d in recent %}<tr><td>{{ d.count }} × {{ d.name }} <span class="muted">· {{ d.source }}</span></td><td class="muted">{{ d.when }}</td></tr>{% endfor %}</table>
+    {% else %}<p class="muted">Nothing yet. Perfect lessons, due refreshers, bosses, merged PRs and every 100 new Anki cards drop titanite.</p>{% endif %}
+  </section>
+</div>

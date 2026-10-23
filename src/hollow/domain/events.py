@@ -121,6 +121,8 @@ class FightStarted:
     max_hp: int
     mistake_cost: int
     """Your Vigor and Endurance when the attempt began, so levelling later never rewrites it."""
+    damage: int = 10
+    """Your weapon's damage against this boss when the attempt began."""
     id: UUID = field(default_factory=uuid4)
 
     def __post_init__(self) -> None:
@@ -143,6 +145,60 @@ class FightTurn:
             raise ValueError("occurred_at must be timezone-aware")
 
 
+class Material(StrEnum):
+    SHARD = "titanite_shard"
+    LARGE_SHARD = "large_titanite_shard"
+    CHUNK = "titanite_chunk"
+    SLAB = "titanite_slab"
+
+
+@dataclass(frozen=True)
+class MaterialDropped:
+    """A random drop, saved when it was rolled so replays and retuned odds never change it."""
+
+    occurred_at: datetime
+    material: Material
+    count: int
+    source: str
+    """What dropped it, e.g. "lesson:<run id>"."""
+    id: UUID = field(default_factory=uuid4)
+
+    def __post_init__(self) -> None:
+        if self.count <= 0:
+            raise ValueError("count must be positive")
+        if self.occurred_at.tzinfo is None:
+            raise ValueError("occurred_at must be timezone-aware")
+
+
+@dataclass(frozen=True)
+class WeaponBought:
+    occurred_at: datetime
+    weapon_id: str
+    cost: int
+    id: UUID = field(default_factory=uuid4)
+
+
+@dataclass(frozen=True)
+class WeaponUpgraded:
+    """Souls and titanite spent at the blacksmith. Prices are recorded, like stat levels."""
+
+    occurred_at: datetime
+    weapon_id: str
+    level: int
+    """The level reached."""
+    cost: int
+    material: Material
+    material_count: int
+    id: UUID = field(default_factory=uuid4)
+
+
+@dataclass(frozen=True)
+class WeaponEquipped:
+    occurred_at: datetime
+    weapon_id: str
+    id: UUID = field(default_factory=uuid4)
+
+
 Event = (
     StudyLogged
     | MessageLeft
@@ -151,4 +207,8 @@ Event = (
     | LessonCompleted
     | FightStarted
     | FightTurn
+    | MaterialDropped
+    | WeaponBought
+    | WeaponUpgraded
+    | WeaponEquipped
 )

@@ -6,6 +6,7 @@
     <div class="label"><a href="/architect">Architect</a> · skill region</div>
     <h2 class="map-title">{{ region.name }}</h2>
     <p class="muted">{{ region.covers }}. {{ proved }} of {{ topics | length }} topics proved{% if placed %}; placement trial done{% endif %}.</p>
+    <p style="font-size: 14px; margin: 6px 0 0">Where you start: {{ region.start }}</p>
     <p style="font-size: 14px; margin: 6px 0 0">Build boss (coming later): {{ region.build_boss }}.</p>
   </div>
 </section>
@@ -19,7 +20,7 @@
         {% if s.placed %}<span class="chip">Known · placement</span>{% endif %}
         <div class="bar thin" aria-label="{{ s.words }} of {{ learn_words }} words written"><span style="width: {{ [100, (100 * s.words / learn_words)] | min | round(1) }}%"></span></div>
         <div class="muted" style="font-size: 13px">
-          {% if s.topic.note %}{{ s.words }} / {{ learn_words }} words · <a href="{{ obsidian(s.topic.note) }}">open in Obsidian</a>{% else %}No vault note yet: add one, or prove it in an exam{% endif %}
+          {{ s.words }} / {{ learn_words }} words in My notes · <a href="{{ obsidian(s.topic.note) }}">open in Obsidian</a>
         </div>
       </div>
       <div class="gates">

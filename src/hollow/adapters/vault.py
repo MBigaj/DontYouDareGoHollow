@@ -1,7 +1,8 @@
 """Reads the Obsidian roadmap vault: how many words of your own each note holds.
 
-Every note starts from the same template (Objective, What Is It?, How It Works…). Lines
-that appear in many notes are template, so only the rest is counted as your writing.
+Topic notes have a "## My notes" section: only what you write there counts. Lines that
+appear in many notes (the template's guidance) are never counted. Notes without the section
+fall back to counting every non-template line.
 """
 
 import re
@@ -15,6 +16,19 @@ WORD = re.compile(r"[\w'\u2019-]+", re.UNICODE)
 
 def _lines(text: str) -> list[str]:
     return [line.strip() for line in text.splitlines() if line.strip()]
+
+
+MY_NOTES = "## my notes"
+
+
+def _my_notes(lines: list[str]) -> list[str]:
+    """The lines of the "## My notes" section, or every line when there is none."""
+    lowered = [line.lower() for line in lines]
+    if MY_NOTES not in lowered:
+        return lines
+    start = lowered.index(MY_NOTES) + 1
+    end = next((i for i in range(start, len(lines)) if lines[i].startswith("## ")), len(lines))
+    return lines[start:end]
 
 
 def _boilerplate(line: str) -> bool:
@@ -48,12 +62,7 @@ class Vault:
         for note in notes:
             if note not in texts:
                 continue
-            own = [
-                line
-                for line in texts[note]
-                if line not in template
-                and not line.startswith("# ")
-                and line not in ("[ ]", "- [ ]")
-            ]
+            lines = _my_notes(texts[note])
+            own = [line for line in lines if line not in template and not _boilerplate(line)]
             words[note] = sum(len(WORD.findall(line)) for line in own)
         return words

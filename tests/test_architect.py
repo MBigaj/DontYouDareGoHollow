@@ -30,9 +30,11 @@ from tests.conftest import FakeClock
 from tests.test_world import CAL
 
 HX = {"HX-Request": "true"}
-MVCC = "02 - Databases & Data/01 - PostgreSQL/MVCC.md"
-TEMPLATE = "Objective\n\nDefine what you want to understand about this topic.\n\nWhat Is It?\n\n" \
-    "Write a concise explanation.\n\nTrade-offs\nQuestions\n[ ]\nMy Notes\n"  # fmt: skip
+MVCC = "02 - Data Depths/MVCC and Isolation Levels.md"
+M = "mvcc-and-isolation-levels"
+GIL = "concurrency-choices-threads-processes-async"
+TEMPLATE = "## You should be able to\n- [ ] Explain it\n\n## Exam questions\n- Why?\n\n" \
+    "## My notes\nWrite in your own words. Only this section counts.\n"  # fmt: skip
 
 
 def state(store: SqlEventStore, clock: FakeClock) -> WorldState:
@@ -68,12 +70,13 @@ class FakeVault:
 
 def test_eight_regions_hold_every_topic_once() -> None:
     assert len(REGIONS) == 8 and len(LORDS) == 9
-    notes = [t.note for t in TOPICS.values() if t.note]
-    assert len(notes) == len(set(notes))
-    assert sum(len(region_topics(r.id)) for r in REGIONS) == len(TOPICS) == 169
+    notes = [t.note for t in TOPICS.values()]
+    assert len(notes) == len(set(notes)) == len(TOPICS) == 82
+    assert sum(len(region_topics(r.id)) for r in REGIONS) == len(TOPICS)
     assert all(r in REGION_BY_ID for lord in LORDS for r in lord.regions)
-    titles = Counter(t.title for t in TOPICS.values())
-    assert titles["Caching"] == 1 and titles["Event Driven Architecture"] == 1
+    abyss = len(region_topics("distributed-abyss"))
+    assert abyss == max(len(region_topics(r.id)) for r in REGIONS)
+    assert Counter(t.title for t in TOPICS.values()).most_common(1)[0][1] == 1
 
 
 # --- vault --------------------------------------------------------------------
@@ -81,9 +84,21 @@ def test_eight_regions_hold_every_topic_once() -> None:
 
 def test_only_your_own_words_count(tmp_path: Path) -> None:
     write_vault(tmp_path, {MVCC: "Readers never block writers: each row keeps versions."})
-    words = Vault(tmp_path).own_words([MVCC, "missing.md"])
-    assert words == {MVCC: 8}
+    (tmp_path / "old.md").write_text("# Old\nSome archived words here\n", encoding="utf-8")
+    words = Vault(tmp_path).own_words([MVCC, "old.md", "missing.md"])
+    assert words == {MVCC: 8, "old.md": 4}
     assert not Vault(tmp_path / "nope").available()
+
+
+def test_only_the_my_notes_section_counts(tmp_path: Path) -> None:
+    write_vault(tmp_path, {})
+    (tmp_path / "note.md").write_text(
+        "# T\n> Why this matters: lots of words before\n## My notes\n"
+        "Write in your own words. Only this section counts.\nfour words of mine\n"
+        "## Later section\nnot counted at all\n",
+        encoding="utf-8",
+    )
+    assert Vault(tmp_path).own_words(["note.md"]) == {"note.md": 4}
 
 
 def test_unreadable_notes_are_skipped(tmp_path: Path) -> None:
@@ -111,18 +126,18 @@ def test_vault_sync_records_notes_that_grew(store: SqlEventStore, clock: FakeClo
 def test_learn_and_prove_pay_once_and_feed_the_architect(
     store: SqlEventStore, clock: FakeClock
 ) -> None:
-    store.append(NoteWritten(clock.now(), "mvcc", LEARN_WORDS))
-    store.append(NoteWritten(clock.now(), "mvcc", LEARN_WORDS + 40))
+    store.append(NoteWritten(clock.now(), M, LEARN_WORDS))
+    store.append(NoteWritten(clock.now(), M, LEARN_WORDS + 40))
     exam = {"total": 0.6}
-    store.append(AgentResult(clock.now(), "tech-lead", "exam:mvcc", exam))
+    store.append(AgentResult(clock.now(), "tech-lead", f"exam:{M}", exam))
     world = state(store, clock)
-    topic = world.architect.topics["mvcc"]
+    topic = world.architect.topics[M]
     assert (topic.learned, topic.proved, topic.best) == (True, False, 0.6)
     assert world.lit_today
-    store.append(AgentResult(clock.now(), "tech-lead", "exam:mvcc", {"total": 0.9}))
-    store.append(AgentResult(clock.now(), "tech-lead", "exam:mvcc", {"total": 1.0}))
+    store.append(AgentResult(clock.now(), "tech-lead", f"exam:{M}", {"total": 0.9}))
+    store.append(AgentResult(clock.now(), "tech-lead", f"exam:{M}", {"total": 1.0}))
     world = state(store, clock)
-    assert world.architect.topics["mvcc"].proved
+    assert world.architect.topics[M].proved
     assert world.souls == LEARN_SOULS + PROVE_SOULS
     assert world.jobs[Track.ARCHITECT].xp == LEARN_SOULS + PROVE_SOULS
 
@@ -131,10 +146,10 @@ def test_placement_clears_known_topics_without_souls(
     store: SqlEventStore, clock: FakeClock
 ) -> None:
     store.append(AgentResult(clock.now(), "tech-lead", "placement:forge",
-                             {"cleared": ["gil", "mvcc", "nope"]}))  # fmt: skip
+                             {"cleared": [GIL, M, "nope"]}))  # fmt: skip
     world = state(store, clock)
-    assert world.architect.topics["gil"].placed
-    assert not world.architect.topics["mvcc"].proved  # not a Forge topic
+    assert world.architect.topics[GIL].placed
+    assert not world.architect.topics[M].proved  # not a Forge topic
     assert "forge" in world.architect.placed_regions
     assert world.souls == 0
 
@@ -165,8 +180,8 @@ def test_exam_scores_come_from_rubric_points() -> None:
     [
         ({"task": "exam:nope", "total": 1.0}, "No Architect topic"),
         ({"task": "placement:nope", "cleared": []}, "No Architect region"),
-        ({"task": "placement:forge", "cleared": ["mvcc"]}, "Not topics of forge"),
-        ({"task": "exam:mvcc", "total": 1.0, "cleared": ["mvcc"]}, "Only placement"),
+        ({"task": "placement:forge", "cleared": [M]}, "Not topics of forge"),
+        ({"task": f"exam:{M}", "total": 1.0, "cleared": [M]}, "Only placement"),
     ],
 )
 def test_tech_lead_results_are_checked(
@@ -178,21 +193,21 @@ def test_tech_lead_results_are_checked(
 
 def test_one_placement_trial_per_region(store: SqlEventStore, clock: FakeClock) -> None:
     desk = AgentDesk(store, clock, CAL)
-    desk.submit({"agent": "tech-lead", "task": "placement:forge", "cleared": ["gil"]})
+    desk.submit({"agent": "tech-lead", "task": "placement:forge", "cleared": [GIL]})
     with pytest.raises(AgentError, match="already had its placement"):
         desk.submit({"agent": "tech-lead", "task": "placement:forge", "cleared": []})
-    desk.submit({"agent": "tech-lead", "task": "exam:mvcc", "total": 0.85})
-    assert state(store, clock).architect.topics["mvcc"].proved
+    desk.submit({"agent": "tech-lead", "task": f"exam:{M}", "total": 0.85})
+    assert state(store, clock).architect.topics[M].proved
 
 
 def test_inbox_offers_placements_and_exams(store: SqlEventStore, clock: FakeClock) -> None:
-    store.append(NoteWritten(clock.now(), "mvcc", 200))
+    store.append(NoteWritten(clock.now(), M, 200))
     inbox = AgentDesk(store, clock, CAL).inbox()
     tasks = {t["task"] for t in inbox["tasks"]}
-    assert {"placement:forge", "exam:mvcc"} <= tasks
+    assert {"placement:forge", f"exam:{M}"} <= tasks
     regions = {r["id"]: r for r in inbox["context"]["architect"]["regions"]}
-    mvcc = next(t for t in regions["data-depths"]["topics"] if t["id"] == "mvcc")
-    assert mvcc == {"id": "mvcc", "title": "MVCC", "note": MVCC, "words": 200,
+    mvcc = next(t for t in regions["data-depths"]["topics"] if t["id"] == M)
+    assert mvcc == {"id": M, "title": "MVCC and Isolation Levels", "note": MVCC, "words": 200,
                     "learned": True, "proved": False, "best": None}  # fmt: skip
 
 
@@ -200,15 +215,17 @@ def test_inbox_offers_placements_and_exams(store: SqlEventStore, clock: FakeCloc
 
 
 def test_architect_pages(client: TestClient, store: SqlEventStore, clock: FakeClock) -> None:
-    store.append(NoteWritten(clock.now(), "mvcc", 90))
+    store.append(NoteWritten(clock.now(), M, 90))
     page = client.get("/architect").text
     assert 'href="/architect" aria-current="page"' in page
-    assert "The Distributed Abyss" in page and "0 of 169 topics proved" in page
+    assert "The Distributed Abyss" in page and "0 of 82 topics proved" in page
     assert "Needs Data Depths, The API Citadel" in page
     region = client.get("/architect/data-depths").text
-    assert "90 / 150 words" in region
-    assert "obsidian://open?vault=Senior%20Backend%20Roadmap&amp;file=02%20-%20Databases" in region
-    assert "No vault note yet" in client.get("/architect/forge").text
+    assert "90 / 150 words in My notes" in region
+    assert (
+        "obsidian://open?vault=Senior%20Backend%20Roadmap&amp;file=02%20-%20Data%20Depths" in region
+    )
+    assert "you model and query PostgreSQL" in region
     assert client.get("/architect/nope").status_code == 404
 
 
@@ -246,4 +263,4 @@ def test_inbox_command_scans_the_vault_first(
     assert cli.agent_inbox([str(tmp_path / "inbox.json")]) == 0
     assert "Vault scanned: 1 note updated." in capsys.readouterr().out
     inbox = json.loads((tmp_path / "inbox.json").read_text(encoding="utf-8"))
-    assert "exam:mvcc" in {t["task"] for t in inbox["tasks"]}
+    assert f"exam:{M}" in {t["task"] for t in inbox["tasks"]}

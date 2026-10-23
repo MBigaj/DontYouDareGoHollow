@@ -1,9 +1,10 @@
 """The Architect track: eight skill regions built from the Obsidian roadmap vault, and the
 nine Lords of Design that need them.
 
-Each topic is one vault note. Notes that exist twice in the vault (retries, timeouts, rate
-limiting, Kafka, caching, TLS, load balancing, profiling) live in one region only. Service
-mesh, Azure and Google Cloud are left out for now.
+The curriculum is personal: it starts from three years of backend work (Python, FastAPI,
+PostgreSQL, MongoDB, RabbitMQ, Kubernetes, Docker, AWS) and keeps only what is left to earn,
+weighted towards distributed systems and architecture. Each topic is one note in the
+restructured vault (regions in numbered folders; the old notes live in Archive/).
 
 Gates (from the plan): Learn is your own writing in the note (checked by scanning the vault,
 pays a little, unlocks nothing); Prove is a Tech Lead exam at 80% or better, or a placement
@@ -33,8 +34,8 @@ class Topic:
     id: str
     title: str
     region: str
-    note: str | None
-    """Vault path, relative to the vault root; None for topics with no note yet."""
+    note: str
+    """Vault path, relative to the vault root."""
 
 
 @dataclass(frozen=True)
@@ -43,6 +44,8 @@ class SkillRegion:
     name: str
     covers: str
     build_boss: str
+    start: str
+    """Where you start in this region."""
     topics: tuple[Topic, ...]
 
 
@@ -61,171 +64,305 @@ def slug(text: str) -> str:
 
 
 def _region(
-    region_id: str,
-    name: str,
-    covers: str,
-    build: str,
-    notes: list[str],
-    extra: tuple[str, ...] = (),
+    region_id: str, name: str, covers: str, build: str, start: str, notes: tuple[str, ...]
 ) -> SkillRegion:
-    topics = [Topic(slug(n.rsplit("/", 1)[-1]), n.rsplit("/", 1)[-1], region_id, f"{n}.md")
-              for n in notes]  # fmt: skip
-    topics += [Topic(slug(title), title, region_id, None) for title in extra]
-    return SkillRegion(region_id, name, covers, build, tuple(topics))
+    topics = tuple(
+        Topic(slug(note.rsplit("/", 1)[-1].removesuffix(".md")), title, region_id, note)
+        for title, note in zip(TITLES[region_id], notes, strict=True)
+    )
+    return SkillRegion(region_id, name, covers, build, start, topics)
 
 
-BF, DB, DS, SD, AR, RP, CI, SE = (
-    "01 - Backend Fundamentals",
-    "02 - Databases & Data",
-    "03 - Distributed Systems",
-    "04 - System Design",
-    "05 - Architecture",
-    "06 - Reliability & Production",
-    "07 - Cloud & Infrastructure",
-    "08 - Security",
-)
-
-
-def _in(folder: str, *names: str) -> list[str]:
-    return [f"{folder}/{n}" for n in names]
-
+TITLES: dict[str, tuple[str, ...]] = {
+    "forge": (
+        "mypy --strict in Practice",
+        "asyncio Internals",
+        "Concurrency Choices: Threads, Processes, async",
+        "Profiling and Performance",
+        "Property-Based Testing",
+        "Test Architecture",
+        "Packaging and Tooling with uv",
+        "Python Memory Model",
+    ),
+    "data-depths": (
+        "MVCC and Isolation Levels",
+        "Locks, Deadlocks and Contention",
+        "Reading Query Plans",
+        "Index Design",
+        "Zero-Downtime Migrations",
+        "Replication and Read Replicas",
+        "Partitioning and Sharding",
+        "Caching Patterns and Invalidation",
+        "Redis Beyond Caching",
+        "PostgreSQL vs MongoDB Modelling",
+        "Connection Pooling Under Load",
+    ),
+    "api-citadel": (
+        "Idempotency Keys and Safe Retries",
+        "API Versioning and Evolution",
+        "Pagination at Scale",
+        "OAuth2 and OpenID Connect",
+        "Authorisation Models",
+        "OWASP API Security",
+        "Rate Limiting and Quotas",
+        "REST, gRPC and Async APIs",
+        "Secrets and Key Management",
+    ),
+    "async-ruins": (
+        "Delivery Guarantees",
+        "The Outbox Pattern",
+        "Idempotent Consumers",
+        "Retries, Backoff and Dead Letters",
+        "Backpressure and Flow Control",
+        "Kafka vs RabbitMQ",
+        "Event-Driven Design",
+        "Sagas and Long-Running Processes",
+    ),
+    "watchtower": (
+        "SLIs, SLOs and Error Budgets",
+        "Distributed Tracing with OpenTelemetry",
+        "Metrics That Matter",
+        "Structured Logging and Correlation",
+        "Alerting on Symptoms",
+        "Latency, Percentiles and Queueing",
+        "Load Testing and Capacity Planning",
+        "Incidents and Postmortems",
+        "Graceful Degradation and Failover",
+    ),
+    "iron-keep": (
+        "Terraform Fundamentals",
+        "Compute on AWS: Lambda, ECS and EKS",
+        "AWS Networking",
+        "IAM Done Right",
+        "Kubernetes Failure Modes",
+        "Autoscaling",
+        "Deployment Strategies",
+        "Cloud Cost Thinking",
+        "Managed Data Services",
+    ),
+    "undercroft": (
+        "TCP in Practice",
+        "TLS",
+        "DNS",
+        "HTTP/1.1, HTTP/2 and HTTP/3",
+        "Load Balancers and Proxies",
+        "Timeouts Across the Stack",
+        "Processes, Threads and File Descriptors",
+        "Memory and the OOM Killer",
+        "A Request, Hop by Hop",
+    ),
+    "distributed-abyss": (
+        "Why Distributed Systems Are Hard",
+        "Time, Clocks and Ordering",
+        "Consistency Models",
+        "CAP and PACELC",
+        "Replication Strategies",
+        "Consensus and Leader Election",
+        "Partitioning, Rebalancing and Hot Keys",
+        "Distributed Transactions",
+        "Failure Amplification",
+        "Resilience Patterns",
+        "Split Brain and Fencing",
+        "Exactly-Once, End to End",
+        "Monolith, Modular Monolith or Microservices",
+        "Service Boundaries and DDD",
+        "Hexagonal and Clean Architecture",
+        "CQRS and Event Sourcing",
+        "Migrations and the Strangler Fig",
+        "Capacity Estimation",
+        "Writing Decisions: ADRs and Trade-offs",
+    ),
+}  # fmt: skip
 
 REGIONS: tuple[SkillRegion, ...] = (
     _region(
-        "forge", "The Forge", "Python craft: testing, strict typing, packaging, internals",
-        "A fully tested and typed souls ledger",
-        _in(f"{BF}/03 - Python Internals", "CPython", "GIL", "Threads", "Multiprocessing",
-            "AsyncIO", "Event Loop", "Coroutines", "Generators", "Memory Management", "Profiling"),
-        extra=("Testing with pytest", "Strict Typing", "Packaging"),
+        "forge",
+        "The Forge",
+        "Python craft beyond everyday FastAPI work",
+        "A fully tested and typed souls ledger: mypy --strict, 90% coverage, Hypothesis",
+        "Mostly cleared: you ship typed, tested Python daily.",
+        (
+            "01 - The Forge/mypy --strict in Practice.md",
+            "01 - The Forge/asyncio Internals.md",
+            "01 - The Forge/Concurrency Choices - Threads, Processes, async.md",
+            "01 - The Forge/Profiling and Performance.md",
+            "01 - The Forge/Property-Based Testing.md",
+            "01 - The Forge/Test Architecture.md",
+            "01 - The Forge/Packaging and Tooling with uv.md",
+            "01 - The Forge/Python Memory Model.md",
+        ),
     ),
     _region(
-        "data-depths", "Data Depths", "PostgreSQL, Redis, data modelling, search and storage",
-        "A schema with a live Alembic migration, and a slow query fixed with EXPLAIN",
-        _in(f"{DB}/01 - PostgreSQL", "ACID", "Transactions", "Isolation Levels", "MVCC", "Locks",
-            "Deadlocks", "Indexes", "Composite Indexes", "EXPLAIN", "Query Planner",
-            "Data Modelling", "Replication", "Read Replicas", "Partitioning", "Sharding")
-        + _in(f"{DB}/02 - Redis", "Caching", "Data Structures", "Expiration", "Eviction Policies",
-              "Distributed Locks")
-        + _in(f"{DB}/03 - Other Data Systems", "Elasticsearch", "Object Storage")
-        + _in(f"{SD}/03 - Scalability", "Database Scaling")
-        + _in(f"{AR}/04 - Architecture Case Studies", "SQL vs NoSQL"),
+        "data-depths",
+        "Data Depths",
+        "PostgreSQL internals, data modelling at scale, caching",
+        "A schema with a zero-downtime Alembic migration, and a slow query fixed with EXPLAIN",
+        "Half cleared: you model and query PostgreSQL and MongoDB daily.",
+        (
+            "02 - Data Depths/MVCC and Isolation Levels.md",
+            "02 - Data Depths/Locks, Deadlocks and Contention.md",
+            "02 - Data Depths/Reading Query Plans.md",
+            "02 - Data Depths/Index Design.md",
+            "02 - Data Depths/Zero-Downtime Migrations.md",
+            "02 - Data Depths/Replication and Read Replicas.md",
+            "02 - Data Depths/Partitioning and Sharding.md",
+            "02 - Data Depths/Caching Patterns and Invalidation.md",
+            "02 - Data Depths/Redis Beyond Caching.md",
+            "02 - Data Depths/PostgreSQL vs MongoDB Modelling.md",
+            "02 - Data Depths/Connection Pooling Under Load.md",
+        ),
     ),
     _region(
-        "api-citadel", "The API Citadel", "API design and security",
-        "DontYouDareGoHollow's API with auth and a rate limiter",
-        _in(f"{SD}/02 - API Design", "REST API Design", "API Versioning", "Pagination",
-            "Idempotency Keys", "Rate Limiting")
-        + _in(f"{DS}/03 - Communication", "gRPC")
-        + _in(f"{AR}/04 - Architecture Case Studies", "REST vs gRPC")
-        + _in(f"{SE}/01 - Authentication", "Sessions", "JWT", "OAuth2")
-        + _in(f"{SE}/02 - Authorisation", "RBAC", "ABAC")
-        + _in(f"{SE}/03 - Cryptography", "Hashing", "Encryption")
-        + _in(f"{SE}/04 - Application Security", "Secure API Design", "OWASP Top 10",
-              "Secrets Management"),
+        "api-citadel",
+        "The API Citadel",
+        "API design, evolution and security",
+        "DontYouDareGoHollow's API with OAuth2, idempotency keys and a rate limiter",
+        "Mostly cleared: you build FastAPI services and led an RPC to API migration.",
+        (
+            "03 - The API Citadel/Idempotency Keys and Safe Retries.md",
+            "03 - The API Citadel/API Versioning and Evolution.md",
+            "03 - The API Citadel/Pagination at Scale.md",
+            "03 - The API Citadel/OAuth2 and OpenID Connect.md",
+            "03 - The API Citadel/Authorisation Models.md",
+            "03 - The API Citadel/OWASP API Security.md",
+            "03 - The API Citadel/Rate Limiting and Quotas.md",
+            "03 - The API Citadel/REST, gRPC and Async APIs.md",
+            "03 - The API Citadel/Secrets and Key Management.md",
+        ),
     ),
     _region(
-        "async-ruins", "The Async Ruins", "Queues, events, retries, dead letters, backpressure",
-        "Anki and GitHub sync on a queue that survives crashes",
-        _in(f"{DS}/03 - Communication", "Synchronous Communication", "Asynchronous Communication",
-            "Message Queues", "Event Streaming")
-        + _in(f"{DB}/03 - Other Data Systems", "RabbitMQ", "Kafka")
-        + _in(f"{SD}/04 - Messaging", "Queues", "Pub Sub")
-        + _in(f"{DS}/05 - Distributed Patterns", "Idempotency", "Dead Letter Queues",
-              "Backpressure")
-        + _in(f"{AR}/04 - Architecture Case Studies", "Kafka vs Message Queue",
-              "Synchronous vs Asynchronous"),
-        extra=("Outbox Pattern",),
+        "async-ruins",
+        "The Async Ruins",
+        "Messaging, delivery guarantees and event-driven design",
+        "Anki and GitHub sync moved onto a queue with an outbox, surviving crashes",
+        "Half cleared: RabbitMQ is daily work; the guarantees and patterns are the gap.",
+        (
+            "04 - The Async Ruins/Delivery Guarantees.md",
+            "04 - The Async Ruins/The Outbox Pattern.md",
+            "04 - The Async Ruins/Idempotent Consumers.md",
+            "04 - The Async Ruins/Retries, Backoff and Dead Letters.md",
+            "04 - The Async Ruins/Backpressure and Flow Control.md",
+            "04 - The Async Ruins/Kafka vs RabbitMQ.md",
+            "04 - The Async Ruins/Event-Driven Design.md",
+            "04 - The Async Ruins/Sagas and Long-Running Processes.md",
+        ),
     ),
     _region(
-        "watchtower", "The Watchtower", "Observability, SLOs, performance, resilience, incidents",
-        "Dashboards and alerts, plus a postmortem of a deliberate outage",
-        _in(f"{RP}/01 - Observability", "Logs", "Metrics", "Distributed Tracing", "OpenTelemetry",
-            "Prometheus", "Grafana")
-        + _in(f"{RP}/02 - SRE", "SLI", "SLO", "SLA", "Error Budgets")
-        + _in(f"{RP}/04 - Performance", "Latency", "Throughput", "Benchmarking")
-        + _in(f"{RP}/03 - Resilience", "High Availability", "Failover", "Graceful Degradation",
-              "Disaster Recovery")
-        + _in(f"{RP}/05 - Incidents", "Incident Response", "Root Cause Analysis", "Postmortems"),
+        "watchtower",
+        "The Watchtower",
+        "Observability, SLOs, performance and incidents",
+        "Dashboards, burn-rate alerts and a postmortem of a deliberate outage",
+        "Partly cleared: you use dashboards and logs; SLOs and tracing are the gap.",
+        (
+            "05 - The Watchtower/SLIs, SLOs and Error Budgets.md",
+            "05 - The Watchtower/Distributed Tracing with OpenTelemetry.md",
+            "05 - The Watchtower/Metrics That Matter.md",
+            "05 - The Watchtower/Structured Logging and Correlation.md",
+            "05 - The Watchtower/Alerting on Symptoms.md",
+            "05 - The Watchtower/Latency, Percentiles and Queueing.md",
+            "05 - The Watchtower/Load Testing and Capacity Planning.md",
+            "05 - The Watchtower/Incidents and Postmortems.md",
+            "05 - The Watchtower/Graceful Degradation and Failover.md",
+        ),
     ),
     _region(
-        "iron-keep", "The Iron Keep", "Docker, Kubernetes, Terraform, AWS",
-        "DontYouDareGoHollow deployed with infrastructure as code",
-        _in(f"{CI}/01 - Docker", "Docker", "Docker Images", "Docker Containers",
-            "Docker Networking", "Docker Volumes")
-        + _in(f"{CI}/02 - Kubernetes", "Kubernetes", "Scheduling", "Services", "Networking",
-              "Ingress", "Autoscaling", "Failure Modes")
-        + _in(f"{CI}/05 - Infrastructure as Code", "Terraform")
-        + _in(f"{CI}/06 - Cloud Architecture", "AWS", "Cloud IAM", "Cloud Networking",
-              "Cloud Storage", "Managed Databases", "Cloud Cost Management"),
+        "iron-keep",
+        "The Iron Keep",
+        "AWS architecture, infrastructure as code and Kubernetes in production",
+        "DontYouDareGoHollow deployed with Terraform",
+        "Mostly cleared: Docker and Kubernetes are daily; Terraform and AWS depth are the gap.",
+        (
+            "06 - The Iron Keep/Terraform Fundamentals.md",
+            "06 - The Iron Keep/Compute on AWS - Lambda, ECS and EKS.md",
+            "06 - The Iron Keep/AWS Networking.md",
+            "06 - The Iron Keep/IAM Done Right.md",
+            "06 - The Iron Keep/Kubernetes Failure Modes.md",
+            "06 - The Iron Keep/Autoscaling.md",
+            "06 - The Iron Keep/Deployment Strategies.md",
+            "06 - The Iron Keep/Cloud Cost Thinking.md",
+            "06 - The Iron Keep/Managed Data Services.md",
+        ),
     ),
     _region(
-        "undercroft", "The Undercroft", "Networking and Linux",
+        "undercroft",
+        "The Undercroft",
+        "Networking and Linux, deep enough to reason about latency and failure",
         "One request traced from DNS to a Python handler, every hop explained",
-        _in(f"{BF}/01 - Networking", "TCP vs UDP", "IP Addressing", "DNS", "HTTP",
-            "HTTP 1.1 vs HTTP 2 vs HTTP 3", "TLS", "NAT", "Reverse Proxies", "Load Balancing",
-            "Connection Pooling")
-        + _in(f"{CI}/04 - Load Balancing", "L4 vs L7", "Load Balancing Algorithms",
-              "Health Checks")
-        + _in(f"{BF}/02 - Linux & Operating Systems", "Processes", "Threads", "CPU Scheduling",
-              "Memory", "Virtual Memory", "File Descriptors", "System Calls", "Sockets"),
+        "Fresh: enough depth to explain every hop of a request.",
+        (
+            "07 - The Undercroft/TCP in Practice.md",
+            "07 - The Undercroft/TLS.md",
+            "07 - The Undercroft/DNS.md",
+            "07 - The Undercroft/HTTP1.1, HTTP2 and HTTP3.md",
+            "07 - The Undercroft/Load Balancers and Proxies.md",
+            "07 - The Undercroft/Timeouts Across the Stack.md",
+            "07 - The Undercroft/Processes, Threads and File Descriptors.md",
+            "07 - The Undercroft/Memory and the OOM Killer.md",
+            "07 - The Undercroft/A Request, Hop by Hop.md",
+        ),
     ),
     _region(
-        "distributed-abyss", "The Distributed Abyss",
-        "Consistency, failure, scaling and architecture styles",
-        "The consistency choices of a tier 3 design, explained and defended",
-        _in(f"{DS}/01 - Core Concepts", "What is a Distributed System", "Partial Failures",
-            "Network Partitions", "Time in Distributed Systems", "CAP Theorem")
-        + _in(f"{DS}/02 - Consistency", "Strong Consistency", "Eventual Consistency",
-              "Read After Write", "Causal Consistency")
-        + _in(f"{DS}/04 - Failure", "Timeouts", "Retries", "Retry Storms", "Thundering Herd",
-              "Cascading Failures", "Split Brain")
-        + _in(f"{DS}/05 - Distributed Patterns", "Circuit Breaker", "Bulkhead", "Load Shedding")
-        + _in(f"{SD}/01 - Fundamentals", "Requirements Gathering", "Functional Requirements",
-              "Non Functional Requirements", "Capacity Estimation", "Trade Offs")
-        + _in(f"{SD}/03 - Scalability", "Vertical Scaling", "Horizontal Scaling",
-              "Stateless Services")
-        + _in(f"{AR}/01 - Architectural Styles", "Monolith", "Modular Monolith", "Microservices",
-              "Event Driven Architecture", "CQRS", "Event Sourcing")
-        + _in(f"{AR}/02 - Microservices", "Service Boundaries", "API Gateway",
-              "Service Discovery", "Distributed Transactions")
-        + _in(f"{AR}/03 - Architecture Patterns", "Hexagonal Architecture", "Clean Architecture",
-              "Saga Pattern", "Strangler Pattern")
-        + _in(f"{AR}/04 - Architecture Case Studies", "Monolith vs Microservices"),
+        "distributed-abyss",
+        "The Distributed Abyss",
+        "Distributed systems depth and architecture reasoning: the main gap",
+        "The consistency choices of a tier 3 design, explained and defended in writing",
+        "Fresh: this is the gap between associate and senior.",
+        (
+            "08 - The Distributed Abyss/Why Distributed Systems Are Hard.md",
+            "08 - The Distributed Abyss/Time, Clocks and Ordering.md",
+            "08 - The Distributed Abyss/Consistency Models.md",
+            "08 - The Distributed Abyss/CAP and PACELC.md",
+            "08 - The Distributed Abyss/Replication Strategies.md",
+            "08 - The Distributed Abyss/Consensus and Leader Election.md",
+            "08 - The Distributed Abyss/Partitioning, Rebalancing and Hot Keys.md",
+            "08 - The Distributed Abyss/Distributed Transactions.md",
+            "08 - The Distributed Abyss/Failure Amplification.md",
+            "08 - The Distributed Abyss/Resilience Patterns.md",
+            "08 - The Distributed Abyss/Split Brain and Fencing.md",
+            "08 - The Distributed Abyss/Exactly-Once, End to End.md",
+            "08 - The Distributed Abyss/Monolith, Modular Monolith or Microservices.md",
+            "08 - The Distributed Abyss/Service Boundaries and DDD.md",
+            "08 - The Distributed Abyss/Hexagonal and Clean Architecture.md",
+            "08 - The Distributed Abyss/CQRS and Event Sourcing.md",
+            "08 - The Distributed Abyss/Migrations and the Strangler Fig.md",
+            "08 - The Distributed Abyss/Capacity Estimation.md",
+            "08 - The Distributed Abyss/Writing Decisions - ADRs and Trade-offs.md",
+        ),
     ),
 )  # fmt: skip
 
-LORDS: tuple[Lord, ...] = tuple(
-    Lord(slug(name), name, tier, regions, forces,
-         f"{note}.md" if note.startswith("04 - ") else f"11 - System Design Practice/{note}.md")
-    for name, tier, regions, forces, note in (
-        ("URL Shortener", 1, ("data-depths", "api-citadel"),
-         "Estimation, key generation, read-heavy caching", "01 - Beginner/URL Shortener"),
-        ("Rate Limiter", 1, ("data-depths",),
-         "Algorithms, distributed counters, accepting inaccuracy", "01 - Beginner/Rate Limiter"),
-        ("File Upload", 1, ("api-citadel",),
-         "Object storage, presigned URLs, async processing", "01 - Beginner/File Upload"),
-        ("Notification System", 2, ("async-ruins",),
-         "Fan-out, retries, DLQs, delivery guarantees", "02 - Intermediate/Notification System"),
-        ("Payment System", 2, ("async-ruins", "data-depths"),
-         "Idempotency, transactions, sagas, reconciliation", "02 - Intermediate/Payment System"),
-        ("Search System", 2, ("data-depths",),
-         "Indexing pipelines, Elasticsearch, consistency lag", "02 - Intermediate/Search System"),
-        ("Social Feed", 3, ("distributed-abyss",),
+ALL_REGIONS = tuple(r.id for r in REGIONS)
+LORDS: tuple[Lord, ...] = (
+    Lord("url-shortener", "URL Shortener", 1, ("data-depths", "api-citadel"),
+         "Estimation, key generation, read-heavy caching",
+         "09 - Lords of Design/URL Shortener.md"),
+    Lord("rate-limiter", "Rate Limiter", 1, ("data-depths",),
+         "Algorithms, distributed counters, accepting inaccuracy",
+         "09 - Lords of Design/Rate Limiter.md"),
+    Lord("file-upload", "File Upload", 1, ("api-citadel",),
+         "Object storage, presigned URLs, async processing",
+         "09 - Lords of Design/File Upload.md"),
+    Lord("notification-system", "Notification System", 2, ("async-ruins",),
+         "Fan-out, retries, DLQs, delivery guarantees",
+         "09 - Lords of Design/Notification System.md"),
+    Lord("payment-system", "Payment System", 2, ("async-ruins", "data-depths"),
+         "Idempotency, transactions, sagas, reconciliation",
+         "09 - Lords of Design/Payment System.md"),
+    Lord("search-system", "Search System", 2, ("data-depths",),
+         "Indexing pipelines, Elasticsearch, consistency lag",
+         "09 - Lords of Design/Search System.md"),
+    Lord("social-feed", "Social Feed", 3, ("distributed-abyss",),
          "Fan-out on write vs read, caching at scale",
-         "04 - System Design/05 - Design Exercises/Social Media Feed"),
-        ("Large E-commerce", 3, tuple(r.id for r in REGIONS),
+         "09 - Lords of Design/Social Feed.md"),
+    Lord("large-e-commerce", "Large E-commerce", 3, ALL_REGIONS,
          "Service boundaries, inventory consistency, peak traffic",
-         "03 - Advanced/Large Scale E-commerce"),
-        ("Uber- or Netflix-like Platform", 3, tuple(r.id for r in REGIONS),
-         "Geo data or streaming, multi-region, cost", "03 - Advanced/Uber-like Platform"),
-    )
+         "09 - Lords of Design/Large E-commerce.md"),
+    Lord("uber-or-netflix-like-platform", "Uber- or Netflix-like Platform", 3, ALL_REGIONS,
+         "Geo data or streaming, multi-region, cost",
+         "09 - Lords of Design/Uber- or Netflix-like Platform.md"),
 )  # fmt: skip
 
-TOPICS: dict[str, Topic] = {}
-for _r in REGIONS:
-    for _t in _r.topics:
-        key = _t.id if _t.id not in TOPICS else f"{_r.id}-{_t.id}"
-        TOPICS[key] = Topic(key, _t.title, _t.region, _t.note)
+TOPICS: dict[str, Topic] = {t.id: t for r in REGIONS for t in r.topics}
 REGION_BY_ID = {r.id: r for r in REGIONS}
 
 

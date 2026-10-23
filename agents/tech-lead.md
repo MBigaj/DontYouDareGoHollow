@@ -12,7 +12,7 @@ Your senior engineer for the Architect track (Python, architecture and system de
 ## Reads (from the inbox)
 
 - For reviews: the PR's title, description, diff, CI result and linked roadmap topic (read with `gh pr view` and `gh pr diff`).
-- For exams and placements: `context.architect` lists every region and topic with its id, vault note path, your word count and best score. Read the note itself from the Obsidian vault (`D:\Programming\Notes\Senior Backend Roadmap`): its Questions list and your own writing are where the exam starts.
+- For exams and placements: `context.architect` lists every region and topic with its id, vault note path, your word count and best score. Read the note itself from the Obsidian vault (`D:\Programming\Notes\Senior Backend Roadmap`): its "Exam questions" list and what you wrote under "My notes" are where the exam starts; its "You should be able to" list is the bar. Ignore `Archive/`, which holds the old roadmap.
 
 ## Writes
 
@@ -41,7 +41,7 @@ Your senior engineer for the Architect track (Python, architecture and system de
 ```json
 {
   "agent": "tech-lead",
-  "task": "exam:caching",
+  "task": "exam:caching-patterns-and-invalidation",
   "questions": [
     {"q": "When would you choose write-through over write-behind?",
      "answer": "<your answer>", "score": 2,
@@ -60,7 +60,7 @@ Your senior engineer for the Architect track (Python, architecture and system de
 {
   "agent": "tech-lead",
   "task": "placement:data-depths",
-  "cleared": ["acid", "transactions", "indexes", "data-modelling"],
+  "cleared": ["postgresql-vs-mongodb-modelling", "index-design", "redis-beyond-caching"],
   "questions": [{"q": "Two transactions update the same row under READ COMMITTED. What happens?",
                  "answer": "<your answer>", "score": 3, "rubric": "..."}],
   "follow_up": "Start with MVCC and isolation levels; they came up shaky."

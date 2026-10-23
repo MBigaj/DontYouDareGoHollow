@@ -114,11 +114,11 @@ Each level adds 1 damage up to a boss's recommended level (+2 for the Warden) an
 
 ## Architect track
 
-The Architect's half of the game (`/architect`) is built from the Obsidian roadmap vault: eight skill regions (the Forge, Data Depths, the API Citadel, the Async Ruins, the Watchtower, the Iron Keep, the Undercroft and the Distributed Abyss) holding 169 topics, one vault note each, with duplicates merged. The nine Lords of Design wait behind them: each opens once its regions are 80% proved.
+The Architect's half of the game (`/architect`) is built from the Obsidian roadmap vault: eight skill regions (the Forge, Data Depths, the API Citadel, the Async Ruins, the Watchtower, the Iron Keep, the Undercroft and the Distributed Abyss) holding 82 topics, one vault note each. The vault was restructured around what you already do (Python, FastAPI, PostgreSQL, MongoDB, Redis, AWS): basics you use daily are gone, and weight sits on the senior gaps, with the Distributed Abyss the largest region. Each region opens with a "Where you start" note, and each topic note has why it matters, what you should be able to do, exam questions and a *My notes* section. Lords of Design, Echoes (your own past systems to redesign) and Trade-off Duels have notes too. The old roadmap sits untouched in `Archive/`. The nine Lords of Design wait behind them: each opens once its regions are 80% proved.
 
 | Gate | How it is checked | Pays |
 | --- | --- | --- |
-| Learn | 150 words of your own in the topic's vault note; the scan ignores the template text every note starts with | 30 souls, once |
+| Learn | 150 words of your own under *My notes* in the topic's vault note; nothing else in the note counts | 30 souls, once |
 | Prove | A Tech Lead exam at 80% or better, or a region's placement trial | 120 souls, once (placement: none) |
 | Build | CI-checked challenges | coming later |
 

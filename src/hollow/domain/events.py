@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
+from typing import Any
 from uuid import UUID, uuid4
 
 from hollow.domain.activities import ActivityKind
@@ -94,6 +95,8 @@ class LessonCompleted:
     correct: int
     total: int
     id: UUID = field(default_factory=uuid4)
+    missed: tuple[str, ...] = ()
+    """Written forms of the verbs answered wrong, so agents can target weak spots."""
 
     def __post_init__(self) -> None:
         if not 0 <= self.correct <= self.total or self.total <= 0:
@@ -199,6 +202,25 @@ class WeaponEquipped:
     id: UUID = field(default_factory=uuid4)
 
 
+@dataclass(frozen=True)
+class AgentResult:
+    """What an agent (Claude, in a session) returned, after the app validated it.
+
+    The payload is the agent's JSON as the playbook in agents/ defines it. Agents never
+    award anything: the game reads these and applies its own rules.
+    """
+
+    occurred_at: datetime
+    agent: str
+    task: str
+    payload: dict[str, Any]
+    id: UUID = field(default_factory=uuid4)
+
+    def __post_init__(self) -> None:
+        if self.occurred_at.tzinfo is None:
+            raise ValueError("occurred_at must be timezone-aware")
+
+
 Event = (
     StudyLogged
     | MessageLeft
@@ -211,4 +233,5 @@ Event = (
     | WeaponBought
     | WeaponUpgraded
     | WeaponEquipped
+    | AgentResult
 )

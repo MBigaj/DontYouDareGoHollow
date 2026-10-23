@@ -41,6 +41,7 @@ from hollow.domain.progression import (
     max_hp,
     mistake_cost,
 )
+from hollow.domain.quests import QuestStatus, evaluate, issued, verdicts
 
 MAX_HOLLOWING = 5
 EFFIGIES_PER_WEEK = 2
@@ -96,6 +97,8 @@ class WorldState:
     bosses: dict[str, BossRecord]
     today_boss_souls: int
     armory: Armory
+    quests: tuple[QuestStatus, ...]
+    """Today's quests and whether each is done."""
 
     @property
     def lessons_due(self) -> int:
@@ -197,6 +200,23 @@ def replay(
         if outcome.passed and outcome.run is not LessonRun.PRACTICE:
             lessons_cleared_by_day[outcome.day] += 1
 
+    judged = verdicts(events)
+    quests_today: list[QuestStatus] = []
+    for quest_day, quests in issued(events).items():
+        if quest_day > today:
+            continue
+        day_attempts = [a for r in bosses.values() for a in r.attempts if a.started_on == quest_day]
+        statuses = evaluate(
+            quests,
+            totals_by_day.get(quest_day, {}),
+            [o for o in outcomes if o.day == quest_day],
+            day_attempts,
+            judged,
+        )
+        souls_by_day[quest_day] += sum(s.bonus for s in statuses)
+        if quest_day == today:
+            quests_today = statuses
+
     souls = 0
     bloodstain: Bloodstain | None = None
     hollowing = 0
@@ -270,6 +290,7 @@ def replay(
         bosses=bosses,
         today_boss_souls=today_boss_souls,
         armory=armory,
+        quests=tuple(quests_today),
     )
 
 

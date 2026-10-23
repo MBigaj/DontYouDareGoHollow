@@ -141,6 +141,8 @@ class Beat(StrEnum):
 @dataclass(frozen=True)
 class Attempt:
     id: UUID
+    boss_id: str
+    started_on: date
     number: int
     seed: int
     phase: int
@@ -173,12 +175,24 @@ class Reward:
     lights: bool = False
 
 
+@dataclass(frozen=True)
+class TurnLog:
+    """One answered turn: enough to rebuild the question that was asked."""
+
+    at: datetime
+    seed: int
+    phase: int
+    turn: int
+    correct: bool
+
+
 @dataclass
 class BossRecord:
     boss: Boss
     attempts: list[Attempt] = field(default_factory=list)
     rewards: list[Reward] = field(default_factory=list)
     defeated_at: datetime | None = None
+    log: list[TurnLog] = field(default_factory=list)
 
     @property
     def current(self) -> Attempt | None:
@@ -211,12 +225,14 @@ def phase_hp(boss: Boss, phase: int, wound: float) -> int:
     return max(DAMAGE, round(boss.phases[phase].hp * wound))
 
 
-def start(record: BossRecord, event: FightStarted) -> Attempt:
+def start(record: BossRecord, event: FightStarted, day: date) -> Attempt:
     wound = record.next_wound
     phase = record.furthest_phase if not record.defeated else 0
     hp = phase_hp(record.boss, phase, wound)
     return Attempt(
         id=event.id,
+        boss_id=record.boss.id,
+        started_on=day,
         number=len([a for a in record.attempts if a.outcome is not Outcome.ABANDONED]) + 1,
         seed=event.seed,
         phase=phase,
@@ -278,7 +294,7 @@ def track(events: Iterable[Event], calendar: GameCalendar, today: date) -> dict[
                 continue
             if record.current is not None:
                 record.attempts[-1] = replace(record.attempts[-1], outcome=Outcome.ABANDONED)
-            record.attempts.append(start(record, event))
+            record.attempts.append(start(record, event, day))
             by_attempt[event.id] = event.boss_id
             continue
         boss_id = by_attempt.get(event.attempt_id)
@@ -289,6 +305,12 @@ def track(events: Iterable[Event], calendar: GameCalendar, today: date) -> dict[
         if current is None or current.id != event.attempt_id:
             continue
         first_win = not record.defeated
+        if event.action is FightAction.ANSWER:
+            record.log.append(
+                TurnLog(
+                    event.occurred_at, current.seed, current.phase, current.turns, event.correct
+                )
+            )
         after = play(record.boss, current, event)
         record.attempts[-1] = after
         if after.hits > current.hits:

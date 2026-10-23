@@ -14,6 +14,8 @@
       <h2 class="map-title">{{ r.name }}</h2>
       <div lang="ja" class="map-jp">{{ ja(r.jp, r.jp_kana) }}</div>
       <p>{{ r.blurb }}</p>
+      {% set text = lore().get('region:' + r.id) %}
+      {% if text %}<details class="lore"><summary lang="ja">{{ with_readings(text.ja, text.readings) }}</summary><span class="muted">{{ text.en }}</span></details>{% endif %}
       <table>
         <tr><td>Words</td><td>{{ r.cards }}</td></tr>
         <tr><td>Grammar</td><td>{{ r.topics }}</td></tr>

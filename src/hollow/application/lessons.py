@@ -124,13 +124,15 @@ class LessonService:
         """Records the run once, and rolls for titanite. Returns the outcome and any drop."""
         if len(answers) != len(run.questions):
             raise LessonError("Answer every question before finishing.")
-        correct = sum(grade(run.questions, answers))
+        marks = grade(run.questions, answers)
+        correct = sum(marks)
         event = LessonCompleted(
             self._clock.now(),
             run.spec.id,
             correct,
             len(run.questions),
             id=uuid5(RUNS_NAMESPACE, str(run.id)),
+            missed=tuple(q.written for q, ok in zip(run.questions, marks, strict=True) if not ok),
         )
         before = self.state()
         source = f"lesson:{event.id}"

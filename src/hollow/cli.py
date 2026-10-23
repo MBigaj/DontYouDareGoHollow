@@ -1,12 +1,15 @@
 """Command-line entry points. `uv run hollow-sync-anki` can run from a scheduled task."""
 
+import json
 import sys
 import time
 from datetime import timedelta
+from pathlib import Path
 
 from hollow.adapters.anki_connect import connect
 from hollow.adapters.db.store import SqlEventStore, make_engine
 from hollow.adapters.github_api import GitHubApi
+from hollow.application.agents import AgentDesk, AgentError
 from hollow.application.anki_sync import AnkiSync, AnkiUnavailable
 from hollow.application.github_sync import GitHubSync, GitHubUnavailable
 from hollow.application.ports import SystemClock
@@ -83,4 +86,42 @@ def sync_github() -> int:
     print(f"Imported {result.merged} merged pull requests from GitHub.")
     if result.waiting:
         print(f"{result.waiting} merged pull requests are still waiting for CI.")
+    return 0
+
+
+def _desk() -> AgentDesk:
+    settings = Settings()
+    return AgentDesk(
+        SqlEventStore(make_engine(settings.database_url)), SystemClock(), settings.calendar()
+    )
+
+
+def agent_inbox(argv: list[str] | None = None) -> int:
+    """Writes the agents' inbox (agents/inbox/<day>.json) and lists its tasks."""
+    args = sys.argv[1:] if argv is None else argv
+    inbox = _desk().inbox()
+    path = Path(args[0]) if args else Path("agents") / "inbox" / f"{inbox['today']}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(inbox, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"Inbox written to {path}")
+    if not inbox["tasks"]:
+        print("Nothing is waiting for an agent.")
+    for task in inbox["tasks"]:
+        print(f"- {task['agent']}: {task['task']} · {task['do']}")
+    return 0
+
+
+def agent_submit(argv: list[str] | None = None) -> int:
+    """Validates an agent result file and saves it, or explains why it was rejected."""
+    args = sys.argv[1:] if argv is None else argv
+    if len(args) != 1:
+        print("Usage: hollow-agent-submit <result.json>", file=sys.stderr)
+        return 2
+    try:
+        saved = _desk().submit(Path(args[0]).read_text(encoding="utf-8"))
+    except (OSError, AgentError) as error:
+        print(f"Rejected: {error}", file=sys.stderr)
+        return 1
+    for event in saved:
+        print(f"Saved {event.agent} result for {event.task}.")
     return 0

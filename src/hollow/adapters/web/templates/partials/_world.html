@@ -90,6 +90,27 @@
     </div>
   </section>
 
+  <section class="panel" aria-label="Today's quests">
+    <h2 class="label">Today's quests · from the Quest Master</h2>
+    {% if state.quests %}
+    <ul class="quests">
+      {% for s in state.quests %}
+      <li class="quest {{ 'done' if s.done }}">
+        <span class="tick" aria-hidden="true">{{ '✓' if s.done else '○' }}</span>
+        <div>
+          <div><strong>{{ s.quest.title }}</strong>{% if s.quest.roulette %} <span class="chip">Roulette</span>{% endif %}</div>
+          {% if s.quest.why %}<div class="muted" style="font-size: 13px">{{ s.quest.why }}</div>{% endif %}
+          {% if s.quest.judged and not s.done %}<div style="font-size: 13px">Write it in your next Claude session; the {{ s.quest.check.get('judge', 'sensei') | replace('-', ' ') | title }} judges it.</div>{% endif %}
+        </div>
+        <span class="quest-bonus">{% if s.done %}+{{ s.bonus }}{% else %}+{{ [s.quest.bonus, 100] | min }}{% endif %}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted" style="margin: 6px 0 0">No quests yet today. Ask Claude for an agent round and the Quest Master will set 2 or 3.</p>
+    {% endif %}
+  </section>
+
   <a class="panel charlink" href="/lessons">
     <img src="{{ asset('sprites/item_tome.png') }}" alt="" width="36" height="36">
     <span><strong>Lessons</strong>

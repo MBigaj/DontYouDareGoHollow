@@ -329,3 +329,17 @@ td:last-child { text-align: right; color: var(--ember-hi); }
 .weapon-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
 .weapon-actions form { margin: 0; }
 .skill { font-size: 13px; color: var(--gold); }
+
+/* ---- agents ---- */
+.quests { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.quest { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 10px; align-items: start; }
+.quest .tick { color: var(--ink-3); font-weight: 700; }
+.quest.done .tick { color: var(--gold); }
+.quest.done strong { text-decoration: line-through; text-decoration-color: var(--ink-3); }
+.quest-bonus { color: var(--ember-hi); white-space: nowrap; }
+.lore { margin-top: 4px; font-size: 14px; }
+.lore summary { cursor: pointer; list-style: none; }
+.lore summary::-webkit-details-marker { display: none; }
+.lore[open] summary { margin-bottom: 4px; }
+.journal-head { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.journal-entry ul { margin: 6px 0; padding-left: 20px; }

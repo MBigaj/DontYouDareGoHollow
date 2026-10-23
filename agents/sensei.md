@@ -38,9 +38,11 @@ Your Japanese conversation partner and examiner. Speaks only Japanese you know, 
 
 ## Judged quests
 
+The player writes their answer in the chat. Put it in `submission` so the Journal keeps it.
+
 ```json
 {"agent": "sensei", "task": "quest:2026-10-24-r", "passed": false,
- "score": 0.66, "corrections": [{"wrote": "飲むでください", "better": "飲んでください", "why": "む becomes んで."}]}
+ "score": 0.66, "submission": "水を飲むでください。…", "corrections": [{"wrote": "飲むでください", "better": "飲んでください", "why": "む becomes んで."}]}
 ```
 
 ## Rules

@@ -23,16 +23,29 @@ When you open a session and ask for an "agent round" (or when a task needs one, 
 4. Hands the results back to the app and tells you what was done, in a few lines.
 5. Never invents data the inbox does not give. If something is missing (Anki closed, no PRs), it says so and skips that task.
 
-### The handoff (to build next)
+### The handoff
 
-These commands are the app side of the protocol. They do not exist yet; the playbooks are written against them.
+Two commands, run in the repo folder against the game's database:
 
 ```
 uv run hollow-agent-inbox               # writes agents/inbox/<date>.json: pending tasks + context
-uv run hollow-agent-submit <file.json>  # validates a result and applies it, or explains the rejection
+uv run hollow-agent-submit <file.json>  # validates one result and saves it, or explains the rejection
 ```
 
-`agents/inbox/` and `agents/outbox/` are local working folders and are not committed. Until the commands exist, a session can still run an agent by hand (for example, a free conversation with the Sensei), but nothing it produces is saved to the game.
+- The inbox's `tasks` say what is waiting: today's quests, judged quests, lore to write, PRs to review. Its `context` has your known words, weak verbs (missed in lessons and fights over 14 days), lessons and refreshers, Anki over 7 days, boss state and today's totals.
+- Write each result to `agents/outbox/<agent>-<task>.json` and submit it. A rejected result changes nothing; fix it and submit again.
+- `agents/inbox/` and `agents/outbox/` are local working folders and are not committed.
+
+What the game does with results:
+
+| Agent | Saved as | The game then |
+| --- | --- | --- |
+| Quest Master | Today's quests (once per day) | Shows them on the bonfire, checks them by code, pays at most 100 souls each and 250 a day |
+| Sensei | A verdict on a judged quest | Marks the quest done when passed; corrections go to the Journal |
+| Lorekeeper | One text per target | Shows it on the weapon, titanite or region, with reading tooltips |
+| Tech Lead | A review or an exam | Lists it in the Journal (`/journal`) |
+
+Not saved yet: the Warden's phase 3 (the boss has two phases so far) and free conversation, which is practice only.
 
 ## Shared rules for every agent
 

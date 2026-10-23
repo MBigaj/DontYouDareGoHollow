@@ -81,9 +81,9 @@ Lessons are short typed drills. The first set covers the て-form, one lesson pe
 
 ## Maps
 
-`/map` is the world map: the six Japanese regions along one road, from Firelink Shrine to the Kiln. Firelink Shrine is open; the others are in the fog until the boss before them falls.
+`/map` has two roads; pick one at the top and the map remembers it. The Ronin road is the six Japanese regions, from Firelink Shrine to the Kiln, in ember and bone. The Architect road is the eight backend regions, from the Forge to the Distributed Abyss, in cold steel and soul cyan, with the Lords of Design listed beside it. On both, a region is open once the boss before it falls; the rest are in the fog.
 
-`/map/firelink` is the first region: the bonfire, one rune stone per て-form lesson and the Warden's fog gate. Click a place, or use the arrow keys, and the knight walks there; Enter (or clicking the place you stand on) opens it. Stones glow gold once cleared and flicker when a refresher is due. The map remembers where you stopped.
+`/map/firelink` is the first region: the bonfire, one rune stone per て-form lesson and the Warden's fog gate. Click a place, or use the arrow keys, and the knight walks there; Enter (or clicking the place you stand on) opens it. Stones glow gold once cleared and flicker when a refresher is due. The map remembers where you stopped. `/map/architect/forge` is the Forge: its bonfire, one iron obelisk per step and the Golem's gate.
 
 The region art is placeholder pixel art from `tools/sprites/region_firelink.py`, drawn on the same grid as the points in `hollow.domain.atlas`.
 
@@ -114,21 +114,15 @@ Each level adds 1 damage up to a boss's recommended level (+2 for the Warden) an
 
 ## Architect track
 
-The Architect's half of the game (`/architect`) is built from the Obsidian roadmap vault: eight skill regions (the Forge, Data Depths, the API Citadel, the Async Ruins, the Watchtower, the Iron Keep, the Undercroft and the Distributed Abyss) holding 82 topics, one vault note each. The vault was restructured around what you already do (Python, FastAPI, PostgreSQL, MongoDB, Redis, AWS): basics you use daily are gone, and weight sits on the senior gaps, with the Distributed Abyss the largest region. Each region opens with a "Where you start" note, and each topic note has why it matters, what you should be able to do, exam questions and a *My notes* section. Lords of Design, Echoes (your own past systems to redesign) and Trade-off Duels have notes too. The old roadmap sits untouched in `Archive/`. The nine Lords of Design wait behind them: each opens once its regions are 80% proved.
+The Architect's road is the senior backend roadmap, played like the Japanese one. Every step lives in this repo as Markdown, one file each, under [`src/hollow/curriculum/architect`](src/hollow/curriculum/architect/README.md): eight skill regions (the Forge, Data Depths, the API Citadel, the Async Ruins, the Watchtower, the Iron Keep, the Undercroft and the Distributed Abyss) holding 82 steps. The roadmap starts from what you already do (Python, FastAPI, PostgreSQL, MongoDB, RabbitMQ, Kubernetes, AWS), so everyday basics are left out and the weight sits on the senior gaps. The Distributed Abyss is the largest region. Edit a step file and the game changes with it; `tests/test_architect.py` checks that every file still parses.
 
-| Gate | How it is checked | Pays |
+| Step | How it is checked | Pays |
 | --- | --- | --- |
-| Learn | 150 words of your own under *My notes* in the topic's vault note; nothing else in the note counts | 30 souls, once |
-| Prove | A Tech Lead exam at 80% or better, or a region's placement trial | 120 souls, once (placement: none) |
+| Lesson and quiz | Read the step, then pass its quiz at 80% (an `arch:<step>` lesson run) | Like a Japanese lesson: 5 souls per right answer, refreshers after 1, 3, 7, 21 and 60 days |
+| Prove (optional) | A Tech Lead exam at 80% or better, or a region's placement trial | 120 souls, once (placement: none) |
 | Build | CI-checked challenges | coming later |
 
-Point the game at the vault in `.env`, and every sync scans it (in the background, or before `hollow-agent-inbox`):
-
-```
-HOLLOW_VAULT_PATH=D:/Programming/Notes/Senior Backend Roadmap
-```
-
-Learning and proving both light the bonfire and feed the Architect job.
+Clearing a step lights the bonfire and feeds the Architect job. When every step of a region is cleared, its boss waits behind the fog: the Forge's is the Strict Golem, a quiz fight over the Forge's steps (phase 2 against the clock), who drops Golem's Iron Fist. Felling a boss opens the next region once its lessons are written; until then a region stays in the fog. The nine Lords of Design (system design fights with the Tech Lead) open when the bosses of the regions they need have fallen.
 
 ## Agents
 

@@ -1,0 +1,68 @@
+{% set total = run.questions | length %}
+<section id="lesson" class="panel lesson road-architect-panel" aria-label="{{ topic.title }} quiz">
+  <div class="lesson-top">
+    <span class="label">{{ topic.title }} · {{ run_labels[run_kind] }}</span>
+    <span class="label">{{ [answers | length + (0 if mode == 'feedback' else 1), total] | min if mode != 'result' else total }} / {{ total }}</span>
+  </div>
+  <div class="track" aria-hidden="true">
+    {% for ok in marks %}<span class="mark {{ 'ok' if ok else 'miss' }}"></span>{% endfor %}
+    {% for _ in range(total - marks | length) %}<span class="mark"></span>{% endfor %}
+  </div>
+
+  {% macro carry() %}
+    <input type="hidden" name="run" value="{{ run.id }}">
+    {% for q in run.questions %}<input type="hidden" name="q" value="{{ q.id }}">{% endfor %}
+    {% for a in answers %}<input type="hidden" name="a" value="{{ a }}">{% endfor %}
+  {% endmacro %}
+
+  {% if mode == 'question' %}
+    {% set n = answers | length %}
+    <form class="quiz choice" method="post" action="/lessons/arch/{{ topic.id }}/answer" hx-post="/lessons/arch/{{ topic.id }}/answer" hx-target="#lesson" hx-swap="outerHTML" data-choices>
+      {{ carry() }}
+      <div class="ask-text">{{ run.questions[n].prompt | inline_md }}</div>
+      <div class="options">
+        {% for option in run.options(n) %}
+        <button class="btn option" type="submit" name="answer" value="{{ loop.index0 }}" {{ 'autofocus' if loop.first }}><span class="key">{{ loop.index }}</span><span>{{ option | inline_md }}</span></button>
+        {% endfor %}
+      </div>
+      <p class="muted" style="font-size: 13px; margin: 0">Press 1 to {{ run.options(n) | length }} to answer.</p>
+    </form>
+
+  {% elif mode == 'feedback' %}
+    {% set n = answers | length - 1 %}
+    {% set q = run.questions[n] %}
+    <div class="verdict {{ 'ok' if correct else 'miss' }}" role="status">
+      <div class="verdict-line">{{ 'Correct' if correct else 'Not quite' }}</div>
+      <div class="ask-text small">{{ q.prompt | inline_md }}</div>
+      <div><strong>{{ q.options[q.answer] | inline_md }}</strong></div>
+      {% if not correct %}{% set picked = answers[-1] | int(-1) %}{% if 0 <= picked < run.options(n) | length %}<div class="muted">You picked: {{ run.options(n)[picked] | inline_md }}</div>{% endif %}{% endif %}
+      {% if q.explanation %}<p class="explain">{{ q.explanation | inline_md }}</p>{% endif %}
+    </div>
+    <form method="post" action="/lessons/arch/{{ topic.id }}/{{ 'finish' if answers | length == total else 'next' }}" hx-post="/lessons/arch/{{ topic.id }}/{{ 'finish' if answers | length == total else 'next' }}" hx-target="#lesson" hx-swap="outerHTML">
+      {{ carry() }}
+      <button class="btn ember wide" type="submit" autofocus>{{ 'Finish' if answers | length == total else 'Next' }} <span class="muted-dark">· Enter</span></button>
+    </form>
+
+  {% else %}
+    <div class="result {{ 'ok' if outcome.passed else 'miss' }}">
+      <div class="score">{{ outcome.correct }} / {{ outcome.total }}</div>
+      <div class="verdict-line">{% if outcome.passed %}{{ 'Step cleared' if outcome.run.value == 'first' else ('Refresher cleared' if outcome.run.value == 'refresher' else 'Practice done') }}{% else %}Not cleared yet · clear at 80%{% endif %}</div>
+      <div class="souls"><img src="{{ asset('sprites/item_soul.png') }}" alt="" width="27" height="27">+{{ outcome.souls }} souls <span class="muted">({{ run_labels[outcome.run] | lower }})</span></div>
+      {% if drop %}<div class="drop"><img src="{{ asset('sprites/item_titanite.png') }}" alt="" width="36" height="36"> {{ drop }} dropped</div>{% endif %}
+      {% if progress and progress.due_on %}<p class="muted">Comes back as a refresher on {{ progress.due_on.strftime('%A %d %B') }}.</p>{% endif %}
+      {% if state.lit_today %}<p>The bonfire is lit for today.</p>{% endif %}
+      {% if boss_ready %}<p class="souls-ink">Every step of this region is cleared. The fog before {{ boss.name }} has parted.</p>{% endif %}
+    </div>
+    {% if misses %}
+    <h3 class="label">To review</h3>
+    <ul class="review">
+      {% for q in misses %}<li><div>{{ q.prompt | inline_md }}</div><div><strong>{{ q.options[q.answer] | inline_md }}</strong></div>{% if q.explanation %}<div class="muted">{{ q.explanation | inline_md }}</div>{% endif %}</li>{% endfor %}
+    </ul>
+    {% endif %}
+    <div class="row-buttons">
+      <a class="btn ember" href="/lessons/arch/{{ topic.id }}">Again</a>
+      <a class="btn" href="/map/architect/{{ topic.region }}?at={{ topic.id if not boss_ready else boss.id }}">Map</a>
+      <a class="btn" href="/">Bonfire</a>
+    </div>
+  {% endif %}
+</section>

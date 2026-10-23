@@ -26,7 +26,6 @@
         <a href="/" {{ 'aria-current="page"' | safe if page == 'bonfire' }}>Bonfire</a>
         <a href="/map" {{ 'aria-current="page"' | safe if page == 'map' }}>Map</a>
         <a href="/lessons" {{ 'aria-current="page"' | safe if page == 'lessons' }}>Lessons{% if state.lessons_due %} <span class="badge">{{ state.lessons_due }}</span>{% endif %}</a>
-        <a href="/architect" {{ 'aria-current="page"' | safe if page == 'architect' }}>Architect</a>
         <a href="/character" {{ 'aria-current="page"' | safe if page == 'character' }}>Character</a>
         <span class="label">{{ state.today.strftime("%A %d %B") }}</span>
         {% if syncing %}<span id="sync-status" class="label htmx-indicator" role="status">Syncing…</span>{% endif %}

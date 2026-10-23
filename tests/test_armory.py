@@ -298,7 +298,10 @@ def test_blacksmith_page_buys_reinforces_and_equips(
     text = client.post("/blacksmith/upgrade", data={"weapon": "uchigatana"}, headers=HX).text
     assert "You need" in text
     character = client.get("/character").text
-    assert "Uchigatana +1" in character and "12 damage per hit against the Warden." in character
+    assert (
+        "Uchigatana +1" in character
+        and "12 damage per hit against The て-form Warden." in character
+    )
 
 
 def test_blacksmith_without_javascript_and_bad_actions(client: TestClient) -> None:

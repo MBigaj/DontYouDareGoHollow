@@ -3,8 +3,9 @@
 {% set rec = view.record %}
 {% set on = rec.current is not none %}
 {% set beat = a.beat.value if a and (on or a.outcome.value in ('died', 'won')) and not gate else 'gate' %}
-<section id="fight" class="fight beat-{{ beat }}" aria-label="{{ view.boss.name }}">
-  <div class="arena" style="background-image: url({{ asset('sprites/arena_bg.png') }})">
+<section id="fight" class="fight beat-{{ beat }} road-{{ 'architect' if view.boss.region else 'ronin' }}" aria-label="{{ view.boss.name }}">
+  {% set home = view.boss.home ~ '?at=' ~ view.boss.node %}
+  <div class="arena" style="background-image: url({{ asset('sprites/' + view.boss.arena) }})">
     {% if a and beat != 'gate' %}
     <div class="hud">
       <div class="hp">
@@ -18,9 +19,9 @@
     </div>
     {% endif %}
 
-    <div class="foe {{ 'gone' if beat == 'won' }}">
-      <img class="foe-body" src="{{ asset('sprites/warden_body.png') }}" alt="{{ view.boss.name }}">
-      <img class="foe-weapon" src="{{ asset('sprites/warden_weapon.png') }}" alt="">
+    <div class="foe foe-{{ view.boss.short | lower }} {{ 'gone' if beat == 'won' }}">
+      <img class="foe-body" src="{{ asset('sprites/' + view.boss.body) }}" alt="{{ view.boss.name }}">
+      {% if view.boss.weapon %}<img class="foe-weapon" src="{{ asset('sprites/' + view.boss.weapon) }}" alt="">{% endif %}
       <img class="slash" src="{{ asset('sprites/slash.png') }}" alt="">
       {% if beat in ('hit', 'phase', 'won') %}<span class="pop dmg">-{{ damage }}</span>{% endif %}
     </div>
@@ -42,31 +43,31 @@
     {% if beat == 'died' %}
     <div class="overlay died" role="alert">
       <div class="died-text">YOU DIED</div>
-      <p>The Warden keeps your wounds: {{ ((1 - rec.next_wound) * 100) | round | int }}% less HP next time{% if rec.furthest_phase %}, and you start in phase {{ rec.furthest_phase + 1 }}{% endif %}.</p>
+      <p>The {{ view.boss.short }} keeps your wounds: {{ ((1 - rec.next_wound) * 100) | round | int }}% less HP next time{% if rec.furthest_phase %}, and you start in phase {{ rec.furthest_phase + 1 }}{% endif %}.</p>
       <div class="row-buttons center">
         <form method="post" action="/boss/{{ view.boss.id }}/enter" hx-post="/boss/{{ view.boss.id }}/enter" hx-target="#fight" hx-swap="outerHTML"><button class="btn ember" type="submit" autofocus>Try again</button></form>
-        <a class="btn" href="/map/firelink?at=warden">Rest at the fog gate</a>
+        <a class="btn" href="{{ home }}">Rest at the fog gate</a>
       </div>
     </div>
     {% elif beat == 'won' %}
     <div class="overlay won" role="alert">
-      <div class="won-text">WARDEN FELLED</div>
+      <div class="won-text">{{ view.boss.short | upper }} FELLED</div>
       {% if first_win %}<p>+{{ victory_souls }} souls{% if a.number == 1 %} · first-try bonus included{% endif %}. The bonfire is lit.</p>
       {% if boss_drops %}<p class="drop">Dropped: {{ boss_drops }}</p>{% endif %}{% else %}<p>Felled again. Every hit still paid souls.</p>{% endif %}
-      <div class="row-buttons center"><a class="btn ember" href="/map/firelink?at=warden" autofocus>Back to Firelink</a><a class="btn" href="/">Bonfire</a></div>
+      <div class="row-buttons center"><a class="btn ember" href="{{ home }}" autofocus>Back to {{ view.boss.home_name }}</a><a class="btn" href="/">Bonfire</a></div>
     </div>
     {% elif beat == 'gate' %}
     <div class="overlay gate">
-      <div class="label">Fog gate · Firelink Shrine</div>
+      <div class="label">Fog gate · {{ view.boss.home_name }}</div>
       <h2 class="gate-title">{{ view.boss.name }}</h2>
-      <div lang="ja" class="map-jp">{{ ja(view.boss.jp, view.boss.jp_kana) }}</div>
+      {% if view.boss.jp %}<div lang="ja" class="map-jp">{{ ja(view.boss.jp, view.boss.jp_kana) }}</div>{% endif %}
       {% if rec.defeated %}<p>Felled. Fight again for practice; every hit pays souls.</p>
-      {% else %}<p>Phase 1: the て-form of your verbs against the clock. Phase 2: requests (〜てください) and sequences (〜て、〜).</p>{% endif %}
+      {% else %}<p>{{ view.boss.intro }}</p>{% endif %}
       <p>{{ weapon }}</p>
-      <p class="muted">{{ rec.deaths }} death{{ 's' if rec.deaths != 1 }}{% if rec.deaths %} · the Warden is {{ ((1 - rec.next_wound) * 100) | round | int }}% weaker{% endif %}{% if rec.furthest_phase %} · you start in phase {{ rec.furthest_phase + 1 }}{% endif %} · 2 Estus flasks per attempt</p>
+      <p class="muted">{{ rec.deaths }} death{{ 's' if rec.deaths != 1 }}{% if rec.deaths %} · the {{ view.boss.short }} is {{ ((1 - rec.next_wound) * 100) | round | int }}% weaker{% endif %}{% if rec.furthest_phase %} · you start in phase {{ rec.furthest_phase + 1 }}{% endif %} · 2 Estus flasks per attempt</p>
       {% if ready %}
       <form method="post" action="/boss/{{ view.boss.id }}/enter" hx-post="/boss/{{ view.boss.id }}/enter" hx-target="#fight" hx-swap="outerHTML"><button class="btn ember big" type="submit" autofocus>Enter the fog</button></form>
-      {% else %}<p class="blood-ink">The fog will not part until you know {{ view.boss.min_verbs }} verbs.</p>{% endif %}
+      {% else %}<p class="blood-ink">{{ requirement }}</p>{% endif %}
     </div>
     {% endif %}
   </div>
@@ -75,14 +76,24 @@
   {% set q = view.question %}
   <div class="duel panel">
     {% if view.answered %}
+    {% if view.answered.question.kind.value == 'choice' %}
+    {% set right = view.answered.question.answers %}
+    <div class="verdict-strip {{ 'ok' if view.answered.correct else 'miss' }}">
+      {{ '✓' if view.answered.correct else '✗' }} {{ right[0] | inline_md }}{% if not view.answered.correct and right[1] %} <span class="muted">· {{ right[1] | inline_md }}</span>{% endif %}
+    </div>
+    {% else %}
     <div class="verdict-strip {{ 'ok' if view.answered.correct else 'miss' }}" lang="ja">
       {% if view.answered.correct %}✓ {{ view.answered.question.answers[0] }}{% else %}✗ {{ view.answered.question.answers[0] }} <span class="muted">({{ view.answered.question.answers[1] }}) · you wrote {{ view.answered.given or 'nothing' }}</span>{% endif %}
     </div>
     {% endif %}
+    {% endif %}
     <form class="quiz" method="post" action="/boss/{{ view.boss.id }}/answer" hx-post="/boss/{{ view.boss.id }}/answer" hx-target="#fight" hx-swap="outerHTML" data-fight-form>
       <input type="hidden" name="attempt" value="{{ a.id }}">
       <input type="hidden" name="turn" value="{{ a.turns }}">
-      {% if q.kind.value == 'te' %}
+      {% if q.kind.value == 'choice' %}
+        <div class="ask label">{{ q.topic }}</div>
+        <div class="ask-text">{{ q.quiz.prompt | inline_md }}</div>
+      {% elif q.kind.value == 'te' %}
         <div class="ask label">て-form</div>
         <div class="prompt" lang="ja">{{ ja(q.verbs[0].written, q.verbs[0].kana) }}</div>
       {% elif q.kind.value == 'request' %}
@@ -96,17 +107,25 @@
       {% endif %}
       {% set secs = view.boss.phases[a.phase].seconds %}
       {% if secs %}<div class="timer" data-seconds="{{ secs }}" aria-hidden="true"><span></span></div>{% endif %}
+      {% if q.kind.value == 'choice' %}
+      <div class="options" data-choices>
+        {% for option in q.options %}
+        <button class="btn option" type="submit" name="answer" value="{{ loop.index0 }}" {{ 'autofocus' if loop.first }}><span class="key">{{ loop.index }}</span><span>{{ option | inline_md }}</span></button>
+        {% endfor %}
+      </div>
+      {% else %}
       <input name="answer" lang="ja" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus maxlength="40" aria-label="Your answer">
       <div class="duel-buttons">
         <button class="btn ember" type="submit">Strike</button>
       </div>
+      {% endif %}
     </form>
     <div class="duel-side">
       <form method="post" action="/boss/{{ view.boss.id }}/estus" hx-post="/boss/{{ view.boss.id }}/estus" hx-target="#fight" hx-swap="outerHTML">
         <input type="hidden" name="attempt" value="{{ a.id }}">
         <button class="btn" type="submit" {{ 'disabled' if not a.can_drink }}>Drink Estus ({{ a.estus }})</button>
       </form>
-      <a class="btn" href="/map/firelink?at=warden">Rest at the fog gate</a>
+      <a class="btn" href="{{ home }}">Rest at the fog gate</a>
     </div>
   </div>
   {% endif %}

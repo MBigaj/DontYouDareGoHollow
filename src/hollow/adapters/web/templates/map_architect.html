@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}The Architect's road · DontYouDareGoHollow{% endblock %}
+{% block content %}
+{% include "partials/_roads.html" %}
+<div class="map-layout road-architect">
+  <section class="panel map-frame" aria-label="The Architect's lands">
+    <h2 class="label">The world · Architect (senior backend)</h2>
+    {% include "partials/_map.html" %}
+  </section>
+  <aside class="map-side">
+    {% for p in panels %}
+    {% set r = p.region %}
+    <section class="panel map-panel" data-panel="{{ r.id }}" {{ 'hidden' if r.id != at }}>
+      <div class="label">Region {{ r.number }}{% if p.felled %} · boss felled{% elif not p.open %} · in the fog{% endif %}</div>
+      <h2 class="map-title">{{ r.name }}</h2>
+      <div class="map-code">{{ r.covers }}</div>
+      <p>{{ r.blurb }}</p>
+      <table>
+        <tr><td>Steps</td><td>{% if p.open %}{{ p.cleared }} of {{ p.total }} cleared{% else %}{{ p.total }}{% endif %}</td></tr>
+        {% if p.proved %}<tr><td>Proved</td><td>{{ p.proved }}</td></tr>{% endif %}
+        <tr><td>Boss</td><td>{{ r.boss }}</td></tr>
+      </table>
+      <p class="muted" style="font-size: 14px">Where you start: {{ r.start }}</p>
+      {% if p.open %}<a class="btn ember wide-link" href="/map/architect/{{ r.id }}" data-action>Enter {{ r.name }}</a>
+      {% else %}<p class="muted">{{ p.note }}</p>{% endif %}
+    </section>
+    {% endfor %}
+    <section class="panel lords" aria-labelledby="lords-title">
+      <h2 id="lords-title" class="label">Lords of Design · system design fights</h2>
+      <ul>
+        {% for l in lords %}
+        <li class="{{ 'open' if l.open }}" title="{{ l.lord.forces }}">
+          <span class="tier">T{{ l.lord.tier }}</span>
+          <span><strong>{{ l.lord.name }}</strong><br><span class="muted">{{ 'Open: ask Claude for the fight' if l.open else 'Needs ' + l.needs }}</span></span>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+  </aside>
+</div>
+<script src="{{ asset('js/map.js') }}" defer></script>
+{% endblock %}

@@ -1,166 +1,215 @@
-import json
-from collections import Counter
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
 
-from hollow import cli
 from hollow.adapters.db.store import SqlEventStore
-from hollow.adapters.vault import Vault
-from hollow.adapters.web.app import create_app
 from hollow.application.agents import AgentDesk, AgentError
-from hollow.application.vault_sync import VaultSync
-from hollow.config import Settings
+from hollow.application.architect_lessons import ArchitectLessons, QuizRun
+from hollow.application.fights import FightError, FightService
+from hollow.application.lessons import LessonError
+from hollow.curriculum import load
 from hollow.domain.activities import Track
 from hollow.domain.architect import (
-    LEARN_SOULS,
-    LEARN_WORDS,
     LORDS,
     PROVE_SOULS,
     REGION_BY_ID,
     REGIONS,
     TOPICS,
+    ArchitectState,
     exam_score,
+    lesson_id,
     region_topics,
 )
-from hollow.domain.events import AgentResult, NoteWritten
+from hollow.domain.atlas import ARCH_POINTS, ARCH_REGION_MAPS, FORGE, NodeKind
+from hollow.domain.bosses import GOLEM, ChoiceQuestion, Outcome, choice
+from hollow.domain.curriculum import MIN_QUIZ, CurriculumError, parse_region, parse_topic
+from hollow.domain.events import AgentResult, LessonCompleted
 from hollow.domain.world import WorldState, replay
 from tests.conftest import FakeClock
 from tests.test_world import CAL
 
 HX = {"HX-Request": "true"}
-MVCC = "02 - Data Depths/MVCC and Isolation Levels.md"
-M = "mvcc-and-isolation-levels"
+MYPY = "mypy-strict-in-practice"
 GIL = "concurrency-choices-threads-processes-async"
-TEMPLATE = "## You should be able to\n- [ ] Explain it\n\n## Exam questions\n- Why?\n\n" \
-    "## My notes\nWrite in your own words. Only this section counts.\n"  # fmt: skip
+MVCC = "mvcc-and-isolation-levels"
+FORGE_STEPS = [t.id for t in region_topics("forge")]
 
 
 def state(store: SqlEventStore, clock: FakeClock) -> WorldState:
     return replay(store.all(), CAL, CAL.day_of(clock.now()))
 
 
-def write_vault(root: Path, notes: dict[str, str]) -> None:
-    for i in range(10):  # enough notes for the template lines to be recognised
-        path = root / "filler" / f"Note {i}.md"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(f"# Note {i}\n\n{TEMPLATE}", encoding="utf-8")
-    for rel, own in notes.items():
-        path = root / rel
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(f"# {path.stem}\n\n{TEMPLATE}\n{own}\n", encoding="utf-8")
-    (root / ".obsidian").mkdir(exist_ok=True)
-    (root / ".obsidian" / "skip.md").write_text("ignored", encoding="utf-8")
+def clear(store: SqlEventStore, clock: FakeClock, topic_ids: list[str]) -> None:
+    for topic_id in topic_ids:
+        store.append(LessonCompleted(clock.now(), lesson_id(topic_id), 6, 6))
+        clock.advance(seconds=1)
 
 
-class FakeVault:
-    def __init__(self, words: dict[str, int], available: bool = True) -> None:
-        self.words, self._available = words, available
-
-    def available(self) -> bool:
-        return self._available
-
-    def own_words(self, notes: list[str]) -> dict[str, int]:
-        return {n: w for n, w in self.words.items() if n in notes}
+def right(run: QuizRun) -> list[str]:
+    """The shown position of every right answer in a run."""
+    return [str(run.order(n).index(q.answer)) for n, q in enumerate(run.questions)]
 
 
-# --- atlas --------------------------------------------------------------------
+# --- the curriculum in the repo ---------------------------------------------------
 
 
-def test_eight_regions_hold_every_topic_once() -> None:
+def test_eight_regions_hold_every_step_once() -> None:
     assert len(REGIONS) == 8 and len(LORDS) == 9
-    notes = [t.note for t in TOPICS.values()]
-    assert len(notes) == len(set(notes)) == len(TOPICS) == 82
-    assert sum(len(region_topics(r.id)) for r in REGIONS) == len(TOPICS)
+    assert [r.number for r in REGIONS] == list(range(1, 9))
+    assert len(TOPICS) == sum(len(r.topics) for r in REGIONS) == 82
+    assert len(region_topics("distributed-abyss")) == max(len(r.topics) for r in REGIONS)
     assert all(r in REGION_BY_ID for lord in LORDS for r in lord.regions)
-    abyss = len(region_topics("distributed-abyss"))
-    assert abyss == max(len(region_topics(r.id)) for r in REGIONS)
-    assert Counter(t.title for t in TOPICS.values()).most_common(1)[0][1] == 1
+    assert all(t.why and t.abilities and t.exam for t in TOPICS.values())
+    assert all(r.boss and r.start and r.blurb for r in REGIONS)
 
 
-# --- vault --------------------------------------------------------------------
+def test_the_forge_is_written_and_the_rest_is_fog() -> None:
+    assert REGIONS[0].id == "forge" and REGIONS[0].written
+    assert all(len(t.quiz) >= MIN_QUIZ for t in REGIONS[0].topics)
+    assert not any(r.written for r in REGIONS[1:])
+    for q in (q for t in TOPICS.values() for q in t.quiz):
+        assert 0 <= q.answer < len(q.options) and q.explanation
 
 
-def test_only_your_own_words_count(tmp_path: Path) -> None:
-    write_vault(tmp_path, {MVCC: "Readers never block writers: each row keeps versions."})
-    (tmp_path / "old.md").write_text("# Old\nSome archived words here\n", encoding="utf-8")
-    words = Vault(tmp_path).own_words([MVCC, "old.md", "missing.md"])
-    assert words == {MVCC: 8, "old.md": 4}
-    assert not Vault(tmp_path / "nope").available()
+def test_maps_and_boss_cover_the_curriculum() -> None:
+    assert list(ARCH_POINTS) == [r.id for r in REGIONS]
+    assert [n.lesson_id for n in FORGE if n.kind is NodeKind.LESSON] == FORGE_STEPS
+    assert set(ARCH_REGION_MAPS) == {"forge"}
+    phases = [t for p in GOLEM.phases for t in p.topics]
+    assert sorted(phases) == sorted(FORGE_STEPS)
 
 
-def test_only_the_my_notes_section_counts(tmp_path: Path) -> None:
-    write_vault(tmp_path, {})
-    (tmp_path / "note.md").write_text(
-        "# T\n> Why this matters: lots of words before\n## My notes\n"
-        "Write in your own words. Only this section counts.\nfour words of mine\n"
-        "## Later section\nnot counted at all\n",
+STEP = """# A Step: With Colons
+> **Why this matters for you:** Because.
+
+## You should be able to
+- Do `one` thing
+
+## Lesson
+Some **text**.
+
+```python
+x = 1
+```
+
+## Quiz
+### First?
+- [ ] no
+- [x] yes
+
+Because yes.
+
+### Second?
+- [x] a
+- [ ] b
+
+## Exam questions
+- Why?
+"""
+
+
+def test_a_step_file_parses() -> None:
+    topic = parse_topic(STEP, "forge", 3, "x.md")
+    assert (topic.id, topic.number, topic.title) == ("a-step-with-colons", 3, "A Step: With Colons")
+    assert topic.why == "Because." and topic.abilities == ("Do `one` thing",)
+    assert "```python\nx = 1\n```" in topic.lesson
+    assert [q.answer for q in topic.quiz] == [1, 0]
+    assert (
+        topic.quiz[0].explanation == "Because yes." and topic.quiz[0].id == "a-step-with-colons#1"
+    )
+    assert topic.exam == ("Why?",)
+    assert not topic.playable  # only two quiz questions
+
+
+@pytest.mark.parametrize(
+    ("text", "message"),
+    [
+        ("no title", "no '# Title'"),
+        ("# T\n## Quiz\n### Q?\n- [x] a\n- [x] b\n", "two right answers"),
+        ("# T\n## Quiz\n### Q?\n- [ ] a\n- [ ] b\n", "one marked"),
+    ],
+)
+def test_broken_step_files_are_refused(text: str, message: str) -> None:
+    with pytest.raises(CurriculumError, match=message):
+        parse_topic(text, "forge", 1, "x.md")
+
+
+def test_region_files_need_their_front_matter() -> None:
+    with pytest.raises(CurriculumError, match="front matter"):
+        parse_region("# Nope", 1, (), "r.md")
+    with pytest.raises(CurriculumError, match="missing boss"):
+        parse_region("---\nid: a\nname: A\ncovers: c\nstart: s\nboss_blurb: b\nbuild: b\n---\n",
+                     1, (), "r.md")  # fmt: skip
+
+
+def test_load_reads_folders_in_order(tmp_path: Path) -> None:
+    folder = tmp_path / "01-only"
+    folder.mkdir()
+    (folder / "README.md").write_text(
+        "---\nid: only\nname: Only\ncovers: c\nstart: s: here\nboss: B\nboss_blurb: bb\n"
+        "build: b\n---\n# 1. Only\n\nThe blurb.\n\nMore.\n",
         encoding="utf-8",
     )
-    assert Vault(tmp_path).own_words(["note.md"]) == {"note.md": 4}
+    (folder / "01-step.md").write_text(STEP, encoding="utf-8")
+    (tmp_path / "notes").mkdir()  # not numbered: ignored
+    (region,) = load(tmp_path)
+    assert (region.id, region.start, region.blurb) == ("only", "s: here", "The blurb.")
+    assert region.topics[0].path.endswith("01-only/01-step.md")
+    (tmp_path / "02-empty").mkdir()
+    with pytest.raises(CurriculumError, match="no README"):
+        load(tmp_path)
 
 
-def test_unreadable_notes_are_skipped(tmp_path: Path) -> None:
-    write_vault(tmp_path, {})
-    (tmp_path / "broken.md").write_bytes(b"\xff\xfe\xfa")
-    assert Vault(tmp_path).own_words(["broken.md"]) == {}
+# --- progress -----------------------------------------------------------------------
 
 
-def test_vault_sync_records_notes_that_grew(store: SqlEventStore, clock: FakeClock) -> None:
-    vault = FakeVault({MVCC: 10})
-    sync = VaultSync(store, vault, clock)
-    assert sync.run() == 0  # under the 20-word step
-    vault.words[MVCC] = 140
-    assert sync.run() == 1
-    vault.words[MVCC] = 150  # crosses the Learn mark: recorded even though +10
-    assert sync.run() == 1
-    assert sync.run() == 0
-    assert [e.words for e in store.all() if isinstance(e, NoteWritten)] == [140, 150]
-    assert VaultSync(store, FakeVault({}, available=False), clock).run() == 0
-
-
-# --- gates --------------------------------------------------------------------
-
-
-def test_learn_and_prove_pay_once_and_feed_the_architect(
+def test_a_cleared_quiz_clears_the_step_for_the_architect(
     store: SqlEventStore, clock: FakeClock
 ) -> None:
-    store.append(NoteWritten(clock.now(), M, LEARN_WORDS))
-    store.append(NoteWritten(clock.now(), M, LEARN_WORDS + 40))
-    exam = {"total": 0.6}
-    store.append(AgentResult(clock.now(), "tech-lead", f"exam:{M}", exam))
+    clear(store, clock, [MYPY])
     world = state(store, clock)
-    topic = world.architect.topics[M]
-    assert (topic.learned, topic.proved, topic.best) == (True, False, 0.6)
+    step = world.architect.topics[MYPY]
+    assert step.cleared and not step.proved
     assert world.lit_today
-    store.append(AgentResult(clock.now(), "tech-lead", f"exam:{M}", {"total": 0.9}))
-    store.append(AgentResult(clock.now(), "tech-lead", f"exam:{M}", {"total": 1.0}))
+    assert world.jobs[Track.ARCHITECT].xp == 30 and world.jobs[Track.RONIN].xp == 0
+
+
+def test_exams_prove_steps_and_pay_once(store: SqlEventStore, clock: FakeClock) -> None:
+    store.append(AgentResult(clock.now(), "tech-lead", f"exam:{MYPY}", {"total": 0.6}))
+    topic = state(store, clock).architect.topics[MYPY]
+    assert (topic.proved, topic.best, topic.cleared) == (False, 0.6, False)
+    store.append(AgentResult(clock.now(), "tech-lead", f"exam:{MYPY}", {"total": 0.9}))
+    store.append(AgentResult(clock.now(), "tech-lead", f"exam:{MYPY}", {"total": 1.0}))
     world = state(store, clock)
-    assert world.architect.topics[M].proved
-    assert world.souls == LEARN_SOULS + PROVE_SOULS
-    assert world.jobs[Track.ARCHITECT].xp == LEARN_SOULS + PROVE_SOULS
+    assert world.architect.topics[MYPY].cleared
+    assert world.souls == PROVE_SOULS == world.jobs[Track.ARCHITECT].xp
 
 
-def test_placement_clears_known_topics_without_souls(
-    store: SqlEventStore, clock: FakeClock
-) -> None:
+def test_placement_clears_known_steps_without_souls(store: SqlEventStore, clock: FakeClock) -> None:
     store.append(AgentResult(clock.now(), "tech-lead", "placement:forge",
-                             {"cleared": [GIL, M, "nope"]}))  # fmt: skip
+                             {"cleared": [GIL, MVCC, "nope"]}))  # fmt: skip
     world = state(store, clock)
-    assert world.architect.topics[GIL].placed
-    assert not world.architect.topics[M].proved  # not a Forge topic
-    assert "forge" in world.architect.placed_regions
+    assert world.architect.topics[GIL].placed and world.architect.topics[GIL].cleared
+    assert not world.architect.topics[MVCC].proved  # not a Forge step
     assert world.souls == 0
 
 
-def test_regions_clear_at_80_percent_and_open_lords(store: SqlEventStore, clock: FakeClock) -> None:
-    ids = [t.id for t in region_topics("data-depths")]
-    store.append(AgentResult(clock.now(), "tech-lead", "placement:data-depths",
-                             {"cleared": ids[: int(len(ids) * 0.8) + 1]}))  # fmt: skip
+def test_only_the_forge_is_open_until_its_boss_falls(
+    store: SqlEventStore, clock: FakeClock
+) -> None:
     arch = state(store, clock).architect
-    assert arch.region_cleared("data-depths")
+    assert arch.region_open("forge")
+    assert not arch.region_open("data-depths")  # unwritten, whatever falls
+    assert not arch.region_ready("forge")
+    clear(store, clock, FORGE_STEPS)
+    assert state(store, clock).architect.region_ready("forge")
+
+
+def test_lords_open_when_their_regions_bosses_fall() -> None:
     by_name = {lord.name: lord for lord in LORDS}
+    arch = ArchitectState({}, set(), [], {"data-depths"})
     assert arch.lord_open(by_name["Rate Limiter"])
     assert not arch.lord_open(by_name["URL Shortener"])  # also needs the API Citadel
 
@@ -172,7 +221,88 @@ def test_exam_scores_come_from_rubric_points() -> None:
     assert exam_score({"questions": ["just text"]}) == 0.0
 
 
-# --- agents -------------------------------------------------------------------
+# --- lessons ------------------------------------------------------------------------
+
+
+def test_a_quiz_run_grades_shown_positions(store: SqlEventStore, clock: FakeClock) -> None:
+    service = ArchitectLessons(store, clock, CAL)
+    run = service.start(MYPY)
+    assert sorted(q.id for q in run.questions) == sorted(q.id for q in TOPICS[MYPY].quiz)
+    again = service.resume(MYPY, str(run.id), [q.id for q in run.questions])
+    assert again.order(0) == run.order(0)  # the order comes from the run id
+    answers = right(run)
+    assert all(run.grade(answers)) and not run.accepts(0, "x") and not run.accepts(0, "9")
+    wrong = ["0" if a != "0" else "1" for a in answers]
+    assert not any(run.grade(wrong))
+    outcome, _, world = service.finish(run, answers, roll=0.99)
+    assert outcome.passed and world.architect.topics[MYPY].cleared
+    service.finish(run, answers, roll=0.99)  # a resubmit records nothing new
+    assert len(world.lessons[lesson_id(MYPY)].history) == 1
+
+
+@pytest.mark.parametrize(
+    ("topic", "asked", "message"),
+    [
+        ("nope", [f"{MYPY}#1"], "no Architect step"),
+        (MVCC, [f"{MVCC}#1"], "has no lesson yet"),
+        (MYPY, [f"{GIL}#1"], "does not match"),
+        (MYPY, [f"{MYPY}#1", f"{MYPY}#1"], "does not match"),
+    ],
+)
+def test_tampered_or_closed_quizzes_are_refused(
+    store: SqlEventStore, clock: FakeClock, topic: str, asked: list[str], message: str
+) -> None:
+    with pytest.raises(LessonError, match=message):
+        ArchitectLessons(store, clock, CAL).resume(topic, str(uuid4()), asked)
+
+
+def test_finishing_needs_every_answer(store: SqlEventStore, clock: FakeClock) -> None:
+    service = ArchitectLessons(store, clock, CAL)
+    with pytest.raises(LessonError, match="Answer every question"):
+        service.finish(service.start(MYPY), ["0"])
+    with pytest.raises(LessonError, match="broken"):
+        service.resume(MYPY, "not-a-uuid", [f"{MYPY}#1"])
+
+
+# --- the Strict Golem ---------------------------------------------------------------
+
+
+def test_choice_questions_are_stable_and_walk_the_pool() -> None:
+    phase = GOLEM.phases[0]
+    asked = [choice(phase, 7, turn).question_id for turn in range(24)]
+    assert asked == [choice(phase, 7, turn).question_id for turn in range(24)]
+    assert len(set(asked)) == 24  # every question once before any repeats
+    q = choice(phase, 7, 0)
+    assert q.accepts(str(q.order.index(q.quiz.answer)))
+    assert not q.accepts("nope") and q.topic and q.answers[0] in q.options
+
+
+def test_the_golem_waits_for_every_forge_step(store: SqlEventStore, clock: FakeClock) -> None:
+    fights = FightService(store, clock, CAL)
+    assert not fights.ready(GOLEM.id)
+    with pytest.raises(FightError, match="every step of the Forge"):
+        fights.enter(GOLEM.id)
+    clear(store, clock, FORGE_STEPS)
+    assert fights.ready(GOLEM.id)
+
+
+def test_felling_the_golem_pays_the_architect(store: SqlEventStore, clock: FakeClock) -> None:
+    clear(store, clock, FORGE_STEPS)
+    fights = FightService(store, clock, CAL)
+    view = fights.enter(GOLEM.id)
+    while view.record.current is not None:
+        attempt, ask = view.record.current, view.question
+        assert isinstance(ask, ChoiceQuestion)
+        view = fights.answer(GOLEM.id, str(attempt.id), attempt.turns,
+                             str(ask.order.index(ask.quiz.answer)))  # fmt: skip
+    assert view.record.last is not None and view.record.last.outcome is Outcome.WON
+    world = view.state
+    assert "forge" in world.architect.felled
+    assert world.armory.owns("golem-fist")
+    assert world.jobs[Track.ARCHITECT].xp > world.jobs[Track.RONIN].xp == 0
+
+
+# --- agents ---------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
@@ -180,8 +310,8 @@ def test_exam_scores_come_from_rubric_points() -> None:
     [
         ({"task": "exam:nope", "total": 1.0}, "No Architect topic"),
         ({"task": "placement:nope", "cleared": []}, "No Architect region"),
-        ({"task": "placement:forge", "cleared": [M]}, "Not topics of forge"),
-        ({"task": f"exam:{M}", "total": 1.0, "cleared": [M]}, "Only placement"),
+        ({"task": "placement:forge", "cleared": [MVCC]}, "Not topics of forge"),
+        ({"task": f"exam:{MYPY}", "total": 1.0, "cleared": [MYPY]}, "Only placement"),
     ],
 )
 def test_tech_lead_results_are_checked(
@@ -196,71 +326,87 @@ def test_one_placement_trial_per_region(store: SqlEventStore, clock: FakeClock) 
     desk.submit({"agent": "tech-lead", "task": "placement:forge", "cleared": [GIL]})
     with pytest.raises(AgentError, match="already had its placement"):
         desk.submit({"agent": "tech-lead", "task": "placement:forge", "cleared": []})
-    desk.submit({"agent": "tech-lead", "task": f"exam:{M}", "total": 0.85})
-    assert state(store, clock).architect.topics[M].proved
 
 
-def test_inbox_offers_placements_and_exams(store: SqlEventStore, clock: FakeClock) -> None:
-    store.append(NoteWritten(clock.now(), M, 200))
+def test_inbox_offers_open_placements_and_exams(store: SqlEventStore, clock: FakeClock) -> None:
+    clear(store, clock, [MYPY])
     inbox = AgentDesk(store, clock, CAL).inbox()
     tasks = {t["task"] for t in inbox["tasks"]}
-    assert {"placement:forge", f"exam:{M}"} <= tasks
+    assert {"placement:forge", f"exam:{MYPY}"} <= tasks
+    assert "placement:data-depths" not in tasks  # still in the fog
     regions = {r["id"]: r for r in inbox["context"]["architect"]["regions"]}
-    mvcc = next(t for t in regions["data-depths"]["topics"] if t["id"] == M)
-    assert mvcc == {"id": M, "title": "MVCC and Isolation Levels", "note": MVCC, "words": 200,
-                    "learned": True, "proved": False, "best": None}  # fmt: skip
+    assert regions["forge"]["open"] and not regions["data-depths"]["open"]
+    step = next(t for t in regions["forge"]["topics"] if t["id"] == MYPY)
+    assert step["lesson_cleared"] and step["file"].endswith("01-mypy-strict-in-practice.md")
 
 
-# --- pages --------------------------------------------------------------------
+# --- pages ----------------------------------------------------------------------------
 
 
-def test_architect_pages(client: TestClient, store: SqlEventStore, clock: FakeClock) -> None:
-    store.append(NoteWritten(clock.now(), M, 90))
-    page = client.get("/architect").text
-    assert 'href="/architect" aria-current="page"' in page
-    assert "The Distributed Abyss" in page and "0 of 82 topics proved" in page
-    assert "Needs Data Depths, The API Citadel" in page
-    region = client.get("/architect/data-depths").text
-    assert "90 / 150 words in My notes" in region
-    assert (
-        "obsidian://open?vault=Senior%20Backend%20Roadmap&amp;file=02%20-%20Data%20Depths" in region
+def test_the_map_has_two_roads(client: TestClient) -> None:
+    ronin = client.get("/map")
+    assert 'class="road ronin" href="/map?road=ronin" aria-current="page"' in ronin.text
+    assert "Firelink Shrine" in ronin.text
+    arch = client.get("/map?road=architect")
+    assert arch.cookies.get("hollow_road") == "architect"
+    page = arch.text
+    assert "map_architect.png" in page and "road-architect" in page
+    assert 'href="/map/architect/forge" data-action' in page
+    assert "In the fog: its lessons are not written yet." in page
+    assert "Needs Data Depths, The API Citadel" in page and "Needs every region" in page
+    assert "map_architect.png" in client.get("/map").text  # the cookie remembers the road
+    assert 'href="/architect"' not in page  # the old tab is gone
+    assert client.get("/architect", follow_redirects=False).headers["location"] == (
+        "/map?road=architect"
     )
-    assert "you model and query PostgreSQL" in region
-    assert client.get("/architect/nope").status_code == 404
 
 
-def test_vault_syncs_in_the_background(store: SqlEventStore, clock: FakeClock) -> None:
-    settings = Settings(database_url="sqlite://", vault_path="D:/Vaults/Roadmap", _env_file=None)
-    vault = FakeVault({MVCC: 160})
-    with TestClient(create_app(settings, store=store, clock=clock, vault=vault)) as client:
-        assert 'hx-post="/sync?page=bonfire"' in client.get("/").text
-        assert "Vault: 1 note updated." in client.post("/sync", headers=HX).text
-        assert "vault=Roadmap" in client.get("/architect/data-depths").text
+def test_the_forge_map(client: TestClient, store: SqlEventStore, clock: FakeClock) -> None:
+    clear(store, clock, [MYPY])
+    page = client.get("/map/architect/forge").text
+    assert "region_forge.png" in page and "Region 1 · The Forge · 12% explored" in page
+    assert f'href="/lessons/arch/{GIL}" data-action>Read the lesson' in page
+    assert "Step 1 · The Forge" in page and "Cleared. Back as a refresher" in page
+    assert "It parts when every step here is cleared (1 of 8)." in page
+    gone = client.get("/map/architect/data-depths", follow_redirects=False)
+    assert gone.status_code == 303 and "at=data-depths" in gone.headers["location"]
+    assert client.get("/map/architect/nope").status_code == 404
 
 
-def test_settings_build_a_real_vault(
-    store: SqlEventStore, clock: FakeClock, tmp_path: Path
+def test_a_lesson_page_and_a_whole_quiz(
+    client: TestClient, store: SqlEventStore, clock: FakeClock
 ) -> None:
-    write_vault(tmp_path, {MVCC: " ".join(["word"] * 30)})
-    settings = Settings(database_url="sqlite://", vault_path=str(tmp_path), _env_file=None)
-    with TestClient(create_app(settings, store=store, clock=clock)) as client:
-        assert "Vault: 1 note updated." in client.post("/sync", headers=HX).text
+    page = client.get(f"/lessons/arch/{MYPY}").text
+    assert "<code>list[Child]</code>" in page and "<pre><code" in page
+    assert "Take the quiz" in page and f"exam on <code>{MYPY}</code>" in page
+    start = client.post(f"/lessons/arch/{MYPY}/start", headers=HX).text
+    assert 'name="answer" value="0"' in start and "data-choices" in start
+    run_id = start.split('name="run" value="')[1].split('"')[0]
+    asked = [chunk.split('"')[0] for chunk in start.split('name="q" value="')[1:]]
+    run = ArchitectLessons(store, clock, CAL).resume(MYPY, run_id, asked)
+    answers = right(run)
+    form = {"run": run_id, "q": asked, "a": answers[:-1], "answer": answers[-1]}
+    assert "Correct" in client.post(f"/lessons/arch/{MYPY}/answer", data=form, headers=HX).text
+    form = {"run": run_id, "q": asked, "a": answers}
+    done = client.post(f"/lessons/arch/{MYPY}/finish", data=form, headers=HX).text
+    assert "Step cleared" in done and "+30 souls" in done
+    lessons = client.get("/lessons").text
+    assert "Architect · Region 1 · The Forge" in lessons and "Back " in lessons
+    assert "Lesson · mypy --strict in Practice: 6/6" in client.get("/").text
 
 
-def test_inbox_command_scans_the_vault_first(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    from alembic import command
-    from alembic.config import Config
+def test_quiz_pages_refuse_bad_runs(client: TestClient) -> None:
+    bad = {"run": str(uuid4()), "q": [f"{GIL}#1"], "answer": "0"}
+    assert client.post(f"/lessons/arch/{MYPY}/answer", data=bad).status_code == 422
+    assert client.post("/lessons/arch/nope/start").status_code == 422
+    assert "has no lesson yet" in client.get(f"/lessons/arch/{MVCC}").text
 
-    root = Path(__file__).resolve().parents[1]
-    vault = tmp_path / "vault"
-    write_vault(vault, {MVCC: " ".join(["word"] * 200)})
-    monkeypatch.setenv("HOLLOW_DATABASE_URL", f"sqlite:///{tmp_path / 'hollow.db'}")
-    monkeypatch.setenv("HOLLOW_VAULT_PATH", str(vault))
-    command.upgrade(Config(str(root / "alembic.ini")), "head")
-    monkeypatch.chdir(tmp_path)
-    assert cli.agent_inbox([str(tmp_path / "inbox.json")]) == 0
-    assert "Vault scanned: 1 note updated." in capsys.readouterr().out
-    inbox = json.loads((tmp_path / "inbox.json").read_text(encoding="utf-8"))
-    assert f"exam:{M}" in {t["task"] for t in inbox["tasks"]}
+
+def test_the_golem_gate(client: TestClient, store: SqlEventStore, clock: FakeClock) -> None:
+    page = client.get(f"/boss/{GOLEM.id}").text
+    assert "Fog gate · the Forge" in page and "golem_body.png" in page
+    assert "every step of the Forge is cleared" in page
+    clear(store, clock, FORGE_STEPS)
+    clock.advance(seconds=1)
+    fight = client.post(f"/boss/{GOLEM.id}/enter", headers=HX).text
+    assert 'name="answer" value="0"' in fight and "road-architect" in fight

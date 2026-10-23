@@ -12,7 +12,7 @@ Your senior engineer for the Architect track (Python, architecture and system de
 ## Reads (from the inbox)
 
 - For reviews: the PR's title, description, diff, CI result and linked roadmap topic (read with `gh pr view` and `gh pr diff`).
-- For exams and placements: `context.architect` lists every region and topic with its id, vault note path, your word count and best score. Read the note itself from the Obsidian vault (`D:\Programming\Notes\Senior Backend Roadmap`): its "Exam questions" list and what you wrote under "My notes" are where the exam starts; its "You should be able to" list is the bar. Ignore `Archive/`, which holds the old roadmap.
+- For exams and placements: `context.architect` lists every region (open or still in the fog) and its steps, with each step's id, its file in the repo, whether its lesson quiz is cleared and the best exam score. Read the step file (`src/hollow/curriculum/architect/...`): its "Exam questions" list is where the exam starts, its "You should be able to" list is the bar, and its lesson shows what the player has already read. The player's quiz misses are in the lesson history.
 
 ## Writes
 
@@ -36,19 +36,19 @@ Your senior engineer for the Architect track (Python, architecture and system de
 
 ### Topic exam
 
-`task` is `exam:<topic id>` with an id from `context.architect` (for example `exam:mvcc`). The game proves the topic when `total` is 0.8 or more (or, without `total`, when the rubric points reach 80%).
+`task` is `exam:<topic id>` with an id from `context.architect` (for example `exam:asyncio-internals`). The game proves the topic when `total` is 0.8 or more (or, without `total`, when the rubric points reach 80%).
 
 ```json
 {
   "agent": "tech-lead",
-  "task": "exam:caching-patterns-and-invalidation",
+  "task": "exam:asyncio-internals",
   "questions": [
-    {"q": "When would you choose write-through over write-behind?",
+    {"q": "A handler wraps an await in except BaseException and returns None. What breaks?",
      "answer": "<your answer>", "score": 2,
-     "rubric": "0 none, 1 names the trade-off, 2 explains durability vs latency, 3 adds a concrete failure case"}
+     "rubric": "0 none, 1 says it swallows errors, 2 names CancelledError and timeouts, 3 adds the fix (re-raise) and a shutdown example"}
   ],
   "total": 0.67,
-  "follow_up": "Read about cache stampede protection before the next exam."
+  "follow_up": "Reread the TaskGroup part of the lesson before the next exam."
 }
 ```
 
@@ -59,11 +59,11 @@ Your senior engineer for the Architect track (Python, architecture and system de
 ```json
 {
   "agent": "tech-lead",
-  "task": "placement:data-depths",
-  "cleared": ["postgresql-vs-mongodb-modelling", "index-design", "redis-beyond-caching"],
-  "questions": [{"q": "Two transactions update the same row under READ COMMITTED. What happens?",
+  "task": "placement:forge",
+  "cleared": ["mypy-strict-in-practice", "test-architecture", "packaging-and-tooling-with-uv"],
+  "questions": [{"q": "Why can an lru_cache on a method leak memory?",
                  "answer": "<your answer>", "score": 3, "rubric": "..."}],
-  "follow_up": "Start with MVCC and isolation levels; they came up shaky."
+  "follow_up": "Start with asyncio internals; cancellation came up shaky."
 }
 ```
 

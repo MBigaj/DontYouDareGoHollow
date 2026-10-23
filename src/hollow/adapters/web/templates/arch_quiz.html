@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}{{ topic.title }} · quiz · DontYouDareGoHollow{% endblock %}
+{% block content %}
+{% include "partials/_arch_quiz.html" %}
+<script src="{{ asset('js/quiz.js') }}" defer></script>
+{% endblock %}

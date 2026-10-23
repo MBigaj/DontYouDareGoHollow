@@ -2,10 +2,11 @@
 {% from "partials/_ja.html" import ja %}
 {% block title %}{{ region.name }} · DontYouDareGoHollow{% endblock %}
 {% block content %}
-<div class="map-layout">
+{% include "partials/_roads.html" %}
+<div class="map-layout road-{{ road }}">
   <section class="panel map-frame" aria-label="{{ region.name }}">
     <div class="map-head"><h2 class="label">Region {{ region.number }} · {{ region.name }} · {{ explored }}% explored</h2>
-      <a class="label" href="/map">World map ↑</a></div>
+      <a class="label" href="/map?road={{ road }}">World map ↑</a></div>
     {% include "partials/_map.html" %}
   </section>
   <aside class="map-side">
@@ -14,7 +15,9 @@
       <div class="label">{{ p.caption }}</div>
       <h2 class="map-title">{{ p.name }}</h2>
       {% if p.example %}<div lang="ja" class="map-jp">{% for pair in p.example | batch(2) %}{% if not loop.first %}, {% endif %}{{ ja(*pair[0]) }} → {{ ja(*pair[1]) }}{% endfor %}</div>{% endif %}
+      {% if p.lead %}<p class="lead">{{ p.lead }}</p>{% endif %}
       <p>{{ p.detail }}</p>
+      {% if p.mark %}<p class="proved">✓ {{ p.mark }}</p>{% endif %}
       {% if p.action %}<a class="btn ember wide-link" href="{{ p.action[1] }}" data-action>{{ p.action[0] }}</a>{% endif %}
       {% if p.extra %}<a class="btn wide-link" href="{{ p.extra[1] }}">{{ p.extra[0] }}</a>{% endif %}
     </section>

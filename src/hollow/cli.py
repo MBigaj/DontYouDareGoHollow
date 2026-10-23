@@ -9,12 +9,10 @@ from pathlib import Path
 from hollow.adapters.anki_connect import connect
 from hollow.adapters.db.store import SqlEventStore, make_engine
 from hollow.adapters.github_api import GitHubApi
-from hollow.adapters.vault import Vault
 from hollow.application.agents import AgentDesk, AgentError
 from hollow.application.anki_sync import AnkiSync, AnkiUnavailable
 from hollow.application.github_sync import GitHubSync, GitHubUnavailable
 from hollow.application.ports import SystemClock
-from hollow.application.vault_sync import VaultSync
 from hollow.config import Settings
 from hollow.domain.activities import ActivityKind
 from hollow.domain.anki import to_events
@@ -101,11 +99,6 @@ def _desk() -> AgentDesk:
 def agent_inbox(argv: list[str] | None = None) -> int:
     """Writes the agents' inbox (agents/inbox/<day>.json) and lists its tasks."""
     args = sys.argv[1:] if argv is None else argv
-    settings = Settings()
-    if settings.vault_path:
-        store = SqlEventStore(make_engine(settings.database_url))
-        notes = VaultSync(store, Vault(Path(settings.vault_path)), SystemClock()).run()
-        print(f"Vault scanned: {notes} note{'s' if notes != 1 else ''} updated.")
     inbox = _desk().inbox()
     path = Path(args[0]) if args else Path("agents") / "inbox" / f"{inbox['today']}.json"
     path.parent.mkdir(parents=True, exist_ok=True)

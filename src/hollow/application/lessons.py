@@ -125,19 +125,32 @@ class LessonService:
         if len(answers) != len(run.questions):
             raise LessonError("Answer every question before finishing.")
         marks = grade(run.questions, answers)
-        correct = sum(marks)
+        missed = tuple(q.written for q, ok in zip(run.questions, marks, strict=True) if not ok)
+        return self.record(run.spec.id, run.id, sum(marks), len(run.questions), missed, roll)
+
+    def record(
+        self,
+        lesson_id: str,
+        run_id: UUID,
+        correct: int,
+        total: int,
+        missed: tuple[str, ...],
+        roll: float | None = None,
+    ) -> tuple[LessonOutcome, Material | None, WorldState]:
+        """Records a graded run once (the run id makes a resubmit a no-op), and rolls for
+        titanite. Shared by both roads' lessons."""
         event = LessonCompleted(
             self._clock.now(),
-            run.spec.id,
+            lesson_id,
             correct,
-            len(run.questions),
-            id=uuid5(RUNS_NAMESPACE, str(run.id)),
-            missed=tuple(q.written for q, ok in zip(run.questions, marks, strict=True) if not ok),
+            total,
+            id=uuid5(RUNS_NAMESPACE, str(run_id)),
+            missed=missed,
         )
         before = self.state()
         source = f"lesson:{event.id}"
         if self._store.append_new([event]):
-            progress = before.lessons.get(run.spec.id)
+            progress = before.lessons.get(lesson_id)
             kind = progress.run_on(before.today) if progress else LessonRunKind.FIRST
             outcomes = [o for p in before.lessons.values() for o in p.history]
             dropped = {d.source for d in before.armory.drops}
@@ -145,7 +158,7 @@ class LessonService:
                 refresher=kind is LessonRunKind.REFRESHER,
                 practice=kind is LessonRunKind.PRACTICE,
                 correct=correct,
-                total=len(run.questions),
+                total=total,
                 step=progress.step if progress else -1,
                 dry=dry_streak(outcomes, dropped),
                 roll=SystemRandom().random() if roll is None else roll,
@@ -155,6 +168,6 @@ class LessonService:
                     MaterialDropped(next_moment(self._store, self._clock), material, 1, source)
                 )
         state = self.state()
-        outcome = next(o for o in state.lessons[run.spec.id].history if o.event_id == event.id)
+        outcome = next(o for o in state.lessons[lesson_id].history if o.event_id == event.id)
         drop = next((d.material for d in state.armory.drops if d.source == source), None)
         return outcome, drop, state

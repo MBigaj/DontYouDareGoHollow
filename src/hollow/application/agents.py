@@ -14,11 +14,11 @@ from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 
 from hollow.application.ports import Clock, EventStore, next_moment
 from hollow.domain.activities import ActivityKind
-from hollow.domain.architect import PROVE_MARK, REGION_BY_ID, TOPICS
+from hollow.domain.architect import LESSON_PREFIX, PROVE_MARK, REGION_BY_ID, TOPICS
 from hollow.domain.architect import REGIONS as ARCHITECT_REGIONS
 from hollow.domain.armory import MATERIAL_NAMES, WEAPONS
 from hollow.domain.atlas import REGIONS
-from hollow.domain.bosses import BOSSES, question
+from hollow.domain.bosses import BOSSES, Question, question
 from hollow.domain.calendar import GameCalendar
 from hollow.domain.events import (
     AgentResult,
@@ -310,18 +310,22 @@ class AgentDesk:
                 tasks.append({"agent": "tech-lead", "task": task, "title": pr["title"],
                               "do": "Review it with gh pr view and gh pr diff."})  # fmt: skip
         arch = state.architect
-        unplaced = [r for r in ARCHITECT_REGIONS if r.id not in arch.placed_regions]
+        unplaced = [
+            r
+            for r in ARCHITECT_REGIONS
+            if r.id not in arch.placed_regions and arch.region_open(r.id)
+        ]
         if unplaced:
             region = unplaced[0]
             tasks.append({"agent": "tech-lead", "task": f"placement:{region.id}",
                           "name": region.name,
                           "do": "Optional, when the player has 30 minutes: this region's "
                                 "placement trial (agents/tech-lead.md)."})  # fmt: skip
-        ready = [s for s in arch.topics.values() if s.learned and not s.proved][:3]
+        ready = [s for s in arch.topics.values() if s.cleared and not s.proved][:3]
         for topic_state in ready:
             tasks.append({"agent": "tech-lead", "task": f"exam:{topic_state.topic.id}",
                           "name": topic_state.topic.title,
-                          "do": "Notes written: offer the Prove exam."})  # fmt: skip
+                          "do": "Lesson cleared: offer the Prove exam."})  # fmt: skip
         return {
             "generated_at": self._clock.now().isoformat(),
             "today": today.isoformat(),
@@ -343,14 +347,19 @@ class AgentDesk:
         """Verbs missed most in lessons and fights since `since`."""
         misses: Counter[str] = Counter()
         for e in events:
-            if isinstance(e, LessonCompleted) and e.occurred_at >= since:
+            if (
+                isinstance(e, LessonCompleted)
+                and e.occurred_at >= since
+                and not e.lesson_id.startswith(LESSON_PREFIX)
+            ):
                 misses.update(e.missed)
         verbs = known_verbs(events)
         for record in state.bosses.values():
             for t in record.log:
                 if not t.correct and t.at >= since:
                     asked = question(record.boss, t.phase, t.seed, t.turn, verbs)
-                    misses.update(v.written for v in asked.verbs)
+                    if isinstance(asked, Question):
+                        misses.update(v.written for v in asked.verbs)
         kana = {v.written: v.kana for v in verbs}
         top = misses.most_common(8)
         return [{"written": w, "kana": kana.get(w, ""), "misses": n} for w, n in top]
@@ -420,13 +429,15 @@ class AgentDesk:
         regions = []
         for r in ARCHITECT_REGIONS:
             topics = [
-                {"id": s.topic.id, "title": s.topic.title, "note": s.topic.note,
-                 "words": s.words, "learned": s.learned, "proved": s.proved, "best": s.best}
+                {"id": s.topic.id, "title": s.topic.title, "file": s.topic.path,
+                 "lesson_cleared": s.lesson is not None and s.lesson.cleared,
+                 "lesson_best": s.lesson.best if s.lesson else None,
+                 "proved": s.proved, "best": s.best}
                 for s in arch.region(r.id)
             ]  # fmt: skip
             regions.append({
                 "id": r.id, "name": r.name, "covers": r.covers,
-                "placed": r.id in arch.placed_regions,
-                "cleared_share": round(arch.cleared_share(r.id), 2), "topics": topics,
+                "open": arch.region_open(r.id), "boss_felled": r.id in arch.felled,
+                "placed": r.id in arch.placed_regions, "topics": topics,
             })  # fmt: skip
         return {"prove_mark": PROVE_MARK, "regions": regions}

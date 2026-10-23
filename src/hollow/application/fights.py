@@ -7,7 +7,15 @@ from uuid import UUID
 
 from hollow.application.lessons import LessonError
 from hollow.application.ports import Clock, EventStore, next_moment
-from hollow.domain.bosses import BOSSES, Attempt, Boss, BossRecord, Question, question
+from hollow.domain.bosses import (
+    BOSSES,
+    Attempt,
+    Boss,
+    BossRecord,
+    ChoiceQuestion,
+    Question,
+    question,
+)
 from hollow.domain.calendar import GameCalendar
 from hollow.domain.conjugation import Verb
 from hollow.domain.events import FightAction, FightStarted, FightTurn
@@ -21,7 +29,7 @@ class FightError(LessonError):
 
 @dataclass(frozen=True)
 class Answered:
-    question: Question
+    question: Question | ChoiceQuestion
     given: str
     correct: bool
 
@@ -31,7 +39,7 @@ class FightView:
     boss: Boss
     record: BossRecord
     state: WorldState
-    question: Question | None
+    question: Question | ChoiceQuestion | None
     """The question waiting for an answer, when a fight is on."""
     answered: Answered | None = None
 
@@ -77,7 +85,19 @@ class FightService:
         return weapon.damage(level, boss.recommended)
 
     def ready(self, boss_id: str) -> bool:
-        return len(self.verbs()) >= self.boss(boss_id).min_verbs
+        boss = self.boss(boss_id)
+        if boss.region is not None:
+            today = self._calendar.day_of(self._clock.now())
+            state = replay(self._store.all(), self._calendar, today)
+            return state.architect.region_ready(boss.region)
+        return len(self.verbs()) >= boss.min_verbs
+
+    def requirement(self, boss_id: str) -> str:
+        """What opens the fog, in words."""
+        boss = self.boss(boss_id)
+        if boss.region is not None:
+            return f"The fog will not part until every step of {boss.home_name} is cleared."
+        return f"The fog will not part until you know {boss.min_verbs} verbs."
 
     def enter(self, boss_id: str) -> FightView:
         """Steps through the fog: resumes the fight that is on, or starts a new attempt."""
@@ -85,7 +105,7 @@ class FightService:
         if view.record.current is not None:
             return view
         if not self.ready(boss_id):
-            raise FightError(f"{view.boss.name} waits until you know {view.boss.min_verbs} verbs.")
+            raise FightError(self.requirement(boss_id))
         self._store.append(
             FightStarted(
                 self._now(),

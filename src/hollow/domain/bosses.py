@@ -18,8 +18,10 @@ from enum import StrEnum
 from uuid import UUID
 
 from hollow.domain.activities import Track
+from hollow.domain.architect import QUESTIONS, TOPICS, boss_id
 from hollow.domain.calendar import GameCalendar
 from hollow.domain.conjugation import Verb, normalize
+from hollow.domain.curriculum import QuizQuestion
 from hollow.domain.events import Event, FightAction, FightStarted, FightTurn
 
 DAMAGE = 10
@@ -39,6 +41,8 @@ class Kind(StrEnum):
     """Ask politely: 〜てください."""
     SEQUENCE = "sequence"
     """Two actions in order: 〜て、〜."""
+    CHOICE = "choice"
+    """A quiz question from the Architect steps behind the boss: pick the right option."""
 
 
 @dataclass(frozen=True)
@@ -48,6 +52,8 @@ class Phase:
     kinds: tuple[Kind, ...]
     seconds: int | None = None
     """Answer time limit; running out counts as a miss."""
+    topics: tuple[str, ...] = ()
+    """For CHOICE phases: the steps whose quiz questions the boss asks."""
 
 
 @dataclass(frozen=True)
@@ -61,6 +67,18 @@ class Boss:
     jp_kana: str
     phases: tuple[Phase, ...]
     min_verbs: int = 6
+    region: str | None = None
+    """The Architect region this boss guards; it waits until every step there is cleared."""
+    home: str = "/map/firelink"
+    """The map the fog gate stands on."""
+    home_name: str = "Firelink"
+    node: str = "warden"
+    """The boss's node on its home map."""
+    short: str = "Warden"
+    body: str = "warden_body.png"
+    weapon: str | None = "warden_weapon.png"
+    arena: str = "arena_bg.png"
+    intro: str = ""
 
 
 WARDEN = Boss(
@@ -74,8 +92,54 @@ WARDEN = Boss(
         Phase("Swift conjugation", 120, (Kind.TE,), seconds=20),
         Phase("Requests and sequences", 80, (Kind.REQUEST, Kind.SEQUENCE)),
     ),
+    intro="Phase 1: the て-form of your verbs against the clock. "
+    "Phase 2: requests (〜てください) and sequences (〜て、〜).",
 )
-BOSSES = {WARDEN.id: WARDEN}
+GOLEM = Boss(
+    boss_id("forge"),
+    "The Strict Golem",
+    Track.ARCHITECT,
+    2,
+    "",
+    "",
+    (
+        Phase(
+            "Craft",
+            100,
+            (Kind.CHOICE,),
+            topics=(
+                "mypy-strict-in-practice",
+                "property-based-testing",
+                "test-architecture",
+                "packaging-and-tooling-with-uv",
+            ),
+        ),
+        Phase(
+            "The runtime beneath",
+            100,
+            (Kind.CHOICE,),
+            seconds=45,
+            topics=(
+                "asyncio-internals",
+                "concurrency-choices-threads-processes-async",
+                "profiling-and-performance",
+                "python-memory-model",
+            ),
+        ),
+    ),
+    min_verbs=0,
+    region="forge",
+    home="/map/architect/forge",
+    home_name="the Forge",
+    node="forge-boss",
+    short="Golem",
+    body="golem_body.png",
+    weapon=None,
+    arena="arena_forge.png",
+    intro="Phase 1: your craft, types, tests and tooling. Phase 2: the runtime beneath, "
+    "asyncio, concurrency, profiling and memory, against the clock.",
+)
+BOSSES = {b.id: b for b in (WARDEN, GOLEM)}
 
 
 @dataclass(frozen=True)
@@ -107,8 +171,57 @@ class Question:
         return any(given in {h + t, h + "、" + t} for h in heads for t in tails)
 
 
-def question(boss: Boss, phase: int, seed: int, turn: int, verbs: Sequence[Verb]) -> Question:
+@dataclass(frozen=True)
+class ChoiceQuestion:
+    """A quiz question with its options shuffled for this turn."""
+
+    question_id: str
+    order: tuple[int, ...]
+    """Indices into the written options, in the order they are shown."""
+    kind: Kind = Kind.CHOICE
+
+    @property
+    def quiz(self) -> QuizQuestion:
+        return QUESTIONS[self.question_id]
+
+    @property
+    def options(self) -> list[str]:
+        return [self.quiz.options[i] for i in self.order]
+
+    @property
+    def topic(self) -> str:
+        return TOPICS[self.question_id.split("#")[0]].title
+
+    @property
+    def answers(self) -> tuple[str, str]:
+        """The right option and the explanation."""
+        return self.quiz.options[self.quiz.answer], self.quiz.explanation
+
+    def accepts(self, answer: str) -> bool:
+        """`answer` is the position of the chosen option as shown, from 0."""
+        try:
+            shown = int(answer)
+        except ValueError:
+            return False
+        return 0 <= shown < len(self.order) and self.order[shown] == self.quiz.answer
+
+
+def choice(phase: Phase, seed: int, turn: int) -> ChoiceQuestion:
+    """Walks a seeded shuffle of the phase's questions, so a fight rarely repeats one."""
+    pool = sorted(q for t in phase.topics for q in (x.id for x in TOPICS[t].quiz))
+    random.Random(f"{seed}:pool").shuffle(pool)
+    asked = pool[turn % len(pool)]
+    order = list(range(len(QUESTIONS[asked].options)))
+    random.Random(f"{seed}:{turn}").shuffle(order)
+    return ChoiceQuestion(asked, tuple(order))
+
+
+def question(
+    boss: Boss, phase: int, seed: int, turn: int, verbs: Sequence[Verb]
+) -> Question | ChoiceQuestion:
     """The question for one turn of an attempt; the same seed and turn always ask the same."""
+    if Kind.CHOICE in boss.phases[phase].kinds:
+        return choice(boss.phases[phase], seed, turn)
     rng = random.Random(f"{seed}:{turn}")
     kinds = boss.phases[phase].kinds
     kind = kinds[turn % len(kinds)]

@@ -2,7 +2,8 @@
 {% from "partials/_ja.html" import ja %}
 {% block title %}World map · DontYouDareGoHollow{% endblock %}
 {% block content %}
-<div class="map-layout">
+{% include "partials/_roads.html" %}
+<div class="map-layout road-ronin">
   <section class="panel map-frame" aria-label="World map">
     <h2 class="label">The world · Ronin (Japanese)</h2>
     {% include "partials/_map.html" %}
@@ -26,7 +27,6 @@
       {% else %}<p class="muted">Unavailable for now. It opens after the boss before it falls.</p>{% endif %}
     </section>
     {% endfor %}
-    <p class="muted" style="font-size: 13px">The Architect's lands (Python) open with the first dev lessons.</p>
   </aside>
 </div>
 <script src="{{ asset('js/map.js') }}" defer></script>

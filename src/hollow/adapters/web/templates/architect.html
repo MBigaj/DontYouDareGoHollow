@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Architect · DontYouDareGoHollow{% endblock %}
+{% block content %}
+{% set arch = state.architect %}
+<section class="panel arch-head">
+  <img src="{{ asset('sprites/item_hammer.png') }}" alt="" width="54" height="54">
+  <div>
+    <div class="label">Architect · Python, architecture and system design</div>
+    <h2 class="map-title">Level {{ state.jobs['architect'].level }} · {{ proved }} of {{ total }} topics proved</h2>
+    <p class="muted">A topic clears through its gates. <strong>Learn</strong>: write {{ learn_words }} words of your own in its vault note (+{{ learn_souls }} souls). <strong>Prove</strong>: pass the Tech Lead's exam at {{ (prove_mark * 100) | int }}% (+{{ prove_souls }} souls). <strong>Build</strong>, CI-checked challenges, comes later. A placement trial per region clears what you already know.</p>
+  </div>
+</section>
+
+<div class="arch-grid">
+  {% for r in regions %}
+  <a class="panel arch-region" href="/architect/{{ r.region.id }}">
+    <div class="lesson-head"><strong>{{ r.region.name }}</strong>
+      {% if r.cleared %}<span class="chip new">Cleared</span>{% elif not r.placed %}<span class="chip">Placement trial open</span>{% endif %}</div>
+    <div class="muted" style="font-size: 13px">{{ r.region.covers }}</div>
+    <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="{{ r.total }}" aria-valuenow="{{ r.proved }}" aria-label="{{ r.region.name }} topics proved"><span style="width: {{ (100 * r.proved / r.total) | round(1) }}%"></span></div>
+    <div style="font-size: 13px">{{ r.proved }} / {{ r.total }} proved · {{ r.learned }} learned</div>
+  </a>
+  {% endfor %}
+</div>
+
+<section class="panel" aria-label="Lords of Design">
+  <h2 class="label">Lords of Design · the main quest</h2>
+  <p class="muted" style="margin: 6px 0 10px; font-size: 14px">System design fights with the Tech Lead: requirements and design, then the rules change, then failures. Each Lord opens once its regions are {{ (region_clear * 100) | int }}% proved. The fights arrive with the next update.</p>
+  <table>
+    {% for l in lords %}
+    <tr>
+      <td><span class="chip">Tier {{ l.lord.tier }}</span> <strong>{{ l.lord.name }}</strong><div class="muted" style="font-size: 13px">{{ l.lord.forces }}</div></td>
+      <td style="text-align: right; font-size: 13px">{% if l.open %}<span class="souls-ink">Ready</span>{% else %}Needs {{ l.missing | join(', ') }}{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</section>
+{% endblock %}

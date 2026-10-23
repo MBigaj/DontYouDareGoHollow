@@ -22,6 +22,7 @@ from hollow.domain.events import (
     LessonCompleted,
     MaterialDropped,
     MessageLeft,
+    NoteWritten,
     Source,
     StatLevelled,
     StudyLogged,
@@ -70,6 +71,7 @@ SIMPLE: dict[str, type[Any]] = {
     "weapon_bought": WeaponBought,
     "weapon_upgraded": WeaponUpgraded,
     "weapon_equipped": WeaponEquipped,
+    "note_written": NoteWritten,
 }
 """Flat events stored field by field: every field but `occurred_at` and `id` in the payload."""
 SIMPLE_TYPES = {cls: name for name, cls in SIMPLE.items()}

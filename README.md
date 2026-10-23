@@ -112,6 +112,24 @@ Reinforcing costs souls (200 x the new level) and titanite:
 
 Each level adds 1 damage up to a boss's recommended level (+2 for the Warden) and half that beyond it, and every boss still needs at least 60% of its hits (at most 16 damage). A fight keeps the damage your weapon had when it began. Random drops are saved when they are rolled, so replays never change your loot.
 
+## Architect track
+
+The Architect's half of the game (`/architect`) is built from the Obsidian roadmap vault: eight skill regions (the Forge, Data Depths, the API Citadel, the Async Ruins, the Watchtower, the Iron Keep, the Undercroft and the Distributed Abyss) holding 169 topics, one vault note each, with duplicates merged. The nine Lords of Design wait behind them: each opens once its regions are 80% proved.
+
+| Gate | How it is checked | Pays |
+| --- | --- | --- |
+| Learn | 150 words of your own in the topic's vault note; the scan ignores the template text every note starts with | 30 souls, once |
+| Prove | A Tech Lead exam at 80% or better, or a region's placement trial | 120 souls, once (placement: none) |
+| Build | CI-checked challenges | coming later |
+
+Point the game at the vault in `.env`, and every sync scans it (in the background, or before `hollow-agent-inbox`):
+
+```
+HOLLOW_VAULT_PATH=D:/Programming/Notes/Senior Backend Roadmap
+```
+
+Learning and proving both light the bonfire and feed the Architect job.
+
 ## Agents
 
 The Quest Master, Sensei, Lorekeeper and Tech Lead are Claude, during a session with you, following the playbooks in [`agents/`](agents/README.md). The app never calls a model. Agents create content and judge open-ended answers; the app validates what they return and does all the scoring.

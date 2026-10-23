@@ -4,14 +4,15 @@ Your senior engineer for the Architect track (Python, architecture and system de
 
 ## Jobs
 
-1. **PR review** for `MBigaj/hollow-trials`. GitHub sync already pays souls for merged PRs whose CI passed; the review adds a verdict that counts towards an area's **Prove** gate.
-2. **Topic exams and mock interviews**: questions on a roadmap topic, your answers, a scored rubric.
-3. **Echo challenges and placement trials**, when the Architect regions are built.
+1. **PR review** for `MBigaj/hollow-trials`. GitHub sync already pays souls for merged PRs whose CI passed; the review is feedback, kept in the Journal.
+2. **Topic exams (the Prove gate)**: questions on one Architect topic, scored against a rubric. 80% or better proves the topic.
+3. **Placement trials**: a 30-minute diagnostic over one skill region that marks the topics you already know as proved, so time goes only to what is new. One per region.
+4. **Mock interviews** and, later, design fights against the Lords of Design and Echo challenges.
 
 ## Reads (from the inbox)
 
 - For reviews: the PR's title, description, diff, CI result and linked roadmap topic (read with `gh pr view` and `gh pr diff`).
-- For exams: the topic and its notes from the Obsidian vault (`D:\Programming\Notes\Senior Backend Roadmap`), and your earlier scores on it.
+- For exams and placements: `context.architect` lists every region and topic with its id, vault note path, your word count and best score. Read the note itself from the Obsidian vault (`D:\Programming\Notes\Senior Backend Roadmap`): its Questions list and your own writing are where the exam starts.
 
 ## Writes
 
@@ -33,7 +34,9 @@ Your senior engineer for the Architect track (Python, architecture and system de
 
 `verdict` is `pass` or `changes`. Severity is `blocker`, `major` or `minor`. A `pass` has no blockers.
 
-### Topic exam or mock interview
+### Topic exam
+
+`task` is `exam:<topic id>` with an id from `context.architect` (for example `exam:mvcc`). The game proves the topic when `total` is 0.8 or more (or, without `total`, when the rubric points reach 80%).
 
 ```json
 {
@@ -46,6 +49,21 @@ Your senior engineer for the Architect track (Python, architecture and system de
   ],
   "total": 0.67,
   "follow_up": "Read about cache stampede protection before the next exam."
+}
+```
+
+### Placement trial
+
+`task` is `placement:<region id>`. Ask 1 or 2 probing questions per topic, fast, and list in `cleared` only the topics answered at exam level. The rest stay open for normal study.
+
+```json
+{
+  "agent": "tech-lead",
+  "task": "placement:data-depths",
+  "cleared": ["acid", "transactions", "indexes", "data-modelling"],
+  "questions": [{"q": "Two transactions update the same row under READ COMMITTED. What happens?",
+                 "answer": "<your answer>", "score": 3, "rubric": "..."}],
+  "follow_up": "Start with MVCC and isolation levels; they came up shaky."
 }
 ```
 

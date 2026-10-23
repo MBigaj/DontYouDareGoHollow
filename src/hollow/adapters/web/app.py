@@ -5,6 +5,7 @@ import secrets
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Any
+from urllib.parse import quote, urlencode
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -16,6 +17,7 @@ from markupsafe import Markup, escape
 from hollow.adapters.anki_connect import connect
 from hollow.adapters.db.store import SqlEventStore, make_engine
 from hollow.adapters.github_api import GitHubApi
+from hollow.adapters.vault import Vault
 from hollow.application.anki_sync import AnkiSource, AnkiSync, AnkiUnavailable, SyncResult
 from hollow.application.blacksmith import Blacksmith, BlacksmithError
 from hollow.application.bonfire import BonfireService, CannotLevelUp
@@ -29,8 +31,19 @@ from hollow.application.github_sync import (
 from hollow.application.lessons import LessonError, LessonService
 from hollow.application.lessons import Run as LessonRun
 from hollow.application.ports import Clock, EventStore, SystemClock
+from hollow.application.vault_sync import NoteSource, VaultSync
 from hollow.config import Settings
 from hollow.domain.activities import ACTIVITIES, ActivityKind, Track
+from hollow.domain.architect import (
+    LEARN_SOULS,
+    LEARN_WORDS,
+    LORDS,
+    PROVE_MARK,
+    PROVE_SOULS,
+    REGION_CLEAR,
+)
+from hollow.domain.architect import REGION_BY_ID as ARCH_REGION_BY_ID
+from hollow.domain.architect import REGIONS as ARCH_REGIONS
 from hollow.domain.armory import (
     BOSS_MATERIALS,
     BOSS_WEAPONS,
@@ -121,6 +134,7 @@ def create_app(
     clock: Clock | None = None,
     anki: AnkiSource | None = None,
     github: GitHubSource | None = None,
+    vault: NoteSource | None = None,
 ) -> FastAPI:
     settings = settings or Settings()
     store = store or SqlEventStore(make_engine(settings.database_url))
@@ -160,7 +174,10 @@ def create_app(
         return texts
 
     templates.env.globals["lore"] = lore
-    syncing = anki_sync is not None or github_sync is not None
+    if vault is None and settings.vault_path:
+        vault = Vault(Path(settings.vault_path))
+    vault_sync = VaultSync(store, vault, clock) if vault else None
+    syncing = anki_sync is not None or github_sync is not None or vault_sync is not None
     """Pages only ask for a background sync when there is something to sync."""
     basic = HTTPBasic(auto_error=False)
 
@@ -285,6 +302,10 @@ def create_app(
                 warnings.append(f"GitHub sync failed: {error}.")
             else:
                 found.append(describe_github(github))
+        if vault_sync is not None:
+            notes = vault_sync.run()
+            if notes:
+                found.append(f"Vault: {notes} note{'s' if notes != 1 else ''} updated.")
         return [line for line in found if line], warnings
 
     def describe_anki(result: SyncResult, quiet: bool) -> str:
@@ -860,6 +881,83 @@ def create_app(
         ]  # fmt: skip
         return templates.TemplateResponse(
             request, "journal.html", context(service.state(), page="journal", entries=entries)
+        )
+
+    vault_name = Path(settings.vault_path).name if settings.vault_path else "Senior Backend Roadmap"
+
+    def obsidian(note: str) -> str:
+        """An obsidian:// link that opens the note in your vault."""
+        return "obsidian://open?" + urlencode(
+            {"vault": vault_name, "file": note.removesuffix(".md")}, quote_via=quote
+        )
+
+    templates.env.globals["obsidian"] = obsidian
+
+    def gate_numbers() -> dict[str, Any]:
+        return {
+            "learn_words": LEARN_WORDS,
+            "learn_souls": LEARN_SOULS,
+            "prove_souls": PROVE_SOULS,
+            "prove_mark": PROVE_MARK,
+            "region_clear": REGION_CLEAR,
+        }
+
+    @app.get("/architect", response_class=HTMLResponse)
+    def architect(request: Request) -> Response:
+        state = service.state()
+        arch = state.architect
+        regions = [
+            {
+                "region": r,
+                "proved": sum(s.proved for s in arch.region(r.id)),
+                "learned": sum(s.learned for s in arch.region(r.id)),
+                "total": len(arch.region(r.id)),
+                "placed": r.id in arch.placed_regions,
+                "cleared": arch.region_cleared(r.id),
+            }
+            for r in ARCH_REGIONS
+        ]
+        lords = [
+            {
+                "lord": lord,
+                "open": arch.lord_open(lord),
+                "missing": [ARCH_REGION_BY_ID[r].name for r in lord.regions
+                            if not arch.region_cleared(r)],
+            }
+            for lord in LORDS
+        ]  # fmt: skip
+        return templates.TemplateResponse(
+            request,
+            "architect.html",
+            context(
+                state,
+                page="architect",
+                regions=regions,
+                lords=lords,
+                proved=sum(s.proved for s in arch.topics.values()),
+                total=len(arch.topics),
+                **gate_numbers(),
+            ),
+        )
+
+    @app.get("/architect/{region_id}", response_class=HTMLResponse)
+    def architect_region(request: Request, region_id: str) -> Response:
+        if region_id not in ARCH_REGION_BY_ID:
+            raise HTTPException(404, f"No Architect region called {region_id}.")
+        state = service.state()
+        topics = state.architect.region(region_id)
+        return templates.TemplateResponse(
+            request,
+            "architect_region.html",
+            context(
+                state,
+                page="architect",
+                region=ARCH_REGION_BY_ID[region_id],
+                topics=topics,
+                proved=sum(s.proved for s in topics),
+                placed=region_id in state.architect.placed_regions,
+                **gate_numbers(),
+            ),
         )
 
     @app.post("/message")

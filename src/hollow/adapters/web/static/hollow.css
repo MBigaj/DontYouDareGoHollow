@@ -343,3 +343,23 @@ td:last-child { text-align: right; color: var(--ember-hi); }
 .lore[open] summary { margin-bottom: 4px; }
 .journal-head { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .journal-entry ul { margin: 6px 0; padding-left: 20px; }
+
+/* ---- architect ---- */
+.arch-head { display: flex; gap: 16px; align-items: center; }
+.arch-head p { margin: 6px 0 0; font-size: 14px; }
+.arch-head a { text-decoration: none; }
+.arch-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 960px) { .arch-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .arch-grid { grid-template-columns: minmax(0, 1fr); } }
+.arch-region { display: flex; flex-direction: column; gap: 6px; color: var(--ink); text-decoration: none; }
+.arch-region:hover { box-shadow: inset 0 0 0 3px var(--edge-light); }
+.bar.thin { height: 6px; margin: 6px 0 4px; }
+.topics { display: flex; flex-direction: column; gap: 8px; }
+.topic { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 8px 10px; background: #1a1612; outline: 3px solid var(--bg); box-shadow: inset 0 0 0 2px var(--edge); }
+.topic.proved { box-shadow: inset 0 0 0 2px var(--gold); }
+.topic.learned { box-shadow: inset 0 0 0 2px var(--ember-lo); }
+@media (max-width: 620px) { .topic { grid-template-columns: minmax(0, 1fr); } }
+.gates { display: flex; gap: 6px; }
+.gate { font-size: 12px; padding: 3px 8px; outline: 2px solid var(--edge); color: var(--ink-3); white-space: nowrap; }
+.gate.on { background: var(--gold); outline-color: var(--gold); color: #1a0d05; }
+.gate.off { opacity: .5; }

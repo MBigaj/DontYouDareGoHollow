@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     github_token: SecretStr | None = None
     """A read-only fine-grained token. Needed for private repos; raises the rate limit."""
 
+    vault_path: str | None = None
+    """Your Obsidian roadmap vault, e.g. D:/Programming/Notes/Senior Backend Roadmap."""
+
     def github_repo_names(self) -> tuple[str, ...]:
         return tuple(name.strip() for name in self.github_repos.split(",") if name.strip())
 

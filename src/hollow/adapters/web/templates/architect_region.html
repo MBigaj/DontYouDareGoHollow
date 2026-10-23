@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}{{ region.name }} · DontYouDareGoHollow{% endblock %}
+{% block content %}
+<section class="panel arch-head">
+  <div>
+    <div class="label"><a href="/architect">Architect</a> · skill region</div>
+    <h2 class="map-title">{{ region.name }}</h2>
+    <p class="muted">{{ region.covers }}. {{ proved }} of {{ topics | length }} topics proved{% if placed %}; placement trial done{% endif %}.</p>
+    <p style="font-size: 14px; margin: 6px 0 0">Build boss (coming later): {{ region.build_boss }}.</p>
+  </div>
+</section>
+
+<section class="panel" aria-label="Topics">
+  <div class="topics">
+    {% for s in topics %}
+    <div class="topic {{ 'proved' if s.proved else ('learned' if s.learned else '') }}">
+      <div class="topic-main">
+        <strong>{{ s.topic.title }}</strong>
+        {% if s.placed %}<span class="chip">Known · placement</span>{% endif %}
+        <div class="bar thin" aria-label="{{ s.words }} of {{ learn_words }} words written"><span style="width: {{ [100, (100 * s.words / learn_words)] | min | round(1) }}%"></span></div>
+        <div class="muted" style="font-size: 13px">
+          {% if s.topic.note %}{{ s.words }} / {{ learn_words }} words · <a href="{{ obsidian(s.topic.note) }}">open in Obsidian</a>{% else %}No vault note yet: add one, or prove it in an exam{% endif %}
+        </div>
+      </div>
+      <div class="gates">
+        <span class="gate {{ 'on' if s.learned }}" title="Learn: {{ learn_words }} words of your own">Learn</span>
+        <span class="gate {{ 'on' if s.proved }}" title="Prove: the Tech Lead's exam at {{ (prove_mark * 100) | int }}%">Prove{% if s.best is not none %} {{ (s.best * 100) | round | int }}%{% endif %}</span>
+        <span class="gate off" title="Build: CI-checked challenges, coming later">Build</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <p class="muted" style="font-size: 13px; margin: 12px 0 0">To prove a topic, ask Claude: "exam me on {{ topics[0].topic.title }}". For a placement trial of the whole region: "placement trial for {{ region.name }}".</p>
+</section>
+{% endblock %}

@@ -14,6 +14,8 @@ from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 
 from hollow.application.ports import Clock, EventStore, next_moment
 from hollow.domain.activities import ActivityKind
+from hollow.domain.architect import PROVE_MARK, REGION_BY_ID, TOPICS
+from hollow.domain.architect import REGIONS as ARCHITECT_REGIONS
 from hollow.domain.armory import MATERIAL_NAMES, WEAPONS
 from hollow.domain.atlas import REGIONS
 from hollow.domain.bosses import BOSSES, question
@@ -166,13 +168,15 @@ class ExamQuestion(Strict):
 
 class TechLead(Strict):
     agent: Literal["tech-lead"]
-    task: str = Field(pattern=r"^(review:[\w./-]+#\d+|exam:[\w-]+)$")
+    task: str = Field(pattern=r"^(review:[\w./-]+#\d+|exam:[\w-]+|placement:[\w-]+)$")
     verdict: Literal["pass", "changes"] | None = None
     strengths: list[str] = Field([], max_length=5)
     issues: list[Issue] = Field([], max_length=5)
     questions: list[str | ExamQuestion] = Field([], max_length=10)
     total: float | None = Field(None, ge=0, le=1)
     follow_up: str = Field("", max_length=400)
+    cleared: list[str] = Field([], max_length=60)
+    """Placement trials only: topic ids answered well enough to skip."""
 
 
 Submission = Annotated[QuestMaster | Sensei | Lorekeeper | TechLead, Field(discriminator="agent")]
@@ -225,6 +229,7 @@ class AgentDesk:
                 for text in result.texts
             ]
         else:
+            self._check_tech_lead(result, state)
             saved = [AgentResult(now, "tech-lead", result.task, payload)]
         for event in saved:
             self._store.append(event)
@@ -245,6 +250,22 @@ class AgentDesk:
                 raise AgentError(f"No lesson called {check.lesson_id}.")
             if isinstance(check, BossCheck) and check.boss_id not in BOSSES:
                 raise AgentError(f"No boss called {check.boss_id}.")
+
+    @staticmethod
+    def _check_tech_lead(result: TechLead, state: WorldState) -> None:
+        kind, _, key = result.task.partition(":")
+        if kind == "exam" and key not in TOPICS:
+            raise AgentError(f"No Architect topic called {key}; use a topic id from the inbox.")
+        if kind == "placement":
+            if key not in REGION_BY_ID:
+                raise AgentError(f"No Architect region called {key}.")
+            if key in state.architect.placed_regions:
+                raise AgentError(f"{REGION_BY_ID[key].name} already had its placement trial.")
+            outside = [t for t in result.cleared if t not in TOPICS or TOPICS[t].region != key]
+            if outside:
+                raise AgentError(f"Not topics of {key}: {', '.join(outside)}.")
+        elif result.cleared:
+            raise AgentError("Only placement trials can clear topics directly.")
 
     def _check_judgement(self, result: Sensei, state: WorldState) -> None:
         if not result.task.startswith("quest:"):
@@ -288,6 +309,19 @@ class AgentDesk:
             if task not in reviewed:
                 tasks.append({"agent": "tech-lead", "task": task, "title": pr["title"],
                               "do": "Review it with gh pr view and gh pr diff."})  # fmt: skip
+        arch = state.architect
+        unplaced = [r for r in ARCHITECT_REGIONS if r.id not in arch.placed_regions]
+        if unplaced:
+            region = unplaced[0]
+            tasks.append({"agent": "tech-lead", "task": f"placement:{region.id}",
+                          "name": region.name,
+                          "do": "Optional, when the player has 30 minutes: this region's "
+                                "placement trial (agents/tech-lead.md)."})  # fmt: skip
+        ready = [s for s in arch.topics.values() if s.learned and not s.proved][:3]
+        for topic_state in ready:
+            tasks.append({"agent": "tech-lead", "task": f"exam:{topic_state.topic.id}",
+                          "name": topic_state.topic.title,
+                          "do": "Notes written: offer the Prove exam."})  # fmt: skip
         return {
             "generated_at": self._clock.now().isoformat(),
             "today": today.isoformat(),
@@ -377,4 +411,22 @@ class AgentDesk:
                 {"id": s.quest.id, "title": s.quest.title, "done": s.done} for s in state.quests
             ],
             "known_words": words,
+            "architect": self._architect(state),
         }
+
+    @staticmethod
+    def _architect(state: WorldState) -> dict[str, Any]:
+        arch = state.architect
+        regions = []
+        for r in ARCHITECT_REGIONS:
+            topics = [
+                {"id": s.topic.id, "title": s.topic.title, "note": s.topic.note,
+                 "words": s.words, "learned": s.learned, "proved": s.proved, "best": s.best}
+                for s in arch.region(r.id)
+            ]  # fmt: skip
+            regions.append({
+                "id": r.id, "name": r.name, "covers": r.covers,
+                "placed": r.id in arch.placed_regions,
+                "cleared_share": round(arch.cleared_share(r.id), 2), "topics": topics,
+            })  # fmt: skip
+        return {"prove_mark": PROVE_MARK, "regions": regions}

@@ -221,6 +221,16 @@ class AgentResult:
             raise ValueError("occurred_at must be timezone-aware")
 
 
+@dataclass(frozen=True)
+class NoteWritten:
+    """How many words of your own a roadmap note holds, seen by a vault scan."""
+
+    occurred_at: datetime
+    topic_id: str
+    words: int
+    id: UUID = field(default_factory=uuid4)
+
+
 Event = (
     StudyLogged
     | MessageLeft
@@ -234,4 +244,5 @@ Event = (
     | WeaponUpgraded
     | WeaponEquipped
     | AgentResult
+    | NoteWritten
 )

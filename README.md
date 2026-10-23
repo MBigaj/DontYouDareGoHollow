@@ -112,6 +112,10 @@ Reinforcing costs souls (200 x the new level) and titanite:
 
 Each level adds 1 damage up to a boss's recommended level (+2 for the Warden) and half that beyond it, and every boss still needs at least 60% of its hits (at most 16 damage). A fight keeps the damage your weapon had when it began. Random drops are saved when they are rolled, so replays never change your loot.
 
+## Agents
+
+The Quest Master, Sensei, Lorekeeper and Tech Lead are Claude, during a session with you, following the playbooks in [`agents/`](agents/README.md). The app never calls a model. Agents create content and judge open-ended answers; the app validates what they return and does all the scoring.
+
 ## GitHub sync
 
 Every merged pull request you open in your practice repo (by default [`MBigaj/hollow-trials`](https://github.com/MBigaj/hollow-trials)) is worth 100 souls and lights the bonfire on its own.

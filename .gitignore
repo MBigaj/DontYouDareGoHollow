@@ -12,3 +12,5 @@ htmlcov/
 dist/
 build/
 .idea/
+agents/inbox/
+agents/outbox/

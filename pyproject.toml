@@ -20,6 +20,8 @@ dependencies = [
 hollow-sync-anki = "hollow.cli:sync_anki"
 hollow-anki-check = "hollow.cli:check_anki"
 hollow-sync-github = "hollow.cli:sync_github"
+hollow-agent-inbox = "hollow.cli:agent_inbox"
+hollow-agent-submit = "hollow.cli:agent_submit"
 
 [dependency-groups]
 dev = [

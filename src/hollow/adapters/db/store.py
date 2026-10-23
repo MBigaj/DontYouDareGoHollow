@@ -14,6 +14,7 @@ from sqlalchemy.types import TypeDecorator
 
 from hollow.domain.activities import ActivityKind
 from hollow.domain.events import (
+    AgentResult,
     Event,
     FightAction,
     FightStarted,
@@ -138,7 +139,12 @@ def to_row(event: Event) -> EventRow:
             id=str(event.id),
             type="lesson_completed",
             occurred_at=event.occurred_at,
-            payload={"lesson_id": event.lesson_id, "correct": event.correct, "total": event.total},
+            payload={
+                "lesson_id": event.lesson_id,
+                "correct": event.correct,
+                "total": event.total,
+                "missed": list(event.missed),
+            },
         )
     if isinstance(event, WordLearned):
         return EventRow(
@@ -159,6 +165,13 @@ def to_row(event: Event) -> EventRow:
             type="stat_levelled",
             occurred_at=event.occurred_at,
             payload={"stat": event.stat.value, "cost": event.cost},
+        )
+    if isinstance(event, AgentResult):
+        return EventRow(
+            id=str(event.id),
+            type="agent_result",
+            occurred_at=event.occurred_at,
+            payload={"agent": event.agent, "task": event.task, "result": event.payload},
         )
     if isinstance(event, MessageLeft):
         return EventRow(
@@ -201,6 +214,14 @@ def from_row(row: EventRow) -> Event:
             correct=bool(p["correct"]),
             id=UUID(row.id),
         )
+    if row.type == "agent_result":
+        return AgentResult(
+            occurred_at=row.occurred_at,
+            agent=str(p["agent"]),
+            task=str(p["task"]),
+            payload=dict(p["result"]),
+            id=UUID(row.id),
+        )
     if row.type == "lesson_completed":
         return LessonCompleted(
             occurred_at=row.occurred_at,
@@ -208,6 +229,7 @@ def from_row(row: EventRow) -> Event:
             correct=int(p["correct"]),
             total=int(p["total"]),
             id=UUID(row.id),
+            missed=tuple(str(m) for m in p.get("missed", [])),
         )
     if row.type == "word_learned":
         return WordLearned(

@@ -19,7 +19,9 @@
       {% for m in materials %}
       <div class="mat tier-{{ loop.index }} {{ 'none' if arm.materials[m.material] == 0 }}">
         <img src="{{ asset('sprites/item_titanite.png') }}" alt="" width="40" height="40">
-        <div><strong>{{ arm.materials[m.material] }}</strong> {{ m.name }}<div class="muted" style="font-size: 13px">{{ m.levels }} · {{ m.source }}</div></div>
+        <div><strong>{{ arm.materials[m.material] }}</strong> {{ m.name }}<div class="muted" style="font-size: 13px">{{ m.levels }} · {{ m.source }}</div>
+          {% set text = lore().get('material:' + m.material.value) %}
+          {% if text %}<details class="lore"><summary lang="ja">{{ with_readings(text.ja, text.readings) }}</summary><span class="muted">{{ text.en }}</span></details>{% endif %}</div>
       </div>
       {% endfor %}
     </div>
@@ -36,6 +38,8 @@
           <div class="weapon-body">
             <div><strong>{{ w.spec.name }}</strong>{% if w.owned %} +{{ w.level }}{% endif %}{% if w.equipped %} <span class="chip new">Equipped</span>{% endif %}</div>
             <div class="muted" style="font-size: 13px">{{ w.spec.blurb }}</div>
+            {% set text = lore().get('weapon:' + w.spec.id) %}
+            {% if text %}<details class="lore"><summary lang="ja">{{ with_readings(text.ja, text.readings) }}</summary><span class="muted">{{ text.en }}</span></details>{% endif %}
             {% if w.skill %}<div class="skill">{{ w.skill }}</div>{% endif %}
             {% if w.damage %}<div style="font-size: 13px">{{ w.damage }} damage per hit against {{ w.vs }}{% if w.next_damage and w.next_damage != w.damage %} · {{ w.next_damage }} at +{{ w.level + 1 }}{% endif %}</div>{% endif %}
             <div class="weapon-actions">

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Journal · DontYouDareGoHollow{% endblock %}
+{% block content %}
+<section class="panel">
+  <h2 class="label">Journal</h2>
+  <p class="muted" style="margin: 6px 0 0">What the agents wrote and judged in your Claude sessions: reviews, exams, verdicts and lore. Agents never award anything; the game does.</p>
+</section>
+{% if not entries %}
+<section class="panel"><p class="muted">Empty for now. Ask Claude for an agent round.</p></section>
+{% endif %}
+{% for e in entries %}
+<section class="panel journal-entry {{ e.agent }}">
+  <div class="journal-head"><span class="label">{{ e.agent | replace('-', ' ') | title }} · {{ e.task }}</span><span class="muted">{{ e.day }}</span></div>
+  {% set d = e.data %}
+  {% if e.agent == 'tech-lead' %}
+    {% if d.verdict %}<p><span class="chip {{ 'new' if d.verdict == 'pass' else 'due' }}">{{ 'Pass' if d.verdict == 'pass' else 'Changes requested' }}</span></p>{% endif %}
+    {% if d.strengths %}<ul>{% for s in d.strengths %}<li>{{ s }}</li>{% endfor %}</ul>{% endif %}
+    {% if d.issues %}<table>{% for i in d.issues %}<tr><td><span class="chip">{{ i.severity }}</span> {{ i.file }}{% if i.line %}:{{ i.line }}{% endif %}</td><td>{{ i.note }}</td></tr>{% endfor %}</table>{% endif %}
+    {% if d.questions %}<ul>{% for q in d.questions %}<li>{% if q is string %}{{ q }}{% else %}{{ q.q }} <span class="muted">· {{ q.score }}/3</span>{% endif %}</li>{% endfor %}</ul>{% endif %}
+    {% if d.total is not none %}<p>Score {{ (d.total * 100) | round | int }}%</p>{% endif %}
+    {% if d.follow_up %}<p class="muted">{{ d.follow_up }}</p>{% endif %}
+  {% elif e.agent == 'sensei' %}
+    <p><span class="chip {{ 'new' if d.passed else 'due' }}">{{ 'Passed' if d.passed else 'Not yet' }}</span>{% if d.submission %} <span lang="ja">{{ d.submission }}</span>{% endif %}</p>
+    {% if d.corrections %}<table lang="ja">{% for c in d.corrections %}<tr><td>{{ c.wrote }} → {{ c.better }}</td><td class="muted">{{ c.why }}</td></tr>{% endfor %}</table>{% endif %}
+  {% elif e.agent == 'lorekeeper' %}
+    <p lang="ja" class="map-jp">{{ with_readings(d.ja, d.readings) }}</p>
+    <details><summary class="muted">English</summary>{{ d.en }}</details>
+    {% if d.new_word %}<p class="muted">New word: <span lang="ja">{{ d.new_word.word }}</span> ({{ d.new_word.kana }}) · {{ d.new_word.meaning }}</p>{% endif %}
+  {% else %}
+    <ul>{% for q in d.quests %}<li>{{ q.title }}{% if q.why %} <span class="muted">· {{ q.why }}</span>{% endif %}</li>{% endfor %}{% if d.roulette %}<li>Roulette: {{ d.roulette.title }}</li>{% endif %}</ul>
+  {% endif %}
+</section>
+{% endfor %}
+{% endblock %}

@@ -11,6 +11,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from markupsafe import Markup, escape
 
 from hollow.adapters.anki_connect import connect
 from hollow.adapters.db.store import SqlEventStore, make_engine
@@ -41,7 +42,7 @@ from hollow.domain.armory import (
 from hollow.domain.atlas import FIRELINK, FIRELINK_SIZE, REGIONS, WORLD_SIZE, NodeKind
 from hollow.domain.bosses import BOSSES, ESTUS_HEAL, FIRST_TRY_BONUS, VICTORY_SOULS, WARDEN, Outcome
 from hollow.domain.conjugation import Ending, Verb
-from hollow.domain.events import Material
+from hollow.domain.events import AgentResult, Material
 from hollow.domain.lessons import LESSONS, Run, grade
 from hollow.domain.progression import STATS, Stat
 from hollow.domain.world import EFFIGIES_PER_WEEK, MAX_HOLLOWING, WorldState
@@ -62,6 +63,24 @@ class FreshStaticFiles(StaticFiles):
 @lru_cache(maxsize=256)
 def _fingerprint(path: str, mtime_ns: int) -> str:
     return hashlib.sha1((STATIC / path).read_bytes()).hexdigest()[:10]
+
+
+def with_readings(ja: str, readings: list[list[str]] | list[tuple[str, str]]) -> Markup:
+    """Japanese text with a hiragana tooltip on every word that has a reading."""
+    marked = ja
+    pairs = sorted(
+        ((str(w), str(k)) for w, k in readings if w and k and w != k), key=lambda p: -len(p[0])
+    )
+    for n, (written, _) in enumerate(pairs):
+        marked = marked.replace(written, f"\x00{n}\x00", 1)
+    html = str(escape(marked))
+    for n, (written, kana) in enumerate(pairs):
+        tip = (
+            f'<span class="ja" tabindex="0" data-reading="{escape(kana)}">{escape(written)}'
+            f'<span class="visually-hidden"> ({escape(kana)})</span></span>'
+        )
+        html = html.replace(f"\x00{n}\x00", tip)
+    return Markup(html)
 
 
 def asset(path: str) -> str:
@@ -130,6 +149,17 @@ def create_app(
     )
     templates = Jinja2Templates(directory=HERE / "templates")
     templates.env.globals["asset"] = asset
+    templates.env.globals["with_readings"] = with_readings
+
+    def lore() -> dict[str, dict[str, Any]]:
+        """The newest lore text for each target."""
+        texts: dict[str, dict[str, Any]] = {}
+        for event in store.all():
+            if isinstance(event, AgentResult) and event.agent == "lorekeeper":
+                texts[event.task] = event.payload
+        return texts
+
+    templates.env.globals["lore"] = lore
     syncing = anki_sync is not None or github_sync is not None
     """Pages only ask for a background sync when there is something to sync."""
     basic = HTTPBasic(auto_error=False)
@@ -817,6 +847,20 @@ def create_app(
         if action not in ("buy", "upgrade", "equip"):
             raise HTTPException(404, "The blacksmith does not do that.")
         return forge_action(request, action, weapon)
+
+    @app.get("/journal", response_class=HTMLResponse)
+    def journal(request: Request) -> Response:
+        results = [e for e in store.all() if isinstance(e, AgentResult)]
+        results.sort(key=lambda e: e.occurred_at, reverse=True)
+        calendar = settings.calendar()
+        entries = [
+            {"agent": e.agent, "task": e.task, "data": e.payload,
+             "day": calendar.day_of(e.occurred_at).strftime("%a %d %b")}
+            for e in results
+        ]  # fmt: skip
+        return templates.TemplateResponse(
+            request, "journal.html", context(service.state(), page="journal", entries=entries)
+        )
 
     @app.post("/message")
     def message(request: Request, text: Annotated[str, Form()]) -> Response:

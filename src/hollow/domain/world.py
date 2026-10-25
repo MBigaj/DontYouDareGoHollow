@@ -17,6 +17,8 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 
 from hollow.domain.activities import ACTIVITIES, ActivityKind, Track, lights_bonfire, souls_for
+from hollow.domain.architect import LESSON_PREFIX, ArchitectState
+from hollow.domain.architect import track as track_architect
 from hollow.domain.armory import SIPHON_PERCENT, WEAPONS, Armory, Skill
 from hollow.domain.armory import build as build_armory
 from hollow.domain.bosses import BossRecord
@@ -99,6 +101,7 @@ class WorldState:
     armory: Armory
     quests: tuple[QuestStatus, ...]
     """Today's quests and whether each is done."""
+    architect: ArchitectState
 
     @property
     def lessons_due(self) -> int:
@@ -181,7 +184,7 @@ def replay(
     for record in bosses.values():
         for reward in record.rewards:
             souls_by_day[reward.day] += reward.souls
-            xp[Track.RONIN] += reward.souls
+            xp[record.boss.track] += reward.souls
             if reward.lights:
                 lessons_cleared_by_day[reward.day] += 1
             if reward.day == today:
@@ -193,12 +196,20 @@ def replay(
     outcomes, lessons = track(events, calendar, today)
     for outcome in outcomes:
         souls = outcome.souls
-        if WEAPONS[armory.equipped_at(Track.RONIN, outcome.at)].skill is Skill.SOUL_SIPHON:
+        road = Track.ARCHITECT if outcome.lesson_id.startswith(LESSON_PREFIX) else Track.RONIN
+        if WEAPONS[armory.equipped_at(road, outcome.at)].skill is Skill.SOUL_SIPHON:
             souls += (souls * SIPHON_PERCENT + 50) // 100
         souls_by_day[outcome.day] += souls
-        xp[Track.RONIN] += souls
+        xp[road] += souls
         if outcome.passed and outcome.run is not LessonRun.PRACTICE:
             lessons_cleared_by_day[outcome.day] += 1
+
+    architect = track_architect(events, calendar, today, lessons, defeated)
+    for gain in architect.rewards:
+        souls_by_day[gain.day] += gain.souls
+        xp[Track.ARCHITECT] += gain.souls
+        if gain.lights:
+            lessons_cleared_by_day[gain.day] += 1
 
     judged = verdicts(events)
     quests_today: list[QuestStatus] = []
@@ -291,6 +302,7 @@ def replay(
         today_boss_souls=today_boss_souls,
         armory=armory,
         quests=tuple(quests_today),
+        architect=architect,
     )
 
 

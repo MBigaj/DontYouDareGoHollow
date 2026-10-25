@@ -69,7 +69,7 @@
           <tr><td>{{ spec.label }}: {{ state.today_totals[spec.kind] }} {{ spec.unit }}</td><td>+{{ state.today_souls.get(spec.kind, 0) }}</td></tr>
           {% endfor %}
           {% for o in state.today_lessons %}
-          <tr><td>Lesson · {{ lessons[o.lesson_id].title }}: {{ o.correct }}/{{ o.total }} <span class="muted">{{ run_labels[o.run] | lower }}</span></td><td>+{{ o.souls }}</td></tr>
+          <tr><td>Lesson · {{ lesson_title(o.lesson_id) }}: {{ o.correct }}/{{ o.total }} <span class="muted">{{ run_labels[o.run] | lower }}</span></td><td>+{{ o.souls }}</td></tr>
           {% endfor %}
         </table>
         {% else %}

@@ -2,6 +2,7 @@
 
 import hashlib
 import secrets
+from datetime import date
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Any
@@ -11,12 +12,14 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from markdown_it import MarkdownIt
 from markupsafe import Markup, escape
 
 from hollow.adapters.anki_connect import connect
 from hollow.adapters.db.store import SqlEventStore, make_engine
 from hollow.adapters.github_api import GitHubApi
 from hollow.application.anki_sync import AnkiSource, AnkiSync, AnkiUnavailable, SyncResult
+from hollow.application.architect_lessons import ArchitectLessons, QuizRun
 from hollow.application.blacksmith import Blacksmith, BlacksmithError
 from hollow.application.bonfire import BonfireService, CannotLevelUp
 from hollow.application.fights import FightError, FightService, FightView
@@ -31,6 +34,16 @@ from hollow.application.lessons import Run as LessonRun
 from hollow.application.ports import Clock, EventStore, SystemClock
 from hollow.config import Settings
 from hollow.domain.activities import ACTIVITIES, ActivityKind, Track
+from hollow.domain.architect import (
+    LORDS,
+    PROVE_MARK,
+    PROVE_SOULS,
+    TopicState,
+    boss_id,
+    topic_of,
+)
+from hollow.domain.architect import REGION_BY_ID as ARCH_REGION_BY_ID
+from hollow.domain.architect import REGIONS as ARCH_REGIONS
 from hollow.domain.armory import (
     BOSS_MATERIALS,
     BOSS_WEAPONS,
@@ -39,16 +52,62 @@ from hollow.domain.armory import (
     WEAPONS,
     upgrade_cost,
 )
-from hollow.domain.atlas import FIRELINK, FIRELINK_SIZE, REGIONS, WORLD_SIZE, NodeKind
-from hollow.domain.bosses import BOSSES, ESTUS_HEAL, FIRST_TRY_BONUS, VICTORY_SOULS, WARDEN, Outcome
+from hollow.domain.atlas import (
+    ARCH_POINTS,
+    ARCH_REGION_MAPS,
+    ARCH_WORLD_SIZE,
+    FIRELINK,
+    FIRELINK_SIZE,
+    REGIONS,
+    WORLD_SIZE,
+    NodeKind,
+)
+from hollow.domain.bosses import (
+    BOSSES,
+    ESTUS_HEAL,
+    FIRST_TRY_BONUS,
+    GOLEM,
+    VICTORY_SOULS,
+    WARDEN,
+    Boss,
+    Outcome,
+)
 from hollow.domain.conjugation import Ending, Verb
 from hollow.domain.events import AgentResult, Material
-from hollow.domain.lessons import LESSONS, Run, grade
+from hollow.domain.lessons import LESSONS, LessonProgress, Run, grade
 from hollow.domain.progression import STATS, Stat
 from hollow.domain.world import EFFIGIES_PER_WEEK, MAX_HOLLOWING, WorldState
 
 HERE = Path(__file__).parent
 STATIC = HERE / "static"
+ROADS = ("ronin", "architect")
+YEAR = 31_536_000
+MARKDOWN = MarkdownIt("commonmark", {"html": False}).enable("table")
+
+
+def markdown(text: str) -> Markup:
+    """Renders a lesson from the repo's curriculum (raw HTML in it is escaped)."""
+    return Markup(MARKDOWN.render(text))
+
+
+def inline_markdown(text: str) -> Markup:
+    return Markup(MARKDOWN.renderInline(text))
+
+
+def lesson_title(lesson_id: str) -> str:
+    topic = topic_of(lesson_id)
+    if topic is not None:
+        return topic.title
+    spec = LESSONS.get(lesson_id)
+    return spec.title if spec else lesson_id
+
+
+def step_status(state: TopicState, today: date) -> str:
+    """new, due or cleared, for a step's map node and lesson card."""
+    progress = state.lesson
+    if progress is None or not progress.cleared:
+        return "cleared" if state.proved else "new"
+    return "due" if progress.is_due(today) else "cleared"
 
 
 class FreshStaticFiles(StaticFiles):
@@ -127,6 +186,7 @@ def create_app(
     clock = clock or SystemClock()
     service = BonfireService(store, clock, settings.calendar())
     lessons = LessonService(store, clock, settings.calendar())
+    arch = ArchitectLessons(store, clock, settings.calendar())
     fights = FightService(store, clock, settings.calendar())
     smith = Blacksmith(store, clock, settings.calendar())
     if anki is None and settings.anki_enabled:
@@ -150,6 +210,9 @@ def create_app(
     templates = Jinja2Templates(directory=HERE / "templates")
     templates.env.globals["asset"] = asset
     templates.env.globals["with_readings"] = with_readings
+    templates.env.globals["lesson_title"] = lesson_title
+    templates.env.filters["markdown"] = markdown
+    templates.env.filters["inline_md"] = inline_markdown
 
     def lore() -> dict[str, dict[str, Any]]:
         """The newest lore text for each target."""
@@ -204,13 +267,10 @@ def create_app(
     def equipment(state: WorldState) -> list[dict[str, Any]]:
         rings = 2 if state.stats[Stat.INTELLIGENCE] >= 10 else 1
         slots: list[dict[str, Any]] = []
-        for track, subject in ((Track.RONIN, "Japanese"), (Track.ARCHITECT, "dev")):
+        for track in (Track.RONIN, Track.ARCHITECT):
             weapon, level = state.armory.weapon(track)
-            note = f"Deals damage in {subject} fights."
-            if track is Track.RONIN:
-                note = (
-                    f"{weapon.damage(level, WARDEN.recommended)} damage per hit against the Warden."
-                )
+            foe = WARDEN if track is Track.RONIN else GOLEM
+            note = f"{weapon.damage(level, foe.recommended)} damage per hit against {foe.name}."
             slots.append(
                 {
                     "name": f"{'Ronin' if track is Track.RONIN else 'Architect'} weapon",
@@ -391,13 +451,23 @@ def create_app(
 
     @app.get("/lessons", response_class=HTMLResponse)
     def lesson_list(request: Request, warning: str | None = None) -> Response:
+        state = service.state()
+        steps = [
+            {"region": r, "steps": [
+                {"state": s, "status": step_status(s, state.today)}
+                for s in state.architect.region(r.id)
+            ]}
+            for r in ARCH_REGIONS
+            if state.architect.region_open(r.id)
+        ]  # fmt: skip
         return templates.TemplateResponse(
             request,
             "lessons.html",
             context(
-                service.state(),
+                state,
                 page="lessons",
                 cards=lessons.overview(),
+                arch_regions=steps,
                 verb_count=len(lessons.verbs()) - 1,
                 warning=warning,
             ),
@@ -520,8 +590,21 @@ def create_app(
     def percent(point: tuple[int, int], size: tuple[int, int]) -> tuple[float, float]:
         return round(100 * point[0] / size[0], 2), round(100 * point[1] / size[1], 2)
 
+    def chosen_road(request: Request, road: str | None) -> str:
+        pick = road if road in ROADS else request.cookies.get("hollow_road", "ronin")
+        return pick if pick in ROADS else "ronin"
+
+    def remember(response: Response, road: str) -> Response:
+        response.set_cookie("hollow_road", road, max_age=YEAR, samesite="lax")
+        return response
+
     @app.get("/map", response_class=HTMLResponse)
-    def world_map(request: Request, at: str | None = None) -> Response:
+    def world_map(request: Request, at: str | None = None, road: str | None = None) -> Response:
+        pick = chosen_road(request, road)
+        page = architect_world(request, at) if pick == "architect" else ronin_world(request, at)
+        return remember(page, pick)
+
+    def ronin_world(request: Request, at: str | None) -> Response:
         ids = [r.id for r in REGIONS]
         here = at if at in ids else request.cookies.get("hollow_at_world", "firelink")
         points = []
@@ -544,6 +627,7 @@ def create_app(
             context(
                 service.state(),
                 page="map",
+                road="ronin",
                 map_id="world",
                 size=WORLD_SIZE,
                 art="map_bg.png",
@@ -553,6 +637,91 @@ def create_app(
                 explored=explored(),
             ),
         )
+
+    def architect_world(request: Request, at: str | None) -> Response:
+        state = service.state()
+        progress = state.architect
+        ids = [r.id for r in ARCH_REGIONS]
+        here = at if at in ids else request.cookies.get("hollow_at_architect", "forge")
+        points, panels = [], []
+        for r in ARCH_REGIONS:
+            x, y = percent(ARCH_POINTS[r.id], ARCH_WORLD_SIZE)
+            is_open = progress.region_open(r.id)
+            felled = r.id in progress.felled
+            steps = progress.region(r.id)
+            before = ARCH_REGIONS[r.number - 2] if r.number > 1 else None
+            if is_open:
+                note = None
+            elif not r.written:
+                note = "In the fog: its lessons are not written yet."
+            else:
+                assert before is not None
+                note = f"Unavailable for now. It opens when {before.boss} falls."
+            points.append({
+                "id": r.id, "name": r.name, "x": x, "y": y,
+                "kind": "bonfire" if is_open else "world",
+                "status": "cleared" if felled else ("open" if is_open else "fog"),
+            })  # fmt: skip
+            panels.append({
+                "region": r, "open": is_open, "felled": felled, "note": note,
+                "cleared": sum(s.cleared for s in steps), "proved": sum(s.proved for s in steps),
+                "total": len(steps),
+            })  # fmt: skip
+        lords = [
+            {"lord": lord, "open": progress.lord_open(lord),
+             "needs": "every region" if len(lord.regions) == len(ARCH_REGIONS)
+             else ", ".join(ARCH_REGION_BY_ID[r].name for r in lord.regions)}
+            for lord in LORDS
+        ]  # fmt: skip
+        return templates.TemplateResponse(
+            request,
+            "map_architect.html",
+            context(
+                state,
+                page="map",
+                road="architect",
+                map_id="architect",
+                size=ARCH_WORLD_SIZE,
+                art="map_architect.png",
+                points=points,
+                panels=panels,
+                lords=lords,
+                at=here if here in ids else "forge",
+            ),
+        )
+
+    def boss_point(boss: Boss, ready: bool, waiting: str) -> dict[str, Any]:
+        record = fights.view(boss.id).record
+        if not ready:
+            return {
+                "name": "Fog gate",
+                "status": "fog",
+                "caption": "Boss · unavailable",
+                "detail": f"{boss.name} waits beyond the fog. {waiting}",
+            }
+        if record.current is not None:
+            label, detail = "Resume the fight", "Your fight is waiting, as you left it."
+        elif record.defeated:
+            label, detail = "Fight again", "Felled. Fight again for practice."
+        else:
+            label, detail = "Enter the fog", f"{boss.name} waits beyond. {boss.intro}"
+        return {
+            "name": "Fog gate",
+            "status": "cleared" if record.defeated else "due",
+            "caption": f"Boss · {boss.name}",
+            "detail": detail,
+            "action": (label, f"/boss/{boss.id}"),
+        }
+
+    def bonfire_point(name: str) -> dict[str, Any]:
+        return {
+            "name": name,
+            "status": "open",
+            "caption": "Bonfire",
+            "detail": "Rest here: your souls, streak, Effigies and level.",
+            "action": ("Rest at the bonfire", "/"),
+            "extra": ("Visit the blacksmith", "/blacksmith"),
+        }
 
     @app.get("/map/firelink", response_class=HTMLResponse)
     def firelink(request: Request, at: str | None = None) -> Response:
@@ -564,42 +733,13 @@ def create_app(
             x, y = percent(node.point, FIRELINK_SIZE)
             point: dict[str, Any] = {"id": node.id, "kind": node.kind.value, "x": x, "y": y}
             if node.kind is NodeKind.BONFIRE:
-                point |= {
-                    "name": "Firelink bonfire",
-                    "status": "open",
-                    "caption": "Bonfire",
-                    "detail": "Rest here: your souls, streak, Effigies and level.",
-                    "action": ("Rest at the bonfire", "/"),
-                    "extra": ("Visit the blacksmith", "/blacksmith"),
-                }
+                point |= bonfire_point("Firelink bonfire")
             elif node.kind is NodeKind.BOSS:
-                record = fights.view(WARDEN.id).record
-                if not fights.ready(WARDEN.id):
-                    point |= {
-                        "name": "Fog gate",
-                        "status": "fog",
-                        "caption": "Boss · unavailable",
-                        "detail": f"{WARDEN.name} waits beyond the fog. It will not part until "
-                        f"you know {WARDEN.min_verbs} verbs.",
-                    }
-                else:
-                    if record.current is not None:
-                        label, detail = "Resume the fight", "Your fight is waiting, as you left it."
-                    elif record.defeated:
-                        label, detail = "Fight again", "Felled. Fight again for practice."
-                    else:
-                        label = "Enter the fog"
-                        detail = (
-                            f"{WARDEN.name} waits beyond. Two phases: the て-form against the "
-                            "clock, then requests and sequences."
-                        )
-                    point |= {
-                        "name": "Fog gate",
-                        "status": "cleared" if record.defeated else "due",
-                        "caption": f"Boss · {WARDEN.name}",
-                        "detail": detail,
-                        "action": (label, f"/boss/{WARDEN.id}"),
-                    }
+                point |= boss_point(
+                    WARDEN,
+                    fights.ready(WARDEN.id),
+                    f"It will not part until you know {WARDEN.min_verbs} verbs.",
+                )
             else:
                 assert node.lesson_id is not None
                 card = cards[node.lesson_id]
@@ -637,6 +777,7 @@ def create_app(
             context(
                 service.state(),
                 page="map",
+                road="ronin",
                 map_id="firelink",
                 size=FIRELINK_SIZE,
                 art="region_firelink.png",
@@ -645,6 +786,221 @@ def create_app(
                 at=here if here in ids else "bonfire",
                 explored=explored(),
             ),
+        )
+
+    def step_detail(s: TopicState, status: str, today: date) -> str:
+        progress = s.lesson
+        questions = len(s.topic.quiz)
+        if status == "due":
+            return "A refresher is due: 60% souls, and the next interval if you get 90%."
+        if status == "new":
+            return f"Read the lesson, then {questions} quiz questions. Clear at 80%."
+        if progress is not None and progress.cleared and progress.due_on:
+            return (
+                f"Cleared. Back as a refresher on {progress.due_on:%A %d %B}; "
+                "practice now pays 25%."
+            )
+        return "Cleared in the placement trial. Practise whenever you like."
+
+    @app.get("/map/architect/{region_id}", response_class=HTMLResponse)
+    def architect_region(request: Request, region_id: str, at: str | None = None) -> Response:
+        if region_id not in ARCH_REGION_BY_ID:
+            raise HTTPException(404, f"No Architect region called {region_id}.")
+        state = service.state()
+        progress = state.architect
+        if region_id not in ARCH_REGION_MAPS or not progress.region_open(region_id):
+            return RedirectResponse(
+                f"/map?road=architect&at={region_id}", status_code=status.HTTP_303_SEE_OTHER
+            )
+        region = ARCH_REGION_BY_ID[region_id]
+        nodes, size, art = ARCH_REGION_MAPS[region_id]
+        ids = [n.id for n in nodes]
+        here = at if at in ids else request.cookies.get(f"hollow_at_{region_id}", "bonfire")
+        steps = progress.region(region_id)
+        cleared = sum(s.cleared for s in steps)
+        labels = {"new": "Read the lesson", "due": "Refresh", "cleared": "Practise"}
+        points = []
+        for node in nodes:
+            x, y = percent(node.point, size)
+            point: dict[str, Any] = {"id": node.id, "kind": node.kind.value, "x": x, "y": y}
+            if node.kind is NodeKind.BONFIRE:
+                point |= bonfire_point(f"{region.name} bonfire")
+            elif node.kind is NodeKind.BOSS:
+                boss = BOSSES[boss_id(region_id)]
+                point |= boss_point(
+                    boss,
+                    fights.ready(boss.id),
+                    f"It parts when every step here is cleared ({cleared} of {len(steps)}).",
+                )
+            else:
+                assert node.lesson_id is not None
+                s = progress.topics[node.lesson_id]
+                status_ = step_status(s, state.today)
+                mark = None
+                if s.placed:
+                    mark = "Cleared in the placement trial"
+                elif s.proved:
+                    mark = f"Proved: the Tech Lead's exam, best {round((s.best or 0) * 100)}%"
+                point |= {
+                    "name": s.topic.title,
+                    "status": status_,
+                    "caption": f"Step {s.topic.number} · {region.name}",
+                    "lead": s.topic.why,
+                    "detail": step_detail(s, status_, state.today),
+                    "mark": mark,
+                    "action": (labels[status_], f"/lessons/arch/{s.topic.id}"),
+                }
+            points.append(point)
+        return templates.TemplateResponse(
+            request,
+            "map_region.html",
+            context(
+                state,
+                page="map",
+                road="architect",
+                map_id=region_id,
+                size=size,
+                art=art,
+                points=points,
+                region=region,
+                at=here if here in ids else "bonfire",
+                explored=round(100 * cleared / len(steps)),
+            ),
+        )
+
+    @app.get("/architect")
+    def architect_redirect() -> Response:
+        """The old Architect page: the road now lives on the map."""
+        return RedirectResponse("/map?road=architect", status_code=status.HTTP_303_SEE_OTHER)
+
+    # --- Architect lessons --------------------------------------------------------
+
+    def arch_progress(topic_id: str) -> tuple[WorldState, TopicState]:
+        state = service.state()
+        return state, state.architect.topics[topic_id]
+
+    @app.get("/lessons/arch/{topic_id}", response_class=HTMLResponse)
+    def arch_lesson(request: Request, topic_id: str) -> Response:
+        try:
+            topic = arch.topic(topic_id)
+        except LessonError as error:
+            return lesson_list(request, warning=str(error))
+        state, s = arch_progress(topic.id)
+        return templates.TemplateResponse(
+            request,
+            "arch_lesson.html",
+            context(
+                state,
+                page="lessons",
+                topic=topic,
+                region=ARCH_REGION_BY_ID[topic.region],
+                step=s,
+                status=step_status(s, state.today),
+                run_kind=s.lesson.run_on(state.today) if s.lesson else Run.FIRST,
+                prove_souls=PROVE_SOULS,
+                prove_mark=PROVE_MARK,
+            ),
+        )
+
+    def quiz_page(
+        request: Request, run: QuizRun, answers: list[str], mode: str, **extra: Any
+    ) -> Response:
+        state = extra.pop("state", None) or service.state()
+        progress: LessonProgress | None = state.architect.topics[run.topic.id].lesson
+        name = "partials/_arch_quiz.html" if request.headers.get("HX-Request") else "arch_quiz.html"
+        return templates.TemplateResponse(
+            request,
+            name,
+            context(
+                state,
+                page="lessons",
+                run=run,
+                topic=run.topic,
+                answers=answers,
+                marks=run.grade(answers),
+                mode=mode,
+                run_kind=progress.run_on(state.today) if progress else Run.FIRST,
+                progress=progress,
+                **extra,
+            ),
+        )
+
+    def arch_resume(topic_id: str, run_id: str, q: list[str]) -> QuizRun:
+        try:
+            return arch.resume(topic_id, run_id, q)
+        except LessonError as error:
+            raise HTTPException(422, str(error)) from error
+
+    @app.post("/lessons/arch/{topic_id}/start")
+    def arch_start(request: Request, topic_id: str) -> Response:
+        try:
+            run = arch.start(topic_id)
+        except LessonError as error:
+            raise HTTPException(422, str(error)) from error
+        return quiz_page(request, run, [], "question")
+
+    @app.post("/lessons/arch/{topic_id}/answer")
+    def arch_answer(
+        request: Request,
+        topic_id: str,
+        run: Annotated[str, Form()],
+        q: Annotated[list[str], Form()],
+        answer: Annotated[str, Form()],
+        a: Annotated[list[str] | None, Form()] = None,
+    ) -> Response:
+        current = arch_resume(topic_id, run, q)
+        answers = [*(a or []), answer.strip()[:3]]
+        if len(answers) > len(current.questions):
+            raise HTTPException(422, "Every question is already answered.")
+        n = len(answers) - 1
+        return quiz_page(
+            request, current, answers, "feedback", correct=current.accepts(n, answers[-1])
+        )
+
+    @app.post("/lessons/arch/{topic_id}/next")
+    def arch_next(
+        request: Request,
+        topic_id: str,
+        run: Annotated[str, Form()],
+        q: Annotated[list[str], Form()],
+        a: Annotated[list[str] | None, Form()] = None,
+    ) -> Response:
+        current = arch_resume(topic_id, run, q)
+        answers = list(a or [])
+        if len(answers) >= len(current.questions):
+            raise HTTPException(422, "Every question is already answered.")
+        return quiz_page(request, current, answers, "question")
+
+    @app.post("/lessons/arch/{topic_id}/finish")
+    def arch_finish(
+        request: Request,
+        topic_id: str,
+        run: Annotated[str, Form()],
+        q: Annotated[list[str], Form()],
+        a: Annotated[list[str] | None, Form()] = None,
+    ) -> Response:
+        current = arch_resume(topic_id, run, q)
+        answers = list(a or [])
+        try:
+            outcome, drop, state = arch.finish(current, answers)
+        except LessonError as error:
+            raise HTTPException(422, str(error)) from error
+        marks = current.grade(answers)
+        misses = [current.questions[n] for n, ok in enumerate(marks) if not ok]
+        ready = BOSSES.get(boss_id(current.topic.region))
+        return quiz_page(
+            request,
+            current,
+            answers,
+            "result",
+            outcome=outcome,
+            misses=misses,
+            state=state,
+            drop=MATERIAL_NAMES[drop] if drop else None,
+            boss_ready=ready is not None
+            and state.architect.region_ready(current.topic.region)
+            and not state.bosses[ready.id].defeated,
+            boss=ready,
         )
 
     def boss_drops(boss_id: str) -> str:
@@ -672,6 +1028,7 @@ def create_app(
                 view=view,
                 gate=gate,
                 ready=fights.ready(view.boss.id),
+                requirement=fights.requirement(view.boss.id),
                 damage=attempt.damage if attempt is not None else 0,
                 heal=ESTUS_HEAL,
                 first_win=wins == 1 and attempt is not None and attempt.outcome is Outcome.WON,
@@ -763,7 +1120,7 @@ def create_app(
                 owned = arm.owns(spec.id)
                 level = arm.levels.get(spec.id, 0)
                 cost = upgrade_cost(min(level + 1, spec.max_level))
-                vs = WARDEN if track is Track.RONIN else None
+                vs = WARDEN if track is Track.RONIN else GOLEM
                 source = next(
                     (BOSSES[b].name for b, w in BOSS_WEAPONS.items() if w == spec.id), "a boss"
                 )

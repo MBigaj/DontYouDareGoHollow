@@ -1,0 +1,11 @@
+{# Pick a road: the two halves of the game share the map page but not their lands. #}
+<nav class="roads" aria-label="Roads">
+  <a class="road ronin" href="/map?road=ronin" {{ 'aria-current="page"' | safe if road == 'ronin' }}>
+    <span class="road-name">Ronin road <span lang="ja">浪人</span></span>
+    <span class="road-sub">Japanese · Core 2000 and grammar</span>
+  </a>
+  <a class="road architect" href="/map?road=architect" {{ 'aria-current="page"' | safe if road == 'architect' }}>
+    <span class="road-name">Architect road <span class="code">{ }</span></span>
+    <span class="road-sub">Senior backend · Python, data, systems</span>
+  </a>
+</nav>

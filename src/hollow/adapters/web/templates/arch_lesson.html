@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}{{ topic.title }} · DontYouDareGoHollow{% endblock %}
+{% block content %}
+<article class="panel arch-lesson road-architect-panel" aria-labelledby="lesson-title">
+  <div class="lesson-top">
+    <span class="label">Step {{ topic.number }} · {{ region.name }}</span>
+    <a class="label" href="/map/architect/{{ region.id }}?at={{ topic.id }}">Back to the map</a>
+  </div>
+  <h2 id="lesson-title" class="arch-title">{{ topic.title }}</h2>
+  <p class="lead">{{ topic.why }}</p>
+  <div class="arch-goals">
+    <div class="label">You should be able to</div>
+    <ul>{% for a in topic.abilities %}<li>{{ a | inline_md }}</li>{% endfor %}</ul>
+  </div>
+  <div class="prose">{{ topic.lesson | markdown }}</div>
+</article>
+
+<section id="lesson" class="panel quiz-gate road-architect-panel">
+  <div>
+    <strong>Quiz · {{ topic.quiz | length }} questions</strong>
+    <div class="muted" style="font-size: 14px">
+      {{ run_labels[run_kind] }}. Clear at 80%.
+      {% if step.lesson and step.lesson.attempts %}Best so far {{ (step.lesson.best * 100) | round | int }}%.{% endif %}
+      {% if step.lesson and step.lesson.cleared and step.lesson.due_on %}Next refresher {{ step.lesson.due_on.strftime('%A %d %B') }}.{% endif %}
+    </div>
+  </div>
+  <form method="post" action="/lessons/arch/{{ topic.id }}/start" hx-post="/lessons/arch/{{ topic.id }}/start" hx-target="#lesson" hx-swap="outerHTML">
+    <button class="btn ember" type="submit">{{ 'Take the quiz' if status == 'new' else ('Refresh' if status == 'due' else 'Practise') }}</button>
+  </form>
+</section>
+
+<section class="panel road-architect-panel">
+  <h3 class="label">Prove it · the Tech Lead's exam</h3>
+  {% if step.proved %}<p class="proved">✓ {{ 'Cleared in the placement trial.' if step.placed else 'Proved: best ' ~ ((step.best or 0) * 100) | round | int ~ '%.' }}</p>
+  {% else %}<p style="margin: 6px 0">Optional and worth more: in a Claude session, ask for an exam on <code>{{ topic.id }}</code>. Pass at {{ (prove_mark * 100) | int }}% for +{{ prove_souls }} souls. It starts from these:</p>{% endif %}
+  <ul class="exam">{% for q in topic.exam %}<li>{{ q | inline_md }}</li>{% endfor %}</ul>
+</section>
+<script src="{{ asset('js/quiz.js') }}" defer></script>
+{% endblock %}

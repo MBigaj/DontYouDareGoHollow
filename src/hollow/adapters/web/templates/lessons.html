@@ -28,4 +28,27 @@
   </section>
   {% endfor %}
 </div>
+
+{% for group in arch_regions %}
+<section class="panel road-architect-panel" aria-labelledby="arch-{{ group.region.id }}">
+  <h2 id="arch-{{ group.region.id }}" class="label">Architect · Region {{ group.region.number }} · {{ group.region.name }}</h2>
+  <p style="margin: 6px 0 4px">Read each step, then answer its quiz. Same souls and refreshers as above.</p>
+</section>
+<div class="lessons road-architect">
+  {% for item in group.steps %}
+  {% set s = item.state %}
+  <section class="panel lesson-card arch {{ item.status }}">
+    <div>
+      <div class="lesson-head"><strong>{{ s.topic.number }}. {{ s.topic.title }}</strong>
+        <span class="chip {{ item.status }}">{% if item.status == 'new' %}New{% elif item.status == 'due' %}Refresher due{% elif s.lesson and s.lesson.due_on %}Back {{ s.lesson.due_on.strftime('%a %d %b') }}{% else %}Cleared{% endif %}</span>
+        {% if s.proved %}<span class="chip proved" title="{{ 'Placement trial' if s.placed else 'Tech Lead exam' }}">Proved</span>{% endif %}
+      </div>
+      <div class="muted" style="font-size: 13px; margin-top: 4px">{{ s.topic.why }}</div>
+      <div class="muted" style="font-size: 13px; margin-top: 4px">{{ s.topic.quiz | length }} questions{% if s.lesson and s.lesson.attempts %} · best {{ (s.lesson.best * 100) | round | int }}%{% endif %}</div>
+    </div>
+    <a class="btn {{ 'ember' if item.status in ('new', 'due') }}" href="/lessons/arch/{{ s.topic.id }}">{{ 'Read' if item.status == 'new' else ('Refresh' if item.status == 'due' else 'Practise') }}</a>
+  </section>
+  {% endfor %}
+</div>
+{% endfor %}
 {% endblock %}

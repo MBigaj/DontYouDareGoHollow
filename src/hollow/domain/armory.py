@@ -58,7 +58,7 @@ class Skill(StrEnum):
     SOUL_SIPHON = "soul_siphon"
 
 
-SKILLS = {Skill.SOUL_SIPHON: "Soul Siphon: +15% souls from Ronin lessons while equipped"}
+SKILLS = {Skill.SOUL_SIPHON: "Soul Siphon: +15% souls from lessons on its road while equipped"}
 SIPHON_PERCENT = 15
 
 
@@ -98,10 +98,16 @@ WEAPONS: dict[str, WeaponSpec] = {
                    "Every Architect starts with one.", starter=True),
         WeaponSpec("smiths-hammer", "Smith's Hammer", Track.ARCHITECT, 11, 1, "item_hammer.png",
                    "Balanced for long days at the forge.", price=1500),
+        WeaponSpec("golem-fist", "Golem's Iron Fist", Track.ARCHITECT, 10, 1, "item_hammer.png",
+                   "Torn from the Strict Golem. Every joint still checks its types.",
+                   skill=Skill.SOUL_SIPHON),
     )
 }  # fmt: skip
-BOSS_WEAPONS = {"te-warden": "warden-maul"}
-BOSS_MATERIALS = {"te-warden": ((Material.LARGE_SHARD, 3), (Material.CHUNK, 1))}
+BOSS_WEAPONS = {"te-warden": "warden-maul", "forge-boss": "golem-fist"}
+BOSS_MATERIALS = {
+    "te-warden": ((Material.LARGE_SHARD, 3), (Material.CHUNK, 1)),
+    "forge-boss": ((Material.LARGE_SHARD, 3), (Material.CHUNK, 1)),
+}
 
 MATERIAL_NAMES = {
     Material.SHARD: "Titanite Shard",

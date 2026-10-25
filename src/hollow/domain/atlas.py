@@ -92,3 +92,44 @@ FIRELINK: tuple[Node, ...] = (
     Node("warden", NodeKind.BOSS, (226, 42)),
 )
 """The path through Firelink Shrine, in walking order."""
+
+
+# --- the Architect road ---------------------------------------------------------
+
+ARCH_WORLD_SIZE = (260, 225)
+"""Native size of the Architect world art (map_architect.png, drawn at 4x)."""
+FORGE_SIZE = (260, 150)
+"""Native size of the Forge region art (region_forge.png, drawn at 4x)."""
+
+ARCH_POINTS: dict[str, tuple[int, int]] = {
+    "forge": (38, 192),
+    "data-depths": (98, 182),
+    "api-citadel": (160, 176),
+    "async-ruins": (220, 156),
+    "watchtower": (214, 100),
+    "iron-keep": (152, 110),
+    "undercroft": (82, 116),
+    "distributed-abyss": (130, 50),
+}
+"""Where each Architect region sits on its world map, in road order."""
+
+FORGE: tuple[Node, ...] = (
+    Node("bonfire", NodeKind.BONFIRE, (26, 120)),
+    Node("mypy-strict-in-practice", NodeKind.LESSON, (58, 106), "mypy-strict-in-practice"),
+    Node("asyncio-internals", NodeKind.LESSON, (88, 122), "asyncio-internals"),
+    Node("concurrency-choices-threads-processes-async", NodeKind.LESSON, (118, 104),
+         "concurrency-choices-threads-processes-async"),
+    Node("profiling-and-performance", NodeKind.LESSON, (94, 80), "profiling-and-performance"),
+    Node("property-based-testing", NodeKind.LESSON, (126, 64), "property-based-testing"),
+    Node("test-architecture", NodeKind.LESSON, (158, 82), "test-architecture"),
+    Node("packaging-and-tooling-with-uv", NodeKind.LESSON, (188, 100),
+         "packaging-and-tooling-with-uv"),
+    Node("python-memory-model", NodeKind.LESSON, (204, 70), "python-memory-model"),
+    Node("forge-boss", NodeKind.BOSS, (230, 40)),
+)  # fmt: skip
+"""The path through the Forge, in walking order; lesson nodes carry the step id."""
+
+ARCH_REGION_MAPS: dict[str, tuple[tuple[Node, ...], tuple[int, int], str]] = {
+    "forge": (FORGE, FORGE_SIZE, "region_forge.png"),
+}
+"""Region maps drawn so far: nodes, art size and art file."""

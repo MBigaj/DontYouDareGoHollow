@@ -1,5 +1,7 @@
 # Contributing
 
+Agents and people: read [CLAUDE.md](CLAUDE.md) for how the project fits together, and pick work from [docs/STATUS.md](docs/STATUS.md).
+
 ## Branches
 
 One branch per piece of work, named `<number>-short-branch-title`, for example `1-phase-0-kindling`.

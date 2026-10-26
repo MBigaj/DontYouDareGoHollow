@@ -100,6 +100,8 @@ ARCH_WORLD_SIZE = (260, 225)
 """Native size of the Architect world art (map_architect.png, drawn at 4x)."""
 FORGE_SIZE = (260, 150)
 """Native size of the Forge region art (region_forge.png, drawn at 4x)."""
+DEPTHS_SIZE = (260, 150)
+"""Native size of the Data Depths art (region_data_depths.png, drawn at 4x)."""
 
 ARCH_POINTS: dict[str, tuple[int, int]] = {
     "forge": (38, 192),
@@ -129,7 +131,30 @@ FORGE: tuple[Node, ...] = (
 )  # fmt: skip
 """The path through the Forge, in walking order; lesson nodes carry the step id."""
 
+DEPTHS: tuple[Node, ...] = (
+    Node("bonfire", NodeKind.BONFIRE, (22, 124)),
+    Node("mvcc-and-isolation-levels", NodeKind.LESSON, (48, 108), "mvcc-and-isolation-levels"),
+    Node("locks-deadlocks-and-contention", NodeKind.LESSON, (76, 124),
+         "locks-deadlocks-and-contention"),
+    Node("reading-query-plans", NodeKind.LESSON, (104, 110), "reading-query-plans"),
+    Node("index-design", NodeKind.LESSON, (90, 86), "index-design"),
+    Node("zero-downtime-migrations", NodeKind.LESSON, (118, 70), "zero-downtime-migrations"),
+    Node("replication-and-read-replicas", NodeKind.LESSON, (148, 84),
+         "replication-and-read-replicas"),
+    Node("partitioning-and-sharding", NodeKind.LESSON, (176, 102), "partitioning-and-sharding"),
+    Node("caching-patterns-and-invalidation", NodeKind.LESSON, (204, 118),
+         "caching-patterns-and-invalidation"),
+    Node("redis-beyond-caching", NodeKind.LESSON, (228, 94), "redis-beyond-caching"),
+    Node("postgresql-vs-mongodb-modelling", NodeKind.LESSON, (198, 72),
+         "postgresql-vs-mongodb-modelling"),
+    Node("connection-pooling-under-load", NodeKind.LESSON, (168, 54),
+         "connection-pooling-under-load"),
+    Node("data-depths-boss", NodeKind.BOSS, (226, 38)),
+)  # fmt: skip
+"""The walkways through the flooded vault of Data Depths, in walking order."""
+
 ARCH_REGION_MAPS: dict[str, tuple[tuple[Node, ...], tuple[int, int], str]] = {
     "forge": (FORGE, FORGE_SIZE, "region_forge.png"),
+    "data-depths": (DEPTHS, DEPTHS_SIZE, "region_data_depths.png"),
 }
 """Region maps drawn so far: nodes, art size and art file."""

@@ -18,12 +18,22 @@ from hollow.domain.architect import (
     REGIONS,
     TOPICS,
     ArchitectState,
+    boss_id,
     exam_score,
     lesson_id,
     region_topics,
 )
-from hollow.domain.atlas import ARCH_POINTS, ARCH_REGION_MAPS, FORGE, NodeKind
-from hollow.domain.bosses import GOLEM, ChoiceQuestion, Outcome, choice
+from hollow.domain.atlas import ARCH_POINTS, ARCH_REGION_MAPS, DEPTHS, FORGE, NodeKind
+from hollow.domain.bosses import (
+    BOSSES,
+    GOLEM,
+    WYRM,
+    Boss,
+    ChoiceQuestion,
+    Outcome,
+    architect_foe,
+    choice,
+)
 from hollow.domain.curriculum import MIN_QUIZ, CurriculumError, parse_region, parse_topic
 from hollow.domain.events import AgentResult, LessonCompleted
 from hollow.domain.world import WorldState, replay
@@ -35,6 +45,8 @@ MYPY = "mypy-strict-in-practice"
 GIL = "concurrency-choices-threads-processes-async"
 MVCC = "mvcc-and-isolation-levels"
 FORGE_STEPS = [t.id for t in region_topics("forge")]
+DEPTHS_STEPS = [t.id for t in region_topics("data-depths")]
+SPRITES = Path(__file__).parents[1] / "src/hollow/adapters/web/static/sprites"
 UNWRITTEN = region_topics("api-citadel")[0].id
 
 
@@ -78,9 +90,17 @@ def test_the_forge_and_data_depths_are_written_and_the_rest_is_fog() -> None:
 def test_maps_and_boss_cover_the_curriculum() -> None:
     assert list(ARCH_POINTS) == [r.id for r in REGIONS]
     assert [n.lesson_id for n in FORGE if n.kind is NodeKind.LESSON] == FORGE_STEPS
-    assert set(ARCH_REGION_MAPS) == {"forge"}
-    phases = [t for p in GOLEM.phases for t in p.topics]
-    assert sorted(phases) == sorted(FORGE_STEPS)
+    assert [n.lesson_id for n in DEPTHS if n.kind is NodeKind.LESSON] == DEPTHS_STEPS
+    assert set(ARCH_REGION_MAPS) == {"forge", "data-depths"}
+    for region_id, (nodes, _size, art) in ARCH_REGION_MAPS.items():
+        assert (SPRITES / art).is_file()
+        assert nodes[0].kind is NodeKind.BONFIRE and nodes[-1].kind is NodeKind.BOSS
+        boss = BOSSES[boss_id(region_id)]
+        assert boss.node == nodes[-1].id and boss.region == region_id
+        assert boss.home == f"/map/architect/{region_id}"
+        phases = [t for p in boss.phases for t in p.topics]
+        assert sorted(phases) == sorted(t.id for t in region_topics(region_id))
+        assert (SPRITES / boss.body).is_file() and (SPRITES / boss.arena).is_file()
 
 
 STEP = """# A Step: With Colons
@@ -209,9 +229,16 @@ def test_only_the_forge_is_open_until_its_boss_falls(
     assert state(store, clock).architect.region_ready("forge")
 
 
-def test_a_written_region_waits_for_its_map() -> None:
+def test_data_depths_opens_when_the_golem_falls() -> None:
     golem_down = ArchitectState({}, set(), [], {"forge"})
-    assert REGION_BY_ID["data-depths"].written and "data-depths" not in ARCH_REGION_MAPS
+    assert golem_down.region_open("data-depths")
+    assert not golem_down.region_open("api-citadel")  # unwritten, whatever falls
+
+
+def test_a_written_region_waits_for_its_map(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delitem(ARCH_REGION_MAPS, "data-depths")
+    golem_down = ArchitectState({}, set(), [], {"forge"})
+    assert REGION_BY_ID["data-depths"].written
     assert not golem_down.region_open("data-depths")  # no map to walk yet
 
 
@@ -295,20 +322,60 @@ def test_the_golem_waits_for_every_forge_step(store: SqlEventStore, clock: FakeC
     assert fights.ready(GOLEM.id)
 
 
-def test_felling_the_golem_pays_the_architect(store: SqlEventStore, clock: FakeClock) -> None:
-    clear(store, clock, FORGE_STEPS)
+def fell(store: SqlEventStore, clock: FakeClock, boss: Boss) -> WorldState:
+    """Clears the boss's region and wins the fight without a miss."""
+    assert boss.region is not None
+    clear(store, clock, [t.id for t in region_topics(boss.region)])
     fights = FightService(store, clock, CAL)
-    view = fights.enter(GOLEM.id)
+    view = fights.enter(boss.id)
     while view.record.current is not None:
         attempt, ask = view.record.current, view.question
         assert isinstance(ask, ChoiceQuestion)
-        view = fights.answer(GOLEM.id, str(attempt.id), attempt.turns,
+        view = fights.answer(boss.id, str(attempt.id), attempt.turns,
                              str(ask.order.index(ask.quiz.answer)))  # fmt: skip
     assert view.record.last is not None and view.record.last.outcome is Outcome.WON
-    world = view.state
+    return view.state
+
+
+def test_felling_the_golem_pays_the_architect(store: SqlEventStore, clock: FakeClock) -> None:
+    world = fell(store, clock, GOLEM)
     assert "forge" in world.architect.felled
     assert world.armory.owns("golem-fist")
     assert world.jobs[Track.ARCHITECT].xp > world.jobs[Track.RONIN].xp == 0
+    assert world.architect.region_open("data-depths")
+
+
+# --- the Lock Wyrm ------------------------------------------------------------------
+
+
+def test_the_wyrm_waits_for_every_depths_step(store: SqlEventStore, clock: FakeClock) -> None:
+    fights = FightService(store, clock, CAL)
+    with pytest.raises(FightError, match="every step of Data Depths"):
+        fights.enter(WYRM.id)
+    clear(store, clock, DEPTHS_STEPS[:-1])
+    assert not fights.ready(WYRM.id)
+    clear(store, clock, DEPTHS_STEPS[-1:])
+    assert fights.ready(WYRM.id)
+
+
+def test_the_wyrm_is_harder_than_the_golem() -> None:
+    assert WYRM.recommended > GOLEM.recommended
+    assert sum(p.hp for p in WYRM.phases) > sum(p.hp for p in GOLEM.phases)
+    assert WYRM.phases[-1].seconds is not None  # the deepest phase is against the clock
+
+
+def test_felling_the_wyrm_drops_its_weapon(store: SqlEventStore, clock: FakeClock) -> None:
+    fell(store, clock, GOLEM)
+    world = fell(store, clock, WYRM)
+    assert {"forge", "data-depths"} <= world.architect.felled
+    assert world.armory.owns("wyrm-chain")
+    assert not world.architect.region_open("api-citadel")  # its lessons are not written
+
+
+def test_the_next_architect_foe_is_the_first_boss_standing() -> None:
+    assert architect_foe(set()) is GOLEM
+    assert architect_foe({"forge"}) is WYRM
+    assert architect_foe({"forge", "data-depths"}) is WYRM  # the last one stays the foe
 
 
 # --- agents ---------------------------------------------------------------------------
@@ -362,7 +429,7 @@ def test_the_map_has_two_roads(client: TestClient) -> None:
     assert "map_architect.png" in page and "road-architect" in page
     assert 'href="/map/architect/forge" data-action' in page
     assert "In the fog: its lessons are not written yet." in page  # the API Citadel
-    assert "In the fog: its paths are not charted yet." in page  # Data Depths
+    assert "It opens when The Strict Golem falls." in page  # Data Depths
     assert "Needs Data Depths, The API Citadel" in page and "Needs every region" in page
     assert "map_architect.png" in client.get("/map").text  # the cookie remembers the road
     assert 'href="/architect"' not in page  # the old tab is gone
@@ -421,3 +488,36 @@ def test_the_golem_gate(client: TestClient, store: SqlEventStore, clock: FakeClo
     clock.advance(seconds=1)
     fight = client.post(f"/boss/{GOLEM.id}/enter", headers=HX).text
     assert 'name="answer" value="0"' in fight and "road-architect" in fight
+
+
+def test_the_data_depths_map(client: TestClient, store: SqlEventStore, clock: FakeClock) -> None:
+    fell(store, clock, GOLEM)
+    clear(store, clock, [MVCC])
+    page = client.get("/map/architect/data-depths").text
+    assert "region_data_depths.png" in page and "Region 2 · Data Depths · 9% explored" in page
+    assert f'href="/lessons/arch/{DEPTHS_STEPS[1]}" data-action>Read the lesson' in page
+    assert "It parts when every step here is cleared (1 of 11)." in page
+    assert "Lock Wyrm" in page
+    assert 'west" href="?at=bonfire"' in page  # labels near an edge open inward
+    assert 'east" href="?at=redis-beyond-caching"' in page
+    assert "MVCC and Isolation Levels" in client.get(f"/lessons/arch/{MVCC}").text
+
+
+def test_the_wyrm_gate(client: TestClient, store: SqlEventStore, clock: FakeClock) -> None:
+    page = client.get(f"/boss/{WYRM.id}").text
+    assert "Fog gate · Data Depths" in page and "wyrm_body.png" in page
+    assert "every step of Data Depths is cleared" in page
+    fell(store, clock, GOLEM)
+    clear(store, clock, DEPTHS_STEPS)
+    clock.advance(seconds=1)
+    fight = client.post(f"/boss/{WYRM.id}/enter", headers=HX).text
+    assert 'name="answer" value="0"' in fight and "arena_data_depths.png" in fight
+    assert "foe-wyrm" in fight
+
+
+def test_the_character_page_measures_against_the_next_boss(
+    client: TestClient, store: SqlEventStore, clock: FakeClock
+) -> None:
+    assert "against The Strict Golem" in client.get("/character").text
+    fell(store, clock, GOLEM)
+    assert "against The Lock Wyrm" in client.get("/character").text

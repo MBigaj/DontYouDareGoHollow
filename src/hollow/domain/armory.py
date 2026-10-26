@@ -101,12 +101,20 @@ WEAPONS: dict[str, WeaponSpec] = {
         WeaponSpec("golem-fist", "Golem's Iron Fist", Track.ARCHITECT, 10, 1, "item_hammer.png",
                    "Torn from the Strict Golem. Every joint still checks its types.",
                    skill=Skill.SOUL_SIPHON),
+        WeaponSpec("wyrm-chain", "Lock Wyrm's Chain", Track.ARCHITECT, 12, 1, "item_chain.png",
+                   "Pulled from the Lock Wyrm's coils. It never waits for a lock.",
+                   skill=Skill.SOUL_SIPHON),
     )
 }  # fmt: skip
-BOSS_WEAPONS = {"te-warden": "warden-maul", "forge-boss": "golem-fist"}
+BOSS_WEAPONS = {
+    "te-warden": "warden-maul",
+    "forge-boss": "golem-fist",
+    "data-depths-boss": "wyrm-chain",
+}
 BOSS_MATERIALS = {
     "te-warden": ((Material.LARGE_SHARD, 3), (Material.CHUNK, 1)),
     "forge-boss": ((Material.LARGE_SHARD, 3), (Material.CHUNK, 1)),
+    "data-depths-boss": ((Material.LARGE_SHARD, 3), (Material.CHUNK, 2)),
 }
 
 MATERIAL_NAMES = {

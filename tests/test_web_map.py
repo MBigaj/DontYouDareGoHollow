@@ -13,7 +13,8 @@ from tests.test_web_lessons import learn
 def node_class(page: str, node: str) -> str:
     match = re.search(rf'<a class="node ([^"]*)" href="\?at={node}"', page)
     assert match, node
-    return str(match.group(1)).strip()
+    side = {"east", "west"}  # which way the label opens; layout, not progress
+    return " ".join(c for c in str(match.group(1)).split() if c not in side)
 
 
 def visible_panel(page: str) -> str:

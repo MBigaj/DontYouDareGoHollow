@@ -31,16 +31,16 @@ _Nothing. The last branch is merged; take the next number._
 | 12 | `12-agent-context` | This board and `CLAUDE.md`, the context file for agents |
 | 13 | `13-character-stats-overlap` | Character page: the knight and stats stay in their panel (the arena's `.hero` rules are scoped to `.arena`), stat values no longer overflow on narrow screens |
 | 14 | `14-data-depths-lessons` | Data Depths written: lessons and 6-question quizzes for all 11 steps (MVCC to connection pooling); a written region now also needs its map before it opens; lesson tables scroll on phones |
+| 15 | `15-data-depths-map` | Data Depths playable: its flooded-vault map, the Lock Wyrm (three quiz phases, +3) with his arena and the Lock Wyrm's Chain; weapon damage measured against the next Architect boss standing; map labels open inward at the edges; boss sprites shrink on phones |
 
 ## Up next
 
 In a sensible order. Each one fits a branch.
 
-1. **Data Depths map and boss.** Add its nodes to `domain/atlas.py` (plus an `ARCH_REGION_MAPS` entry), draw its map in `tools/sprites/architect.py` (a flooded vault of rows and versions), and add the Lock Wyrm in `domain/bosses.py` with its sprite, arena and drop. It opens when the Strict Golem falls: the `ARCH_REGION_MAPS` entry is what lifts the fog, because `region_open` needs a written region and a map.
-2. **Warden phase 3.** A short conversation judged by the Sensei agent. It needs a saved "pending phase" state, an inbox task and a Sensei result shape for `boss:<id>`. `agents/README.md` lists it as not saved yet.
-3. **Ronin region 2, Undead Village.** Lessons for 〜ている, 〜た and the plain form, its region map and the Plain-Form Gargoyle (recommended weapon level +4). The lesson engine may need more `LessonSpec` kinds than て-form endings.
-4. **Lore for the Architect road.** `lore_targets()` in `application/agents.py` only knows the Ronin regions. Add the Architect regions, so the Lorekeeper can write region and boss lore for them.
-5. **Deploy.** Put the Docker image on one small host (DigitalOcean was the plan) with PostgreSQL and `HOLLOW_PASSWORD`. Anki sync keeps running from his PC with `hollow-sync-anki` on a schedule, which needs the API to accept pushed reviews or a remote database URL. That design decision is Mikołaj's: ask first.
+1. **Warden phase 3.** A short conversation judged by the Sensei agent. It needs a saved "pending phase" state, an inbox task and a Sensei result shape for `boss:<id>`. `agents/README.md` lists it as not saved yet.
+2. **Ronin region 2, Undead Village.** Lessons for 〜ている, 〜た and the plain form, its region map and the Plain-Form Gargoyle (recommended weapon level +4). The lesson engine may need more `LessonSpec` kinds than て-form endings.
+3. **Lore for the Architect road.** `lore_targets()` in `application/agents.py` only knows the Ronin regions. Add the Architect regions, so the Lorekeeper can write region and boss lore for them.
+4. **Deploy.** Put the Docker image on one small host (DigitalOcean was the plan) with PostgreSQL and `HOLLOW_PASSWORD`. Anki sync keeps running from his PC with `hollow-sync-anki` on a schedule, which needs the API to accept pushed reviews or a remote database URL. That design decision is Mikołaj's: ask first.
 
 ## Backlog
 

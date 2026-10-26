@@ -83,7 +83,7 @@ Lessons are short typed drills. The first set covers the て-form, one lesson pe
 
 `/map` has two roads; pick one at the top and the map remembers it. The Ronin road is the six Japanese regions, from Firelink Shrine to the Kiln, in ember and bone. The Architect road is the eight backend regions, from the Forge to the Distributed Abyss, in cold steel and soul cyan, with the Lords of Design listed beside it. On both, a region is open once the boss before it falls; the rest are in the fog.
 
-`/map/firelink` is the first region: the bonfire, one rune stone per て-form lesson and the Warden's fog gate. Click a place, or use the arrow keys, and the knight walks there; Enter (or clicking the place you stand on) opens it. Stones glow gold once cleared and flicker when a refresher is due. The map remembers where you stopped. `/map/architect/forge` is the Forge: its bonfire, one iron obelisk per step and the Golem's gate.
+`/map/firelink` is the first region: the bonfire, one rune stone per て-form lesson and the Warden's fog gate. Click a place, or use the arrow keys, and the knight walks there; Enter (or clicking the place you stand on) opens it. Stones glow gold once cleared and flicker when a refresher is due. The map remembers where you stopped. `/map/architect/forge` is the Forge: its bonfire, one iron obelisk per step and the Golem's gate. `/map/architect/data-depths` is Data Depths, a flooded vault of row-tablets and their ghost versions, with causeways to the Lock Wyrm's vault door. Place labels near a map's edge open inward, so they fit on a phone.
 
 The region art is placeholder pixel art from `tools/sprites/region_firelink.py`, drawn on the same grid as the points in `hollow.domain.atlas`.
 
@@ -122,7 +122,7 @@ The Architect's road is the senior backend roadmap, played like the Japanese one
 | Prove (optional) | A Tech Lead exam at 80% or better, or a region's placement trial | 120 souls, once (placement: none) |
 | Build | CI-checked challenges | coming later |
 
-Clearing a step lights the bonfire and feeds the Architect job. When every step of a region is cleared, its boss waits behind the fog: the Forge's is the Strict Golem, a quiz fight over the Forge's steps (phase 2 against the clock), who drops Golem's Iron Fist. Felling a boss opens the next region once its lessons are written and its map is charted; until then a region stays in the fog. Data Depths is written and waits for its map and the Lock Wyrm. The nine Lords of Design (system design fights with the Tech Lead) open when the bosses of the regions they need have fallen.
+Clearing a step lights the bonfire and feeds the Architect job. When every step of a region is cleared, its boss waits behind the fog: the Forge's is the Strict Golem, a quiz fight over the Forge's steps (phase 2 against the clock), who drops Golem's Iron Fist. Data Depths' is the Lock Wyrm, three phases over its eleven steps (held rows; the planner's eye; the flooded deep, against the clock), tuned for a +3 weapon; he drops the Lock Wyrm's Chain (base 12, Soul Siphon) and two Titanite Chunks. Felling a boss opens the next region once its lessons are written and its map is charted; until then a region stays in the fog. Weapon damage on the character page and at the blacksmith is measured against the next Architect boss still standing. The nine Lords of Design (system design fights with the Tech Lead) open when the bosses of the regions they need have fallen.
 
 ## Agents
 

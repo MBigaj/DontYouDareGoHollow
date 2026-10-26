@@ -29,6 +29,7 @@ _Nothing. The last branch is merged; take the next number._
 | 10 | `10-agent-handoff` | `hollow-agent-inbox` and `hollow-agent-submit`, daily quests and roulette checked by code, lore texts, Journal page |
 | 11 | `11-architect-track` | Architect road on the map: the 82-step roadmap as Markdown in the repo, the Forge playable (8 lessons with quizzes), the Strict Golem, a road picker with distinct art, Tech Lead exams and placement trials |
 | 12 | `12-agent-context` | This board and `CLAUDE.md`, the context file for agents |
+| 13 | `13-character-stats-overlap` | Character page: the knight and stats stay in their panel (the arena's `.hero` rules are scoped to `.arena`), stat values no longer overflow on narrow screens |
 
 ## Up next
 

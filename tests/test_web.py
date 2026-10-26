@@ -94,3 +94,14 @@ def test_missing_static_files_still_get_a_link() -> None:
     from hollow.adapters.web.app import asset
 
     assert asset("sprites/nope.png") == "/static/sprites/nope.png?v=0"
+
+
+def test_fight_arena_styles_stay_inside_the_arena(client: TestClient) -> None:
+    import re
+
+    page = client.get("/character").text
+    assert 'class="char-hero"' in page
+    css = client.get("/static/hollow.css").text
+    # A selector starting with `.hero` would pull the Character page's knight and stats out of
+    # their panel, as it did before the arena rules were scoped.
+    assert not re.search(r"(^|[{},])\s*\.hero\b(?!-)", css, re.MULTILINE)

@@ -654,6 +654,8 @@ def create_app(
                 note = None
             elif not r.written:
                 note = "In the fog: its lessons are not written yet."
+            elif r.id not in ARCH_REGION_MAPS:
+                note = "In the fog: its paths are not charted yet."
             else:
                 assert before is not None
                 note = f"Unavailable for now. It opens when {before.boss} falls."

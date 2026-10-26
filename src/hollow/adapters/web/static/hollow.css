@@ -400,7 +400,8 @@ td:last-child { text-align: right; color: var(--ember-hi); }
 .prose code, .options code, .ask-text code, .exam code, .verdict code, .review code, .verdict-strip code, .arch-goals code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: .9em; background: #0b1018; padding: 0 4px; color: var(--cy-hi); }
 .prose pre { background: #0b1018; padding: 12px 14px; overflow-x: auto; outline: 3px solid var(--bg); box-shadow: inset 0 0 0 2px var(--steel-dark); }
 .prose pre code { background: none; padding: 0; color: #d8e7f3; }
-.prose table { margin: 8px 0; }
+.prose table { margin: 8px 0; display: block; max-width: 100%; overflow-x: auto; }
+.prose :not(pre) > code { overflow-wrap: anywhere; }
 .prose th { text-align: left; color: var(--ink-3); font-weight: 600; padding: 4px 8px 4px 0; }
 .prose td, .prose td:last-child { padding: 4px 8px 4px 0; color: var(--ink-2); text-align: left; vertical-align: top; }
 .prose blockquote { margin: 0; padding-left: 12px; border-left: 4px solid var(--steel-hi); color: var(--ink-2); }

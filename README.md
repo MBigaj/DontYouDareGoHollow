@@ -122,7 +122,7 @@ The Architect's road is the senior backend roadmap, played like the Japanese one
 | Prove (optional) | A Tech Lead exam at 80% or better, or a region's placement trial | 120 souls, once (placement: none) |
 | Build | CI-checked challenges | coming later |
 
-Clearing a step lights the bonfire and feeds the Architect job. When every step of a region is cleared, its boss waits behind the fog: the Forge's is the Strict Golem, a quiz fight over the Forge's steps (phase 2 against the clock), who drops Golem's Iron Fist. Felling a boss opens the next region once its lessons are written; until then a region stays in the fog. The nine Lords of Design (system design fights with the Tech Lead) open when the bosses of the regions they need have fallen.
+Clearing a step lights the bonfire and feeds the Architect job. When every step of a region is cleared, its boss waits behind the fog: the Forge's is the Strict Golem, a quiz fight over the Forge's steps (phase 2 against the clock), who drops Golem's Iron Fist. Felling a boss opens the next region once its lessons are written and its map is charted; until then a region stays in the fog. Data Depths is written and waits for its map and the Lock Wyrm. The nine Lords of Design (system design fights with the Tech Lead) open when the bosses of the regions they need have fallen.
 
 ## Agents
 

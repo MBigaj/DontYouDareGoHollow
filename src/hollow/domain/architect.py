@@ -12,7 +12,7 @@ Played like the Japanese road (from the plan):
 - Prove (optional): a Tech Lead exam at 80% or better pays extra and marks the step proved.
   A region's placement trial clears the steps you already know.
 - When every step of a region is cleared, its boss waits behind the fog. Felling it opens the
-  next region, once that region's lessons are written.
+  next region, once that region's lessons are written and its map is charted.
 - A Lord of Design opens when the bosses of all the regions it needs have fallen.
 """
 
@@ -22,6 +22,7 @@ from datetime import date
 from typing import Any
 
 from hollow.curriculum import load
+from hollow.domain.atlas import ARCH_REGION_MAPS
 from hollow.domain.calendar import GameCalendar
 from hollow.domain.curriculum import QuizQuestion, SkillRegion, Topic
 from hollow.domain.events import AgentResult, Event
@@ -132,8 +133,8 @@ class ArchitectState:
 
     def region_open(self, region_id: str) -> bool:
         region = REGION_BY_ID[region_id]
-        if not region.written:
-            return False
+        if not region.written or region_id not in ARCH_REGION_MAPS:
+            return False  # nothing to play yet, or no map to walk it on
         return region.number == 1 or REGIONS[region.number - 2].id in self.felled
 
     def lord_open(self, lord: Lord) -> bool:

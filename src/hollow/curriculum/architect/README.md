@@ -9,7 +9,7 @@ Every step lives here, one Markdown file each. The game reads these files: edit 
 2. **Quiz**: answer the `## Quiz` questions at 80% or better. That clears the step and lights the bonfire; it then comes back as a refresher after 1, 3, 7, 21 and 60 days, like the Japanese lessons.
 3. **Prove** (optional, worth more): pass the Tech Lead's exam at 80% in a Claude session, starting from `## Exam questions`. A region's placement trial can prove what you already know.
 
-When every step of a region is cleared, its boss waits behind the fog. Felling the boss opens the next region, as on the Japanese road. Steps without a lesson yet stay in the fog until one is written.
+When every step of a region is cleared, its boss waits behind the fog. Felling the boss opens the next region, as on the Japanese road. A region stays in the fog until every step has its lesson and quiz and the region has a map in the game.
 
 ## Regions (82 steps)
 1. [The Forge](01-the-forge/README.md): Python craft beyond everyday FastAPI work (8 steps). Mostly cleared: you ship typed, tested Python daily.

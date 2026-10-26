@@ -35,6 +35,7 @@ MYPY = "mypy-strict-in-practice"
 GIL = "concurrency-choices-threads-processes-async"
 MVCC = "mvcc-and-isolation-levels"
 FORGE_STEPS = [t.id for t in region_topics("forge")]
+UNWRITTEN = region_topics("api-citadel")[0].id
 
 
 def state(store: SqlEventStore, clock: FakeClock) -> WorldState:
@@ -65,10 +66,11 @@ def test_eight_regions_hold_every_step_once() -> None:
     assert all(r.boss and r.start and r.blurb for r in REGIONS)
 
 
-def test_the_forge_is_written_and_the_rest_is_fog() -> None:
-    assert REGIONS[0].id == "forge" and REGIONS[0].written
-    assert all(len(t.quiz) >= MIN_QUIZ for t in REGIONS[0].topics)
-    assert not any(r.written for r in REGIONS[1:])
+def test_the_forge_and_data_depths_are_written_and_the_rest_is_fog() -> None:
+    assert [r.id for r in REGIONS[:2]] == ["forge", "data-depths"]
+    assert all(r.written for r in REGIONS[:2])
+    assert all(len(t.quiz) >= MIN_QUIZ for r in REGIONS[:2] for t in r.topics)
+    assert not any(r.written for r in REGIONS[2:])
     for q in (q for t in TOPICS.values() for q in t.quiz):
         assert 0 <= q.answer < len(q.options) and q.explanation
 
@@ -201,10 +203,16 @@ def test_only_the_forge_is_open_until_its_boss_falls(
 ) -> None:
     arch = state(store, clock).architect
     assert arch.region_open("forge")
-    assert not arch.region_open("data-depths")  # unwritten, whatever falls
+    assert not arch.region_open("data-depths")  # the Golem still stands
     assert not arch.region_ready("forge")
     clear(store, clock, FORGE_STEPS)
     assert state(store, clock).architect.region_ready("forge")
+
+
+def test_a_written_region_waits_for_its_map() -> None:
+    golem_down = ArchitectState({}, set(), [], {"forge"})
+    assert REGION_BY_ID["data-depths"].written and "data-depths" not in ARCH_REGION_MAPS
+    assert not golem_down.region_open("data-depths")  # no map to walk yet
 
 
 def test_lords_open_when_their_regions_bosses_fall() -> None:
@@ -244,7 +252,8 @@ def test_a_quiz_run_grades_shown_positions(store: SqlEventStore, clock: FakeCloc
     ("topic", "asked", "message"),
     [
         ("nope", [f"{MYPY}#1"], "no Architect step"),
-        (MVCC, [f"{MVCC}#1"], "has no lesson yet"),
+        (UNWRITTEN, [f"{UNWRITTEN}#1"], "has no lesson yet"),
+        (MVCC, [f"{MVCC}#1"], "Data Depths is still in the fog"),
         (MYPY, [f"{GIL}#1"], "does not match"),
         (MYPY, [f"{MYPY}#1", f"{MYPY}#1"], "does not match"),
     ],
@@ -352,7 +361,8 @@ def test_the_map_has_two_roads(client: TestClient) -> None:
     page = arch.text
     assert "map_architect.png" in page and "road-architect" in page
     assert 'href="/map/architect/forge" data-action' in page
-    assert "In the fog: its lessons are not written yet." in page
+    assert "In the fog: its lessons are not written yet." in page  # the API Citadel
+    assert "In the fog: its paths are not charted yet." in page  # Data Depths
     assert "Needs Data Depths, The API Citadel" in page and "Needs every region" in page
     assert "map_architect.png" in client.get("/map").text  # the cookie remembers the road
     assert 'href="/architect"' not in page  # the old tab is gone
@@ -399,7 +409,8 @@ def test_quiz_pages_refuse_bad_runs(client: TestClient) -> None:
     bad = {"run": str(uuid4()), "q": [f"{GIL}#1"], "answer": "0"}
     assert client.post(f"/lessons/arch/{MYPY}/answer", data=bad).status_code == 422
     assert client.post("/lessons/arch/nope/start").status_code == 422
-    assert "has no lesson yet" in client.get(f"/lessons/arch/{MVCC}").text
+    assert "has no lesson yet" in client.get(f"/lessons/arch/{UNWRITTEN}").text
+    assert "Data Depths is still in the fog" in client.get(f"/lessons/arch/{MVCC}").text
 
 
 def test_the_golem_gate(client: TestClient, store: SqlEventStore, clock: FakeClock) -> None:

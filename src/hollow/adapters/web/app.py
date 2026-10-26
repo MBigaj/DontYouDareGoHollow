@@ -66,11 +66,11 @@ from hollow.domain.bosses import (
     BOSSES,
     ESTUS_HEAL,
     FIRST_TRY_BONUS,
-    GOLEM,
     VICTORY_SOULS,
     WARDEN,
     Boss,
     Outcome,
+    architect_foe,
 )
 from hollow.domain.conjugation import Ending, Verb
 from hollow.domain.events import AgentResult, Material
@@ -269,7 +269,7 @@ def create_app(
         slots: list[dict[str, Any]] = []
         for track in (Track.RONIN, Track.ARCHITECT):
             weapon, level = state.armory.weapon(track)
-            foe = WARDEN if track is Track.RONIN else GOLEM
+            foe = WARDEN if track is Track.RONIN else architect_foe(state.architect.felled)
             note = f"{weapon.damage(level, foe.recommended)} damage per hit against {foe.name}."
             slots.append(
                 {
@@ -1122,7 +1122,7 @@ def create_app(
                 owned = arm.owns(spec.id)
                 level = arm.levels.get(spec.id, 0)
                 cost = upgrade_cost(min(level + 1, spec.max_level))
-                vs = WARDEN if track is Track.RONIN else GOLEM
+                vs = WARDEN if track is Track.RONIN else architect_foe(state.architect.felled)
                 source = next(
                     (BOSSES[b].name for b, w in BOSS_WEAPONS.items() if w == spec.id), "a boss"
                 )

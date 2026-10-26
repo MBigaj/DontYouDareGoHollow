@@ -7,7 +7,7 @@ Read this before working on the project. The plan for what to build next is in [
 A Souls-like web app where studying is the game. It belongs to Mikołaj Bigaj (GitHub `MBigaj`), a backend developer with about three years at YouGov: Python, FastAPI, PostgreSQL, MongoDB, RabbitMQ, Kubernetes, Docker and AWS. He plays it 45 to 60 minutes a day on two roads:
 
 - **Ronin road (Japanese):** Core 2000 vocabulary in Anki plus grammar, read through AnkiConnect. Region 1 is Firelink Shrine: て-form lessons and the て-form Warden.
-- **Architect road (senior backend):** a personal roadmap in Python, with the emphasis on architecture and system design. The steps are Markdown files in this repo. Region 1, the Forge, is playable: 8 lessons with quizzes and the Strict Golem.
+- **Architect road (senior backend):** a personal roadmap in Python, with the emphasis on architecture and system design. The steps are Markdown files in this repo. Region 1, the Forge (8 lessons with quizzes and the Strict Golem), and region 2, Data Depths (11 lessons and the Lock Wyrm), are playable.
 
 Real study earns souls. A missed day drops them as a bloodstain, and lighting the bonfire the next day gets them back. The design principles:
 
@@ -26,9 +26,9 @@ src/hollow/
     events.py      every event type (append-only; never change or remove a stored shape)
     world.py       replay: souls, bloodstains, hollowing, streak, XP, lessons, bosses, armory...
     lessons.py     lesson runs, refreshers (1, 3, 7, 21, 60 days), souls per run
-    bosses.py      Boss/Phase data (WARDEN, GOLEM), questions, attempts, wounds, rewards
+    bosses.py      Boss/Phase data (WARDEN, GOLEM, WYRM), questions, attempts, wounds, rewards
     armory.py      weapons, titanite, upgrade costs, drops
-    atlas.py       map coordinates: Ronin REGIONS/FIRELINK, Architect ARCH_POINTS/FORGE
+    atlas.py       map coordinates: Ronin REGIONS/FIRELINK, Architect ARCH_POINTS/FORGE/DEPTHS
     architect.py   Architect road: REGIONS/TOPICS loaded from the curriculum, LORDS, progress
     curriculum.py  parser for the Markdown steps (pure: text in, values out)
     quests.py, progression.py, activities.py, conjugation.py, vocabulary.py, calendar.py
@@ -76,7 +76,7 @@ Each step is one file: `src/hollow/curriculum/architect/NN-region/NN-step-slug.m
 5. `## Quiz`: each question is a `### Prompt` heading, followed by its options as `- [ ]` lines (mark the right one `- [x]`), then a one- or two-sentence explanation.
 6. `## Exam questions` (a list)
 
-A step is playable with a lesson and at least 4 quiz questions. Six is the norm. A region opens when every one of its steps is playable and the previous region's boss has fallen.
+A step is playable with a lesson and at least 4 quiz questions. Six is the norm. A region opens when every one of its steps is playable, it has a map (`ARCH_REGION_MAPS`) and the previous region's boss has fallen.
 
 Write for Mikołaj's level: skip basics he uses daily, and aim at the senior gap with production examples (FastAPI, Postgres, RabbitMQ, ECS). Keep the facts right, and put the right answer at varied positions. The Forge's files (`01-the-forge/`) are the model for length and tone.
 
@@ -84,7 +84,7 @@ To make a new region playable:
 
 - Write all its step files.
 - Add its map nodes to `domain/atlas.py` (a `Node` tuple, plus an `ARCH_REGION_MAPS` entry) and draw its map in `tools/sprites/architect.py`.
-- Add its boss to `domain/bosses.py` (`boss_id(region)`, `region=...`), with sprites and drops.
+- Add its boss to `domain/bosses.py` (`boss_id(region)`, `region=...`) and to `ARCH_BOSSES`, with sprites, a `.foe-<short>` size in the CSS, and drops in `armory.py`.
 - Extend the tests in `tests/test_architect.py`.
 
 ## Art direction

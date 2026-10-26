@@ -139,7 +139,69 @@ GOLEM = Boss(
     intro="Phase 1: your craft, types, tests and tooling. Phase 2: the runtime beneath, "
     "asyncio, concurrency, profiling and memory, against the clock.",
 )
-BOSSES = {b.id: b for b in (WARDEN, GOLEM)}
+WYRM = Boss(
+    boss_id("data-depths"),
+    "The Lock Wyrm",
+    Track.ARCHITECT,
+    3,
+    "",
+    "",
+    (
+        Phase(
+            "Held rows",
+            100,
+            (Kind.CHOICE,),
+            topics=(
+                "mvcc-and-isolation-levels",
+                "locks-deadlocks-and-contention",
+                "zero-downtime-migrations",
+                "connection-pooling-under-load",
+            ),
+        ),
+        Phase(
+            "The planner's eye",
+            100,
+            (Kind.CHOICE,),
+            topics=(
+                "reading-query-plans",
+                "index-design",
+                "postgresql-vs-mongodb-modelling",
+            ),
+        ),
+        Phase(
+            "The flooded deep",
+            110,
+            (Kind.CHOICE,),
+            seconds=45,
+            topics=(
+                "replication-and-read-replicas",
+                "partitioning-and-sharding",
+                "caching-patterns-and-invalidation",
+                "redis-beyond-caching",
+            ),
+        ),
+    ),
+    min_verbs=0,
+    region="data-depths",
+    home="/map/architect/data-depths",
+    home_name="Data Depths",
+    node="data-depths-boss",
+    short="Wyrm",
+    body="wyrm_body.png",
+    weapon=None,
+    arena="arena_data_depths.png",
+    intro="Phase 1: held rows, isolation, locks, migrations and pools. Phase 2: the planner's "
+    "eye, plans, indexes and modelling. Phase 3: the flooded deep, replicas, shards and "
+    "caches, against the clock.",
+)
+BOSSES = {b.id: b for b in (WARDEN, GOLEM, WYRM)}
+ARCH_BOSSES = (GOLEM, WYRM)
+"""The Architect road's bosses in road order, one per region with a map."""
+
+
+def architect_foe(felled: set[str]) -> Boss:
+    """The next Architect boss still standing (`felled` holds region ids), else the last."""
+    return next((b for b in ARCH_BOSSES if b.region not in felled), ARCH_BOSSES[-1])
 
 
 @dataclass(frozen=True)

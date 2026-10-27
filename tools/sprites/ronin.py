@@ -140,10 +140,23 @@ def warden(tmp: Path) -> Image.Image:
     return scaled(c.img(), 3)
 
 
+HERO_GRIP = (51, 60)
+"""Where the hero's empty sword hand closes, in hero pixels (77x120, drawn at 2x). The pose
+is weapon-agnostic: a katana, a hammer or a maul can be layered into this fist later."""
+
+
 def knight(tmp: Path) -> Image.Image:
-    img = pixelate(SRC / "knight.jpg", tmp, "--preset", "character", "--height", "120",
-                   "--colors", "20", "--smooth", "1.8", "--gamma", "0.7", "--chroma", "1.3")  # fmt: skip
-    return scaled(img, 2)
+    """The hero, a hollow ronin: kasa hat, one ember eye, ragged haori, bandaged hands.
+
+    The source faces left; mirrored, he faces right, toward the bosses in the arena."""
+    flipped = tmp / "hero.png"
+    Image.open(SRC / "hero.jpg").convert("RGB").transpose(Image.Transpose.FLIP_LEFT_RIGHT).save(flipped)
+    c = Canvas(77, 120)
+    c.a = np.array(pixelate(flipped, tmp, "--preset", "character", "--width", "77", "--height", "120",
+                            "--colors", "20", "--smooth", "1.8", "--gamma", "0.7", "--chroma", "1.3"))  # fmt: skip
+    c.dot(32, 14, hx("ffd88a"))  # the last ember of him, under the hat
+    c.dot(33, 14, hx("ec9a2e"))
+    return scaled(c.img(), 2)
 
 
 STAGE = (162, 146)

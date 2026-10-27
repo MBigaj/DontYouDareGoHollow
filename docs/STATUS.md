@@ -35,16 +35,18 @@ _Nothing. The last branch is merged; take the next number._
 | 16 | `16-ronin-art` | Ronin road redrawn from generated art through the ASHEN pipeline: the knight, the て-form Warden (one sprite, maul in hand), the Firelink map and arena, the world map (region points moved onto its landmarks), rune-stone waypoints, a new bonfire (flame spiralling up the blade, firelight, an unlit state) and a shrine stage on the home page, cold until the day is lit |
 | 17 | `17-map-landmarks` | On the Ronin maps the painted landmarks are the places: hovering a region (or Firelink's bonfire and fog gate) outlines it in gold, clicking walks the knight there, fogged regions sit under a grey veil; stones get a pixel outline on hover (cyan on the Architect road); works without JavaScript |
 | 18 | `18-architect-art` | Architect road redrawn from generated art at night: its world map (eight landmarks as places, the Distributed Abyss looming in the sky), the Forge hall and the flooded Data Depths archive (lesson points moved onto the painted floor and causeways), the Strict Golem, the Lock Wyrm and both arenas; iron obelisk waypoints and the chain icon at 2x; shared pipeline steps in `generated.py` |
+| 19 | `19-hollow-ronin` | A new hero: a hollow ronin (kasa hat, one ember eye, ragged indigo haori, bandaged hands), generated empty-handed in a weapon-agnostic stance with his grip point recorded for the weapons to come; mirrored to face the bosses |
 
 ## Up next
 
 In a sensible order. Each one fits a branch.
 
 1. **Item icons, slash and anvil.** Redraw the last code-drawn sprites (`sprites.py`: the ten item icons, the hit slash, the blacksmith's anvil) to match the new art. Icons are small, so a generated sheet of icons cut apart, or careful 2x code art.
-2. **Warden phase 3.** A short conversation judged by the Sensei agent. It needs a saved "pending phase" state, an inbox task and a Sensei result shape for `boss:<id>`. `agents/README.md` lists it as not saved yet.
-3. **Ronin region 2, Undead Village.** Lessons for 〜ている, 〜た and the plain form, its region map and the Plain-Form Gargoyle (recommended weapon level +4). The lesson engine may need more `LessonSpec` kinds than て-form endings.
-4. **Lore for the Architect road.** `lore_targets()` in `application/agents.py` only knows the Ronin regions. Add the Architect regions, so the Lorekeeper can write region and boss lore for them.
-5. **Deploy.** Put the Docker image on one small host (DigitalOcean was the plan) with PostgreSQL and `HOLLOW_PASSWORD`. Anki sync keeps running from his PC with `hollow-sync-anki` on a schedule, which needs the API to accept pushed reviews or a remote database URL. That design decision is Mikołaj's: ask first.
+2. **The hero carries what you equip.** Weapon sprites drawn to fit the hero's fist (`HERO_GRIP` in `tools/sprites/ronin.py`): katana, uchigatana, the Warden's maul, the hammers, the Golem's fist, the Wyrm's chain. Layer the equipped one on the hero in fights, on the maps and at the bonfire, and give him a road accent on the Architect road (a cyan eye or scarf). Comes with the weapon redesign: ask Mikołaj how he wants the weapons to look first.
+3. **Warden phase 3.** A short conversation judged by the Sensei agent. It needs a saved "pending phase" state, an inbox task and a Sensei result shape for `boss:<id>`. `agents/README.md` lists it as not saved yet.
+4. **Ronin region 2, Undead Village.** Lessons for 〜ている, 〜た and the plain form, its region map and the Plain-Form Gargoyle (recommended weapon level +4). The lesson engine may need more `LessonSpec` kinds than て-form endings.
+5. **Lore for the Architect road.** `lore_targets()` in `application/agents.py` only knows the Ronin regions. Add the Architect regions, so the Lorekeeper can write region and boss lore for them.
+6. **Deploy.** Put the Docker image on one small host (DigitalOcean was the plan) with PostgreSQL and `HOLLOW_PASSWORD`. Anki sync keeps running from his PC with `hollow-sync-anki` on a schedule, which needs the API to accept pushed reviews or a remote database URL. That design decision is Mikołaj's: ask first.
 
 ## Backlog
 

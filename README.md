@@ -189,7 +189,7 @@ CI runs all of these on every push and pull request, plus the migrations against
 
 ## Art
 
-Both roads are **generated art**: one painting per sprite or scene, made with Figma AI (file "ASHEN source art") and kept in `tools/sprites/art/source/`, with the prompts in `PROMPTS.md` there. `tools/sprites/ronin.py` (golden dusk) and `tools/sprites/architect.py` (cold night) run each one through the ASHEN pixel pipeline (`tools/sprites/pipeline/pixelate.py` and the shared palette `ashen.hex`) at its native size, fixes what the pipeline loses (the eclipse's black, the Warden's crown, eyes and て sigil, the Golem's visor, the Wyrm's eye, the paths on the region maps), and scales the result up with NEAREST. It also builds:
+Both roads are **generated art**, and so is the hero, a hollow ronin: one painting per sprite or scene, made with Figma AI (file "ASHEN source art") and kept in `tools/sprites/art/source/`, with the prompts in `PROMPTS.md` there. `tools/sprites/ronin.py` (golden dusk) and `tools/sprites/architect.py` (cold night) run each one through the ASHEN pixel pipeline (`tools/sprites/pipeline/pixelate.py` and the shared palette `ashen.hex`) at its native size, fixes what the pipeline loses (the eclipse's black, the Warden's crown, eyes and て sigil, the Golem's visor, the Wyrm's eye, the paths on the region maps), and scales the result up with NEAREST. It also builds:
 
 - the bonfire (`bonfire.py`): the generated ash mound and a crisp greatsword, with an 8-frame flame that spirals up the blade and firelight that flickers on the stones, plus the cold, unlit bonfire;
 - the home page stage: a shrine nook under the moon, cold until the day is lit, then warm around the fire.

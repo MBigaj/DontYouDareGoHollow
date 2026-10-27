@@ -9,9 +9,11 @@ Rules that make a source pixelate well:
 - No text. Image models garble kana, so glyphs such as the Warden's て are drawn in code afterwards.
 - Scenes: say where each landmark sits in the frame. The atlas points are then placed on the landmarks (`hollow.domain.atlas`).
 
-## knight.jpg (1024x1536)
+## hero.jpg (1024x1536)
 
-Dark fantasy concept art of an original character, full body, front view, standing still and imposing: a weathered knight in dark battle-worn steel plate armor, a tall closed great helm with a narrow visor slit and a single faint ember glowing behind it, a short bone-white crest, heavy layered pauldrons with tarnished gold trim, a long tattered deep crimson cloak with torn hem flowing behind, both gauntlets resting on the pommel of a huge greatsword planted point-down in front of him between his feet. Strong warm golden rim light from the upper left, deep shadows, high contrast, clear readable silhouette, large simple shapes, painterly, epic and solemn mood. Entire figure visible from helm to boots, centered, isolated on a plain flat light grey background, no floor, no shadow, no text.
+The hero, a hollow ronin. Generated without any weapon and with an empty, clenched sword hand, so equipped weapons can be layered into his fist later (`HERO_GRIP` in `ronin.py`). The source faces left; `ronin.py` mirrors him to face the bosses.
+
+Dark fantasy concept art of an original character, full body, three-quarter view turned slightly to the right, standing in a calm ready stance with feet apart: a wandering hollow ronin, a masterless swordsman slowly losing himself. A wide battered straw kasa hat casts his face in deep shadow, only a gaunt grey jaw and one faint ember-orange eye glowing beneath it. A long tattered dark indigo haori coat with frayed hems over layers of worn grey robes, a frayed ash-white scarf wrapped around his neck trailing in the wind, battered dark lacquered lamellar shoulder guards and a cracked chest plate laced with faded crimson cord, a thick rope sash, bandaged forearms and shins, worn straw sandals over wrapped feet, ash and soot on the cloth, a few small paper charms tied to his sash. His right hand is lowered at his side slightly in front of his body, the fist clenched as if gripping a weapon handle, but the hand is empty. His left hand rests on the sash. He carries no weapon at all: no sword, no scabbard, no staff, hands empty. Strong warm ember rim light from the upper left, cool shadow on the right, high contrast, clear readable silhouette, large simple shapes, painterly, melancholic and determined, inspired by Dark Souls and Sekiro. Entire figure visible from hat to feet, centered, isolated on a plain flat light grey background, no floor, no shadow, no text.
 
 ## warden.jpg (1024x1280)
 

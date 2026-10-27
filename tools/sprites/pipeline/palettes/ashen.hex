@@ -1,0 +1,67 @@
+; ASHEN - shared master palette for the app (dark→light within each ramp)
+; neutrals / void
+0a080c
+16131a
+221e28
+302b36
+433d4a
+5c5563
+7d7684
+a49daa
+c9c2c0
+ece6dc
+; cool steel
+1b2230
+2b3646
+3e4c5e
+566a7e
+7a8fa3
+a9bccb
+; night blue
+101a2e
+1e3150
+34507a
+5a7fae
+; soul cyan
+4fb4d0
+9ee2ee
+e6fbff
+; blood red
+2a0a0e
+4a1016
+701c20
+9a2c2a
+c44a3a
+e8806a
+; ember / gold
+5a240c
+8e3e12
+c46a1c
+ec9a2e
+f6c55a
+7a5a24
+b88c3c
+; leather
+2e1e18
+4a3226
+6a4a34
+8e6a4a
+b49270
+; bone / skin
+8c6658
+b88e76
+d6b49a
+e8d8c4
+; moss
+1e2a1c
+34462c
+52683e
+7e9460
+; abyss
+1e1430
+362450
+563a7a
+8462a8
+; ghost
+6cc890
+c6f2c8

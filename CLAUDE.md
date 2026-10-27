@@ -41,8 +41,9 @@ src/hollow/
   cli.py           hollow-sync-anki, hollow-anki-check, hollow-sync-github,
                    hollow-agent-inbox, hollow-agent-submit
 agents/            playbooks for the four agents (Quest Master, Sensei, Lorekeeper, Tech Lead)
-tools/sprites/     procedural placeholder pixel art (sprites.py, region_firelink.py,
-                   bonfire8.py, architect.py)
+tools/sprites/     the pixel art: ronin.py (generated sources in art/source/ through the ASHEN
+                   pipeline in pipeline/; bonfire.py, waypoints.py, kit.py helpers),
+                   architect.py and sprites.py (still drawn in code)
 migrations/        Alembic (only the events table)
 tests/             pytest; conftest has FakeClock, store and client fixtures
 ```
@@ -89,12 +90,12 @@ To make a new region playable:
 
 ## Art direction
 
-All art is placeholder, drawn in code: native-size pixel art, scaled up with NEAREST.
+The Ronin road is generated art: a painting per sprite or scene (Figma AI, file "ASHEN source art"), kept in `tools/sprites/art/source/` with its prompt in `PROMPTS.md`, and turned into pixel art by `tools/sprites/ronin.py` through the ASHEN pipeline (`pipeline/pixelate.py`, palette `ashen.hex`). Hand cleanup in code restores what the pipeline loses, and anything with text (the て sigil) or animation (the bonfire's flame) is drawn in code. The Architect road and the small UI sprites (`architect.py`, `sprites.py`) are still drawn in code and are next to be redone the same way.
 
-- **Ronin road:** warm ember, bone and gold.
-- **Architect road:** cool steel, night blue and soul cyan, with abyss violet for the Distributed Abyss.
+- **Ronin road:** warm ember, bone and gold, golden dusk under an eclipsed sun (Elden Ring leaning).
+- **Architect road:** cool steel, night blue and soul cyan, with abyss violet for the Distributed Abyss (Dark Souls leaning).
 
-Keep that split; the two maps must stay visibly distinct. The CSS theme for the Architect road is `.road-architect`. The shared master palette and pixel pipeline (`STYLE.md`, `ashen.hex`, `pixelate.py`) are in the claude.ai project "Studying - GAMIFIED". A real art redesign is planned. Keep sprite file names and sizes stable so new art drops in.
+Keep that split; the two maps must stay visibly distinct. The CSS theme for the Architect road is `.road-architect`. Scenes are prompted with each landmark's place in the frame, and the atlas points are then set on the landmarks. Sprites are drawn at 2x the old density, so the files keep their sizes except the knight (154x240) and the bonfire sheet (1152x180, plus `bonfire_unlit.png`). Generating costs Figma AI credits (the Starter plan has 500 a month, 150 a day), so draft compositions on a cheaper model and keep the expensive one for keepers. The shared style guide (`STYLE.md`) is in the claude.ai project "Studying - GAMIFIED".
 
 ## Conventions (from Mikołaj, not negotiable)
 

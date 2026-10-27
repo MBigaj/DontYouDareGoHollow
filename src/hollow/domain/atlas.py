@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 WORLD_SIZE = (260, 225)
-"""Native size of the world map art (map_bg.png, drawn at 4x)."""
+"""Grid of the world map art (map_bg.png is 4 px per unit, drawn at 2x density)."""
 FIRELINK_SIZE = (260, 150)
 """Native size of the Firelink Shrine art (region_firelink.png, drawn at 4x)."""
 
@@ -34,34 +34,34 @@ REGIONS: tuple[Region, ...] = (
         "Where every journey starts: the first 250 core words and the grammar that holds "
         "simple sentences together.",
         "Core 2000 cards 1-250", "Polite forms, particles, て-form", "The て-form Warden",
-        (52, 175), open=True,
+        (21, 185), open=True,
     ),
     Region(
         "undead-village", 2, "Undead Village", "静かな村", "しずかなむら",
         "Quiet streets where things are always happening. Describe what is going on and what "
         "already happened.",
-        "Cards 251-500", "〜ている, 〜た, plain form", "The Plain-Form Gargoyle", (97, 152),
+        "Cards 251-500", "〜ている, 〜た, plain form", "The Plain-Form Gargoyle", (70, 152),
     ),
     Region(
         "kanji-catacombs", 3, "Kanji Catacombs", "漢字の地下", "かんじのちか",
         "Old stones carved with characters. Readings matter here more than anywhere.",
-        "Cards 501-800", "〜たい, 〜ない, comparisons", "The Bone Scribe", (75, 117),
+        "Cards 501-800", "〜たい, 〜ない, comparisons", "The Bone Scribe", (40, 97),
     ),
     Region(
         "sens-fortress", 4, "Sen's Fortress", "出来る力", "できるちから",
         "Traps everywhere. Say what you can and cannot do, and what you think.",
-        "Cards 801-1100", "Potential form, 〜と思う", "The Iron Golem of Ability", (140, 120),
+        "Cards 801-1100", "Potential form, 〜と思う", "The Iron Golem of Ability", (149, 79),
     ),
     Region(
         "anor-keigo", 5, "Anor Keigo", "もし", "もし",
         "A golden city of conditions. Nothing here happens unless something else does first.",
-        "Cards 1101-1500", "ば, たら, と, なら", "Ornstein and Smough of If", (190, 80),
+        "Cards 1101-1500", "ば, たら, と, なら", "Ornstein and Smough of If", (209, 48),
     ),
     Region(
         "the-kiln", 6, "The Kiln", "最後の火", "さいごのひ",
         "The first flame burns at the top of the world. Clearing it lines up with JLPT N4.",
         "Cards 1501-2000", "Passive, causative, intro to keigo", "Lord of Conjugation",
-        (225, 37),
+        (242, 24),
     ),
 )  # fmt: skip
 

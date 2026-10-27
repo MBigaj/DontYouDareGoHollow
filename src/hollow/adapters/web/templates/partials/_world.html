@@ -14,9 +14,9 @@
 
   <section class="panel scene" aria-label="Bonfire">
     {% set h = state.hollowing %}
-    <div class="stage">
+    <div class="stage {{ 'lit' if state.lit_today else 'unlit' }}">
       <img class="knight sprite {{ 'alive' if h < max_hollowing }}" src="{{ asset('sprites/knight_front.png') }}"
-           alt="Your knight, {{ state.status | lower }}" width="96" height="180"
+           alt="Your knight, {{ state.status | lower }}" width="154" height="240"
            style="filter: grayscale({{ h * 0.2 }}) brightness({{ 1 - h * 0.1 }})">
       <div class="fire sprite {{ 'lit' if state.lit_today else 'unlit' }}" role="img"
            aria-label="{{ 'A lit bonfire' if state.lit_today else 'An unlit bonfire' }}"></div>

@@ -76,7 +76,7 @@ class Boss:
     """The boss's node on its home map."""
     short: str = "Warden"
     body: str = "warden_body.png"
-    weapon: str | None = "warden_weapon.png"
+    weapon: str | None = None
     arena: str = "arena_bg.png"
     intro: str = ""
 

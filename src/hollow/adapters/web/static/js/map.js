@@ -39,8 +39,8 @@
       if (!still) {
         await knight.animate(
           [
-            { opacity: 0, transform: "translate(-125%, -100%)" },
-            { opacity: 1, transform: "translate(-125%, -92%)" },
+            { opacity: 0, transform: "translate(-125%, -68%)" },
+            { opacity: 1, transform: "translate(-125%, -60%)" },
           ],
           { duration: 160, easing: "ease-out" },
         ).finished;

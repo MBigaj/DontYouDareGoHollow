@@ -41,9 +41,9 @@ src/hollow/
   cli.py           hollow-sync-anki, hollow-anki-check, hollow-sync-github,
                    hollow-agent-inbox, hollow-agent-submit
 agents/            playbooks for the four agents (Quest Master, Sensei, Lorekeeper, Tech Lead)
-tools/sprites/     the pixel art: ronin.py (generated sources in art/source/ through the ASHEN
-                   pipeline in pipeline/; bonfire.py, waypoints.py, kit.py helpers),
-                   architect.py and sprites.py (still drawn in code)
+tools/sprites/     the pixel art: ronin.py and architect.py (generated sources in art/source/
+                   through the ASHEN pipeline in pipeline/, shared steps in generated.py;
+                   bonfire.py, waypoints.py, kit.py helpers), sprites.py (icons, in code)
 migrations/        Alembic (only the events table)
 tests/             pytest; conftest has FakeClock, store and client fixtures
 ```
@@ -84,16 +84,16 @@ Write for Mikołaj's level: skip basics he uses daily, and aim at the senior gap
 To make a new region playable:
 
 - Write all its step files.
-- Add its map nodes to `domain/atlas.py` (a `Node` tuple, plus an `ARCH_REGION_MAPS` entry) and draw its map in `tools/sprites/architect.py`.
+- Generate its map painting (prompt it with the bonfire bottom left and the boss's gate top right; add the prompt to `tools/sprites/art/source/PROMPTS.md`), add it to `tools/sprites/architect.py`, then add its map nodes to `domain/atlas.py` on the painted floor (a `Node` tuple with `area`s for the bonfire and the gate, plus an `ARCH_REGION_MAPS` entry). Its world landmark is already in `ARCH_AREAS`.
 - Add its boss to `domain/bosses.py` (`boss_id(region)`, `region=...`) and to `ARCH_BOSSES`, with sprites, a `.foe-<short>` size in the CSS, and drops in `armory.py`.
 - Extend the tests in `tests/test_architect.py`.
 
 ## Art direction
 
-The Ronin road is generated art: a painting per sprite or scene (Figma AI, file "ASHEN source art"), kept in `tools/sprites/art/source/` with its prompt in `PROMPTS.md`, and turned into pixel art by `tools/sprites/ronin.py` through the ASHEN pipeline (`pipeline/pixelate.py`, palette `ashen.hex`). Hand cleanup in code restores what the pipeline loses, and anything with text (the て sigil) or animation (the bonfire's flame) is drawn in code. The Architect road and the small UI sprites (`architect.py`, `sprites.py`) are still drawn in code and are next to be redone the same way.
+Both roads are generated art: a painting per sprite or scene (Figma AI, file "ASHEN source art"), kept in `tools/sprites/art/source/` with its prompt in `PROMPTS.md`, and turned into pixel art by `tools/sprites/ronin.py` and `tools/sprites/architect.py` through the ASHEN pipeline (`pipeline/pixelate.py`, palette `ashen.hex`; shared steps in `generated.py`). Hand cleanup in code restores what the pipeline loses, and anything with text (the て sigil), animation (the bonfire's flame) or tiny size (waypoints, icons) is drawn in code. The item icons, slash and anvil (`sprites.py`) are still the old code-drawn art.
 
 - **Ronin road:** warm ember, bone and gold, golden dusk under an eclipsed sun (Elden Ring leaning).
-- **Architect road:** cool steel, night blue and soul cyan, with abyss violet for the Distributed Abyss (Dark Souls leaning).
+- **Architect road:** cool steel, night blue and soul cyan at night, with abyss violet for the Distributed Abyss (Dark Souls leaning). Its sources run darker through the pipeline (gamma above 1), its hover outlines are cyan and its fog veils dim rather than lighten.
 
 Keep that split; the two maps must stay visibly distinct. The CSS theme for the Architect road is `.road-architect`. Scenes are prompted with each landmark's place in the frame, and the atlas points are then set on the landmarks. A place that is a painted building gets an `area` (a rough polygon in atlas units around it, containing its point): the map draws it as the click target, and `ronin.py` snaps it to the painting to make the hover glow and the fog veil. Rerun `ronin.py` after changing an area. Sprites are drawn at 2x the old density, so the files keep their sizes except the knight (154x240) and the bonfire sheet (1152x180, plus `bonfire_unlit.png`). Generating costs Figma AI credits (the Starter plan has 500 a month, 150 a day), so draft compositions on a cheaper model and keep the expensive one for keepers. The shared style guide (`STYLE.md`) is in the claude.ai project "Studying - GAMIFIED".
 

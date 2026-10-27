@@ -53,6 +53,7 @@ from hollow.domain.armory import (
     upgrade_cost,
 )
 from hollow.domain.atlas import (
+    ARCH_AREAS,
     ARCH_POINTS,
     ARCH_REGION_MAPS,
     ARCH_WORLD_SIZE,
@@ -597,7 +598,9 @@ def create_app(
         return {
             "area": " ".join(f"{x},{y}" for x, y in area),
             "glow": f"sprites/spot_{map_id}_{place}.png",
-            "veil": f"sprites/veil_{map_id}_{place}.png" if map_id == "world" else "",
+            "veil": f"sprites/veil_{map_id}_{place}.png"
+            if map_id in ("world", "architect")
+            else "",
         }
 
     def chosen_road(request: Request, road: str | None) -> str:
@@ -668,11 +671,12 @@ def create_app(
             else:
                 assert before is not None
                 note = f"Unavailable for now. It opens when {before.boss} falls."
-            points.append({
+            region_point: dict[str, Any] = {
                 "id": r.id, "name": r.name, "x": x, "y": y,
                 "kind": "bonfire" if is_open else "world",
                 "status": "cleared" if felled else ("open" if is_open else "fog"),
-            })  # fmt: skip
+            }  # fmt: skip
+            points.append(region_point | landmark("architect", r.id, ARCH_AREAS.get(r.id, ())))
             panels.append({
                 "region": r, "open": is_open, "felled": felled, "note": note,
                 "cleared": sum(s.cleared for s in steps), "proved": sum(s.proved for s in steps),
@@ -835,6 +839,7 @@ def create_app(
         for node in nodes:
             x, y = percent(node.point, size)
             point: dict[str, Any] = {"id": node.id, "kind": node.kind.value, "x": x, "y": y}
+            point |= landmark(region_id, node.id, node.area)
             if node.kind is NodeKind.BONFIRE:
                 point |= bonfire_point(f"{region.name} bonfire")
             elif node.kind is NodeKind.BOSS:

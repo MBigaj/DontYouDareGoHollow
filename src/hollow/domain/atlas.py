@@ -130,59 +130,84 @@ FIRELINK: tuple[Node, ...] = (
 # --- the Architect road ---------------------------------------------------------
 
 ARCH_WORLD_SIZE = (260, 225)
-"""Native size of the Architect world art (map_architect.png, drawn at 4x)."""
+"""Grid of the Architect world art (map_architect.png is 4 px per unit, drawn at 2x density)."""
 FORGE_SIZE = (260, 150)
-"""Native size of the Forge region art (region_forge.png, drawn at 4x)."""
+"""Grid of the Forge art (region_forge.png is 4 px per unit, drawn at 2x density)."""
 DEPTHS_SIZE = (260, 150)
-"""Native size of the Data Depths art (region_data_depths.png, drawn at 4x)."""
+"""Grid of the Data Depths art (region_data_depths.png is 4 px per unit, drawn at 2x density)."""
 
 ARCH_POINTS: dict[str, tuple[int, int]] = {
-    "forge": (38, 192),
-    "data-depths": (98, 182),
-    "api-citadel": (160, 176),
-    "async-ruins": (220, 156),
-    "watchtower": (214, 100),
-    "iron-keep": (152, 110),
-    "undercroft": (82, 116),
-    "distributed-abyss": (130, 50),
+    "forge": (29, 176),
+    "data-depths": (92, 160),
+    "api-citadel": (171, 171),
+    "async-ruins": (240, 136),
+    "watchtower": (236, 79),
+    "iron-keep": (132, 75),
+    "undercroft": (37, 83),
+    "distributed-abyss": (134, 26),
 }
 """Where each Architect region sits on its world map, in road order."""
 
+ARCH_AREAS: dict[str, tuple[tuple[int, int], ...]] = {
+    "forge": ((2, 193), (2, 154), (15, 152), (14, 136), (22, 135), (23, 152), (53, 154),
+              (54, 193)),
+    "data-depths": ((48, 189), (49, 152), (59, 141), (83, 134), (110, 135), (136, 143),
+                    (140, 158), (127, 189)),
+    "api-citadel": ((134, 191), (134, 158), (149, 152), (158, 141), (171, 143), (189, 138),
+                    (193, 152), (204, 158), (205, 191)),
+    "async-ruins": ((217, 154), (218, 131), (225, 126), (233, 128), (240, 121), (248, 121),
+                    (250, 99), (256, 96), (260, 99), (260, 154)),
+    "watchtower": ((222, 92), (226, 73), (229, 55), (233, 44), (239, 44), (243, 55), (246, 73),
+                   (248, 92)),
+    "iron-keep": ((105, 90), (108, 62), (119, 55), (130, 35), (139, 37), (143, 57), (158, 66),
+                  (159, 90)),
+    "undercroft": ((9, 99), (11, 66), (20, 51), (33, 42), (51, 42), (62, 53), (66, 72), (66, 99)),
+    "distributed-abyss": ((79, 48), (84, 18), (110, 2), (149, 0), (189, 4), (207, 26),
+                          (204, 51)),
+}  # fmt: skip
+"""Each Architect region's landmark on its world map: the smithy, the flooded vault, the
+citadel, the ruined towers, the watchtower, the iron keep, the crypt stair and the abyss."""
+
 FORGE: tuple[Node, ...] = (
-    Node("bonfire", NodeKind.BONFIRE, (26, 120)),
-    Node("mypy-strict-in-practice", NodeKind.LESSON, (58, 106), "mypy-strict-in-practice"),
-    Node("asyncio-internals", NodeKind.LESSON, (88, 122), "asyncio-internals"),
-    Node("concurrency-choices-threads-processes-async", NodeKind.LESSON, (118, 104),
+    Node("bonfire", NodeKind.BONFIRE, (24, 126),
+         area=((7, 137), (9, 128), (16, 122), (23, 108), (29, 122), (37, 126), (38, 137))),
+    Node("mypy-strict-in-practice", NodeKind.LESSON, (52, 125), "mypy-strict-in-practice"),
+    Node("asyncio-internals", NodeKind.LESSON, (87, 113), "asyncio-internals"),
+    Node("concurrency-choices-threads-processes-async", NodeKind.LESSON, (129, 122),
          "concurrency-choices-threads-processes-async"),
-    Node("profiling-and-performance", NodeKind.LESSON, (94, 80), "profiling-and-performance"),
-    Node("property-based-testing", NodeKind.LESSON, (126, 64), "property-based-testing"),
-    Node("test-architecture", NodeKind.LESSON, (158, 82), "test-architecture"),
-    Node("packaging-and-tooling-with-uv", NodeKind.LESSON, (188, 100),
+    Node("profiling-and-performance", NodeKind.LESSON, (104, 97), "profiling-and-performance"),
+    Node("property-based-testing", NodeKind.LESSON, (146, 101), "property-based-testing"),
+    Node("test-architecture", NodeKind.LESSON, (170, 94), "test-architecture"),
+    Node("packaging-and-tooling-with-uv", NodeKind.LESSON, (188, 83),
          "packaging-and-tooling-with-uv"),
-    Node("python-memory-model", NodeKind.LESSON, (204, 70), "python-memory-model"),
-    Node("forge-boss", NodeKind.BOSS, (230, 40)),
+    Node("python-memory-model", NodeKind.LESSON, (209, 73), "python-memory-model"),
+    Node("forge-boss", NodeKind.BOSS, (226, 64),
+         area=((184, 69), (186, 10), (196, 5), (214, 7), (228, 16), (242, 7), (252, 10),
+               (257, 69))),
 )  # fmt: skip
 """The path through the Forge, in walking order; lesson nodes carry the step id."""
 
 DEPTHS: tuple[Node, ...] = (
-    Node("bonfire", NodeKind.BONFIRE, (22, 124)),
-    Node("mvcc-and-isolation-levels", NodeKind.LESSON, (48, 108), "mvcc-and-isolation-levels"),
-    Node("locks-deadlocks-and-contention", NodeKind.LESSON, (76, 124),
+    Node("bonfire", NodeKind.BONFIRE, (28, 126),
+         area=((13, 134), (15, 121), (26, 113), (32, 121), (36, 134))),
+    Node("mvcc-and-isolation-levels", NodeKind.LESSON, (54, 118), "mvcc-and-isolation-levels"),
+    Node("locks-deadlocks-and-contention", NodeKind.LESSON, (78, 108),
          "locks-deadlocks-and-contention"),
-    Node("reading-query-plans", NodeKind.LESSON, (104, 110), "reading-query-plans"),
-    Node("index-design", NodeKind.LESSON, (90, 86), "index-design"),
-    Node("zero-downtime-migrations", NodeKind.LESSON, (118, 70), "zero-downtime-migrations"),
-    Node("replication-and-read-replicas", NodeKind.LESSON, (148, 84),
+    Node("reading-query-plans", NodeKind.LESSON, (101, 105), "reading-query-plans"),
+    Node("index-design", NodeKind.LESSON, (122, 102), "index-design"),
+    Node("zero-downtime-migrations", NodeKind.LESSON, (144, 98), "zero-downtime-migrations"),
+    Node("replication-and-read-replicas", NodeKind.LESSON, (146, 83),
          "replication-and-read-replicas"),
-    Node("partitioning-and-sharding", NodeKind.LESSON, (176, 102), "partitioning-and-sharding"),
-    Node("caching-patterns-and-invalidation", NodeKind.LESSON, (204, 118),
+    Node("partitioning-and-sharding", NodeKind.LESSON, (163, 78), "partitioning-and-sharding"),
+    Node("caching-patterns-and-invalidation", NodeKind.LESSON, (184, 76),
          "caching-patterns-and-invalidation"),
-    Node("redis-beyond-caching", NodeKind.LESSON, (228, 94), "redis-beyond-caching"),
-    Node("postgresql-vs-mongodb-modelling", NodeKind.LESSON, (198, 72),
+    Node("redis-beyond-caching", NodeKind.LESSON, (200, 73), "redis-beyond-caching"),
+    Node("postgresql-vs-mongodb-modelling", NodeKind.LESSON, (189, 63),
          "postgresql-vs-mongodb-modelling"),
-    Node("connection-pooling-under-load", NodeKind.LESSON, (168, 54),
+    Node("connection-pooling-under-load", NodeKind.LESSON, (205, 57),
          "connection-pooling-under-load"),
-    Node("data-depths-boss", NodeKind.BOSS, (226, 38)),
+    Node("data-depths-boss", NodeKind.BOSS, (228, 50),
+         area=((205, 52), (207, 17), (215, 5), (234, 0), (253, 3), (260, 10), (260, 52))),
 )  # fmt: skip
 """The walkways through the flooded vault of Data Depths, in walking order."""
 

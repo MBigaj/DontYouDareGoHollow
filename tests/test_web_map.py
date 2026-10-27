@@ -4,7 +4,15 @@ from datetime import timedelta
 from fastapi.testclient import TestClient
 
 from hollow.adapters.db.store import SqlEventStore
-from hollow.domain.atlas import FIRELINK, FIRELINK_SIZE, REGIONS
+from hollow.domain.atlas import (
+    ARCH_AREAS,
+    ARCH_POINTS,
+    ARCH_REGION_MAPS,
+    FIRELINK,
+    FIRELINK_SIZE,
+    REGIONS,
+    NodeKind,
+)
 from hollow.domain.events import LessonCompleted
 from tests.conftest import FakeClock
 from tests.test_web_lessons import learn
@@ -125,3 +133,22 @@ def test_firelink_bonfire_and_gate_are_landmarks(client: TestClient) -> None:
     assert "veil_firelink" not in page
     assert "spot_firelink_warden.png" in page
     assert not re.search(r'data-node="te-ru"[^>]*data-landmark', page)  # stones stay stones
+
+
+def test_architect_landmarks_hold_their_places() -> None:
+    assert set(ARCH_AREAS) == set(ARCH_POINTS)
+    for region, area in ARCH_AREAS.items():
+        assert inside(ARCH_POINTS[region], area), region
+    for nodes, _, _ in ARCH_REGION_MAPS.values():
+        painted = [n for n in nodes if n.area]
+        assert [n.kind for n in painted] == [NodeKind.BONFIRE, NodeKind.BOSS]
+        for node in painted:
+            assert inside(node.point, node.area), node.id
+
+
+def test_architect_regions_are_their_landmarks(client: TestClient) -> None:
+    page = client.get("/map?road=architect").text
+    spots = re.findall(r'<a class="spot (\w+)" href="\?at=([\w-]+)" data-spot', page)
+    assert [s for _, s in spots] == list(ARCH_POINTS)
+    assert dict((s, status) for status, s in spots)["forge"] == "open"
+    assert "spot_architect_watchtower.png" in page and "veil_architect_watchtower.png" in page

@@ -83,9 +83,9 @@ Lessons are short typed drills. The first set covers the て-form, one lesson pe
 
 `/map` has two roads; pick one at the top and the map remembers it. The Ronin road is the six Japanese regions, from Firelink Shrine to the Kiln, in ember and bone. The Architect road is the eight backend regions, from the Forge to the Distributed Abyss, in cold steel and soul cyan, with the Lords of Design listed beside it. On both, a region is open once the boss before it falls; the rest are in the fog.
 
-On the Ronin world map each region is its painted landmark: the shrine, the village, the catacombs, the fortress, the golden city and the burning peak. Hover one and it lights up with a gold outline; regions still in the fog sit under a grey veil. `/map/firelink` is the first region: the bonfire, one rune stone per て-form lesson and the Warden's fog gate, the bonfire and the gate being landmarks too. Click a place, or use the arrow keys, and the knight walks there; Enter (or clicking the place you stand on) opens it. Stones glow gold once cleared and flicker when a refresher is due. The map remembers where you stopped. `/map/architect/forge` is the Forge: its bonfire, one iron obelisk per step and the Golem's gate. `/map/architect/data-depths` is Data Depths, a flooded vault of row-tablets and their ghost versions, with causeways to the Lock Wyrm's vault door. Place labels near a map's edge open inward, so they fit on a phone.
+On both world maps each region is its painted landmark. On the Ronin road: the shrine, the village, the catacombs, the fortress, the golden city and the burning peak, outlined in gold on hover. On the Architect road: the smithy, the flooded vault, the citadel, the ruined towers, the watchtower, the iron keep and the crypt stair, outlined in cyan, with the Distributed Abyss swirling in the sky above them all. Regions still in the fog sit under a veil. `/map/firelink` is the first region: the bonfire, one rune stone per て-form lesson and the Warden's fog gate, the bonfire and the gate being landmarks too. Click a place, or use the arrow keys, and the knight walks there; Enter (or clicking the place you stand on) opens it. Stones glow gold once cleared and flicker when a refresher is due. The map remembers where you stopped. `/map/architect/forge` is the Forge, a vast cold forge hall: its bonfire, one iron obelisk per step on the floor and the stairs, and the Golem's chained gate. `/map/architect/data-depths` is Data Depths, a flooded archive of stone tablets and their ghost copies, with causeways to the Lock Wyrm's vault door. On every region map the bonfire and the boss's gate are landmarks too. Place labels near a map's edge open inward, so they fit on a phone.
 
-The Ronin maps are generated paintings run through the ASHEN pixel pipeline (see [Art](#art)), with the points in `hollow.domain.atlas` placed on their landmarks. A landmark's rough outline (`area` in the atlas) is snapped to the painted building by GrabCut when `ronin.py` runs, which writes its hover glow (`spot_<map>_<place>.png`) and fog veil (`veil_world_<region>.png`). The Architect maps are still drawn in code by `tools/sprites/architect.py`, on the same grid as their atlas points.
+The maps of both roads are generated paintings run through the ASHEN pixel pipeline (see [Art](#art)), with the points in `hollow.domain.atlas` placed on their landmarks. A landmark's rough outline (`area` in the atlas) is snapped to the painted building by GrabCut when `ronin.py` runs, which writes its hover glow (`spot_<map>_<place>.png`) and fog veil (`veil_world_<region>.png`).
 
 ## Boss fights
 
@@ -189,7 +189,7 @@ CI runs all of these on every push and pull request, plus the migrations against
 
 ## Art
 
-The Ronin road is **generated art**: one painting per sprite or scene, made with Figma AI (file "ASHEN source art") and kept in `tools/sprites/art/source/`, with the prompts in `PROMPTS.md` there. `tools/sprites/ronin.py` runs each one through the ASHEN pixel pipeline (`tools/sprites/pipeline/pixelate.py` and the shared palette `ashen.hex`) at its native size, fixes what the pipeline loses (the eclipse's black, the Warden's crown, eyes and て sigil, the path on the Firelink map), and scales the result up with NEAREST. It also builds:
+Both roads are **generated art**: one painting per sprite or scene, made with Figma AI (file "ASHEN source art") and kept in `tools/sprites/art/source/`, with the prompts in `PROMPTS.md` there. `tools/sprites/ronin.py` (golden dusk) and `tools/sprites/architect.py` (cold night) run each one through the ASHEN pixel pipeline (`tools/sprites/pipeline/pixelate.py` and the shared palette `ashen.hex`) at its native size, fixes what the pipeline loses (the eclipse's black, the Warden's crown, eyes and て sigil, the Golem's visor, the Wyrm's eye, the paths on the region maps), and scales the result up with NEAREST. It also builds:
 
 - the bonfire (`bonfire.py`): the generated ash mound and a crisp greatsword, with an 8-frame flame that spirals up the blade and firelight that flickers on the stones, plus the cold, unlit bonfire;
 - the home page stage: a shrine nook under the moon, cold until the day is lit, then warm around the fire.
@@ -197,12 +197,13 @@ The Ronin road is **generated art**: one painting per sprite or scene, made with
 ```sh
 uv run --with pillow --with numpy --with scipy --with opencv-python-headless \
     python tools/sprites/ronin.py src/hollow/adapters/web/static/sprites
+uv run --with pillow --with numpy --with scipy --with opencv-python-headless \
+    python tools/sprites/architect.py src/hollow/adapters/web/static/sprites
 ```
 
-The output is deterministic: running it again rewrites the same files. The item icons, the slash and the anvil are still drawn in code, as is the whole Architect road:
+The output is deterministic: running them again rewrites the same files. The item icons, the slash and the anvil are still drawn in code:
 
 ```sh
 uv run --with pillow python tools/sprites/sprites.py src/hollow/adapters/web/static/sprites
-uv run --with pillow python tools/sprites/architect.py src/hollow/adapters/web/static/sprites
 ```
 

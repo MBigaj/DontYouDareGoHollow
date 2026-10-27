@@ -26,6 +26,8 @@ class Region:
     boss: str
     point: tuple[int, int]
     open: bool = False
+    area: tuple[tuple[int, int], ...] = ()
+    """The landmark's outline on the world map: hovering it lights it, clicking it walks there."""
 
 
 REGIONS: tuple[Region, ...] = (
@@ -35,33 +37,42 @@ REGIONS: tuple[Region, ...] = (
         "simple sentences together.",
         "Core 2000 cards 1-250", "Polite forms, particles, て-form", "The て-form Warden",
         (21, 185), open=True,
+        area=((2, 195), (2, 172), (10, 160), (27, 158), (30, 168), (42, 170), (44, 195)),
     ),
     Region(
         "undead-village", 2, "Undead Village", "静かな村", "しずかなむら",
         "Quiet streets where things are always happening. Describe what is going on and what "
         "already happened.",
         "Cards 251-500", "〜ている, 〜た, plain form", "The Plain-Form Gargoyle", (70, 152),
+        area=((36, 165), (38, 150), (46, 146), (58, 140), (78, 139), (80, 128), (85, 128),
+              (87, 138), (98, 140), (102, 150), (100, 165)),
     ),
     Region(
         "kanji-catacombs", 3, "Kanji Catacombs", "漢字の地下", "かんじのちか",
         "Old stones carved with characters. Readings matter here more than anywhere.",
         "Cards 501-800", "〜たい, 〜ない, comparisons", "The Bone Scribe", (40, 97),
+        area=((18, 112), (20, 80), (30, 70), (48, 70), (58, 78), (60, 112)),
     ),
     Region(
         "sens-fortress", 4, "Sen's Fortress", "出来る力", "できるちから",
         "Traps everywhere. Say what you can and cannot do, and what you think.",
         "Cards 801-1100", "Potential form, 〜と思う", "The Iron Golem of Ability", (149, 79),
+        area=((116, 100), (118, 76), (122, 72), (128, 74), (142, 68), (150, 62), (160, 61),
+              (166, 70), (174, 74), (176, 100)),
     ),
     Region(
         "anor-keigo", 5, "Anor Keigo", "もし", "もし",
         "A golden city of conditions. Nothing here happens unless something else does first.",
         "Cards 1101-1500", "ば, たら, と, なら", "Ornstein and Smough of If", (209, 48),
+        area=((188, 70), (190, 48), (200, 40), (208, 28), (212, 26), (216, 38), (228, 42),
+              (238, 50), (240, 70)),
     ),
     Region(
         "the-kiln", 6, "The Kiln", "最後の火", "さいごのひ",
         "The first flame burns at the top of the world. Clearing it lines up with JLPT N4.",
         "Cards 1501-2000", "Passive, causative, intro to keigo", "Lord of Conjugation",
         (242, 24),
+        area=((222, 45), (232, 24), (238, 5), (244, 0), (250, 0), (254, 20), (260, 30), (260, 45)),
     ),
 )  # fmt: skip
 
@@ -78,10 +89,17 @@ class Node:
     kind: NodeKind
     point: tuple[int, int]
     lesson_id: str | None = None
+    area: tuple[tuple[int, int], ...] = ()
+    """A landmark's outline, for places that are a painted building rather than a stone."""
 
 
 FIRELINK: tuple[Node, ...] = (
-    Node("bonfire", NodeKind.BONFIRE, (32, 124)),
+    Node(
+        "bonfire",
+        NodeKind.BONFIRE,
+        (32, 124),
+        area=((12, 136), (14, 122), (22, 112), (30, 104), (36, 112), (44, 124), (46, 136)),
+    ),
     Node("te-ru", NodeKind.LESSON, (64, 112), "te-ru"),
     Node("te-tsu", NodeKind.LESSON, (98, 122), "te-tsu"),
     Node("te-nde", NodeKind.LESSON, (130, 106), "te-nde"),
@@ -89,7 +107,22 @@ FIRELINK: tuple[Node, ...] = (
     Node("te-shite", NodeKind.LESSON, (138, 72), "te-shite"),
     Node("te-irregular", NodeKind.LESSON, (174, 84), "te-irregular"),
     Node("te-mixed", NodeKind.LESSON, (196, 62), "te-mixed"),
-    Node("warden", NodeKind.BOSS, (226, 42)),
+    Node(
+        "warden",
+        NodeKind.BOSS,
+        (226, 42),
+        area=(
+            (198, 52),
+            (200, 12),
+            (205, 3),
+            (212, 3),
+            (216, 14),
+            (222, 22),
+            (232, 20),
+            (240, 28),
+            (244, 52),
+        ),
+    ),
 )
 """The path through Firelink Shrine, in walking order."""
 

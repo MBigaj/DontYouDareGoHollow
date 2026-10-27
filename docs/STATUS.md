@@ -33,12 +33,13 @@ _Nothing. The last branch is merged; take the next number._
 | 14 | `14-data-depths-lessons` | Data Depths written: lessons and 6-question quizzes for all 11 steps (MVCC to connection pooling); a written region now also needs its map before it opens; lesson tables scroll on phones |
 | 15 | `15-data-depths-map` | Data Depths playable: its flooded-vault map, the Lock Wyrm (three quiz phases, +3) with his arena and the Lock Wyrm's Chain; weapon damage measured against the next Architect boss standing; map labels open inward at the edges; boss sprites shrink on phones |
 | 16 | `16-ronin-art` | Ronin road redrawn from generated art through the ASHEN pipeline: the knight, the て-form Warden (one sprite, maul in hand), the Firelink map and arena, the world map (region points moved onto its landmarks), rune-stone waypoints, a new bonfire (flame spiralling up the blade, firelight, an unlit state) and a shrine stage on the home page, cold until the day is lit |
+| 17 | `17-map-landmarks` | On the Ronin maps the painted landmarks are the places: hovering a region (or Firelink's bonfire and fog gate) outlines it in gold, clicking walks the knight there, fogged regions sit under a grey veil; stones get a pixel outline on hover (cyan on the Architect road); works without JavaScript |
 
 ## Up next
 
 In a sensible order. Each one fits a branch.
 
-1. **Architect road art.** Redo it like the Ronin road (see `CLAUDE.md`, Art direction): the Architect world map, the Forge and Data Depths maps, the Strict Golem, the Lock Wyrm and their arenas, and the iron waypoints, in cold steel and soul cyan. Then the item icons, slash and anvil.
+1. **Architect road art.** Redo it like the Ronin road (see `CLAUDE.md`, Art direction): the Architect world map, the Forge and Data Depths maps, the Strict Golem, the Lock Wyrm and their arenas, and the iron waypoints, in cold steel and soul cyan, with their landmarks as places like the Ronin maps. Then the item icons, slash and anvil.
 2. **Warden phase 3.** A short conversation judged by the Sensei agent. It needs a saved "pending phase" state, an inbox task and a Sensei result shape for `boss:<id>`. `agents/README.md` lists it as not saved yet.
 3. **Ronin region 2, Undead Village.** Lessons for 〜ている, 〜た and the plain form, its region map and the Plain-Form Gargoyle (recommended weapon level +4). The lesson engine may need more `LessonSpec` kinds than て-form endings.
 4. **Lore for the Architect road.** `lore_targets()` in `application/agents.py` only knows the Ronin regions. Add the Architect regions, so the Lorekeeper can write region and boss lore for them.

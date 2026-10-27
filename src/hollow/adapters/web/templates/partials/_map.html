@@ -1,9 +1,23 @@
 {# A walkable map: `points` in walking order, each with x/y in percent and a panel. #}
 <div class="map" data-map="{{ map_id }}" data-at="{{ at }}" data-size="{{ size[0] }}x{{ size[1] }}"
      style="aspect-ratio: {{ size[0] }} / {{ size[1] }}; background-image: url({{ asset('sprites/' + art) }})">
+  {% set painted = points | selectattr("area") | list %}
+  {% if painted %}
+  {# Places painted into the map: the landmark itself is the place. Its outline is the click
+     target; the glow shows on hover, the veil while a region is in the fog. #}
+  <svg class="spots" viewBox="0 0 {{ size[0] }} {{ size[1] }}" preserveAspectRatio="none" aria-hidden="true">
+    {% for p in painted %}
+    <a class="spot {{ p.status }}" href="?at={{ p.id }}" data-spot="{{ p.id }}" tabindex="-1">
+      {% if p.veil %}<image class="spot-veil" href="{{ asset(p.veil) }}" width="{{ size[0] }}" height="{{ size[1] }}" preserveAspectRatio="none"/>{% endif %}
+      <image class="spot-glow" href="{{ asset(p.glow) }}" width="{{ size[0] }}" height="{{ size[1] }}" preserveAspectRatio="none"/>
+      <polygon points="{{ p.area }}"/>
+    </a>
+    {% endfor %}
+  </svg>
+  {% endif %}
   {% for p in points %}
   <a class="node {{ p.kind }} {{ p.status }} {{ 'here' if p.id == at }} {{ 'east' if p.x > 65 else ('west' if p.x < 35 else '') }}" href="?at={{ p.id }}" data-node="{{ p.id }}"
-     data-x="{{ p.x }}" data-y="{{ p.y }}" style="left: {{ p.x }}%; top: {{ p.y }}%"
+     data-x="{{ p.x }}" data-y="{{ p.y }}" style="left: {{ p.x }}%; top: {{ p.y }}%"{% if p.area %} data-landmark{% endif %}
      aria-label="{{ p.name }}{{ ' (unavailable)' if p.status in ('locked', 'fog') }}">
     <span class="node-mark" aria-hidden="true"></span>
     <span class="node-label">{{ p.name }}</span>

@@ -79,3 +79,49 @@ def test_the_knight_starts_where_you_left_it(client: TestClient) -> None:
     assert 'data-at="bonfire"' in client.get("/map/firelink").text
     client.cookies.set("hollow_at_world", "nowhere")
     assert 'data-at="firelink"' in client.get("/map").text
+
+
+def inside(point: tuple[int, int], area: tuple[tuple[int, int], ...]) -> bool:
+    """Ray casting: is the point inside the polygon?"""
+    x, y = point
+    hit = False
+    for (x0, y0), (x1, y1) in zip(area, area[1:] + area[:1], strict=True):
+        if (y0 > y) != (y1 > y) and x < x0 + (y - y0) * (x1 - x0) / (y1 - y0):
+            hit = not hit
+    return hit
+
+
+def test_landmarks_hold_their_places() -> None:
+    painted = [(r.id, r.point, r.area) for r in REGIONS] + [
+        (n.id, n.point, n.area) for n in FIRELINK if n.area
+    ]
+    assert {p for p, _, _ in painted} >= {"bonfire", "warden"}
+    for place, point, area in painted:
+        assert len(area) >= 3, place
+        assert inside(point, area), place  # the knight stands on the landmark
+
+
+def test_world_regions_are_their_landmarks(client: TestClient) -> None:
+    page = client.get("/map").text
+    for region in REGIONS:
+        status = "open" if region.open else "fog"
+        points = " ".join(f"{x},{y}" for x, y in region.area)
+        spot = re.search(
+            rf'<a class="spot {status}" href="\?at={region.id}" data-spot="{region.id}" '
+            rf'tabindex="-1">(.*?)</a>',
+            page,
+            re.S,
+        )
+        assert spot, region.id
+        assert f"sprites/spot_world_{region.id}.png" in spot.group(1)
+        assert f"sprites/veil_world_{region.id}.png" in spot.group(1)
+        assert f'<polygon points="{points}"/>' in spot.group(1)
+        assert re.search(rf'data-node="{region.id}"[^>]*data-landmark', page)
+
+
+def test_firelink_bonfire_and_gate_are_landmarks(client: TestClient) -> None:
+    page = client.get("/map/firelink").text
+    assert re.findall(r'data-spot="([\w-]+)"', page) == ["bonfire", "warden"]
+    assert "veil_firelink" not in page
+    assert "spot_firelink_warden.png" in page
+    assert not re.search(r'data-node="te-ru"[^>]*data-landmark', page)  # stones stay stones

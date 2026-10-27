@@ -191,6 +191,25 @@ td:last-child { text-align: right; color: var(--ember-hi); }
 .node { position: absolute; width: 4.6%; aspect-ratio: 12 / 14; transform: translate(-50%, -88%); z-index: 2; text-decoration: none; }
 .node-mark { display: block; width: 100%; height: 100%; background: url(/static/sprites/waypoint.png) center / 100% 100% no-repeat; image-rendering: pixelated; transition: transform .15s ease-out, filter .3s; }
 .node:hover .node-mark, .node:focus-visible .node-mark { transform: translateY(-3px); }
+/* hover outline on stones: four hard drop-shadows make a 2 px pixel outline (over their glow) */
+.map { --outline: #f6d98a; }
+.road-architect .map { --outline: #9ee2ee; }
+.map .node:hover .node-mark, .map .node:focus-visible .node-mark, .map .node.hover .node-mark {
+  filter: drop-shadow(2px 0 0 var(--outline)) drop-shadow(-2px 0 0 var(--outline)) drop-shadow(0 2px 0 var(--outline)) drop-shadow(0 -2px 0 var(--outline)); }
+/* landmarks: the painted building is the place; its outline is the click target */
+.spots { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+.spot polygon { fill: transparent; pointer-events: all; cursor: pointer; }
+.spot image { pointer-events: none; image-rendering: pixelated; }
+.spot-glow { opacity: 0; transition: opacity .15s ease-out; }
+.spot:hover .spot-glow, .spot.lit .spot-glow { opacity: 1; }
+.spot-veil { opacity: 0; }
+.spot.fog .spot-veil, .spot.locked .spot-veil { opacity: 1; }
+.spot:focus { outline: none; }
+.node[data-landmark]:not(.bonfire) .node-mark { visibility: hidden; }
+.node[data-landmark] { pointer-events: none; }
+.node[data-landmark] .node-label { pointer-events: none; }
+.map.live .node[data-landmark]:focus-visible { outline: none; } /* map.js lights the landmark instead */
+.node.hover .node-label { opacity: 1; }
 .node:focus-visible { outline: 2px solid var(--ember-hi); outline-offset: 2px; }
 .node.cleared .node-mark { background-image: url(/static/sprites/waypoint_cleared.png); filter: drop-shadow(0 0 6px rgba(233, 194, 122, .45)); }
 .node.new .node-mark { filter: drop-shadow(0 0 5px rgba(233, 161, 95, .5)); }

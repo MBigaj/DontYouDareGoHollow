@@ -590,6 +590,16 @@ def create_app(
     def percent(point: tuple[int, int], size: tuple[int, int]) -> tuple[float, float]:
         return round(100 * point[0] / size[0], 2), round(100 * point[1] / size[1], 2)
 
+    def landmark(map_id: str, place: str, area: tuple[tuple[int, int], ...]) -> dict[str, str]:
+        """A place painted into the map: its outline to hover and click, and its overlays."""
+        if not area:
+            return {}
+        return {
+            "area": " ".join(f"{x},{y}" for x, y in area),
+            "glow": f"sprites/spot_{map_id}_{place}.png",
+            "veil": f"sprites/veil_{map_id}_{place}.png" if map_id == "world" else "",
+        }
+
     def chosen_road(request: Request, road: str | None) -> str:
         pick = road if road in ROADS else request.cookies.get("hollow_road", "ronin")
         return pick if pick in ROADS else "ronin"
@@ -611,16 +621,15 @@ def create_app(
         for r in REGIONS:
             x, y = percent(r.point, WORLD_SIZE)
             kind = "bonfire" if r.open else "world"
-            points.append(
-                {
-                    "id": r.id,
-                    "name": r.name,
-                    "kind": kind,
-                    "status": "open" if r.open else "fog",
-                    "x": x,
-                    "y": y,
-                }
-            )
+            point: dict[str, Any] = {
+                "id": r.id,
+                "name": r.name,
+                "kind": kind,
+                "status": "open" if r.open else "fog",
+                "x": x,
+                "y": y,
+            }
+            points.append(point | landmark("world", r.id, r.area))
         return templates.TemplateResponse(
             request,
             "map_world.html",
@@ -734,6 +743,7 @@ def create_app(
         for number, node in enumerate(FIRELINK):
             x, y = percent(node.point, FIRELINK_SIZE)
             point: dict[str, Any] = {"id": node.id, "kind": node.kind.value, "x": x, "y": y}
+            point |= landmark("firelink", node.id, node.area)
             if node.kind is NodeKind.BONFIRE:
                 point |= bonfire_point("Firelink bonfire")
             elif node.kind is NodeKind.BOSS:

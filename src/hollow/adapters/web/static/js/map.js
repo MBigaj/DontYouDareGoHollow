@@ -62,13 +62,30 @@
   };
 
   // Clicking a place walks there; clicking the place you stand on opens it.
-  nodes.forEach((n, i) =>
-    n.addEventListener("click", (e) => {
-      e.preventDefault();
-      if (i === at && !walking) open();
-      else go(i);
-    }),
-  );
+  const choose = (i) => (e) => {
+    e.preventDefault();
+    if (i === at && !walking) open();
+    else go(i);
+  };
+  nodes.forEach((n, i) => n.addEventListener("click", choose(i)));
+
+  // Landmarks: the painted building is the place. Hovering it lights it and shows its name;
+  // hovering or focusing its node (keyboard) lights the building too.
+  map.querySelectorAll("[data-spot]").forEach((spot) => {
+    const i = nodes.findIndex((n) => n.dataset.node === spot.dataset.spot);
+    if (i < 0) return;
+    const node = nodes[i];
+    const lit = (on) => {
+      spot.classList.toggle("lit", on);
+      node.classList.toggle("hover", on);
+    };
+    spot.addEventListener("click", choose(i));
+    spot.addEventListener("pointerenter", () => lit(true));
+    spot.addEventListener("pointerleave", () => lit(false));
+    node.addEventListener("focus", () => lit(true));
+    node.addEventListener("blur", () => lit(false));
+  });
+  map.classList.add("live");
   document.addEventListener("keydown", (e) => {
     if (e.target.closest("input, textarea, select")) return;
     if (["ArrowRight", "ArrowUp", "d", "w"].includes(e.key)) go(target + 1);

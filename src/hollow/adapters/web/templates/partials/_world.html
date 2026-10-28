@@ -1,3 +1,4 @@
+{% from "partials/_hero.html" import hero with context %}
 <div id="world" style="display: flex; flex-direction: column; gap: 16px">
   {% if flash %}<div class="flash" role="status">{{ flash }}</div>{% endif %}
   {% if warning %}<div class="panel blood" role="alert" style="color: var(--blood-ink)">{{ warning }}</div>{% endif %}
@@ -15,9 +16,9 @@
   <section class="panel scene" aria-label="Bonfire">
     {% set h = state.hollowing %}
     <div class="stage {{ 'lit' if state.lit_today else 'unlit' }}">
-      <img class="knight sprite {{ 'alive' if h < max_hollowing }}" src="{{ asset('sprites/knight_front.png') }}"
-           alt="Your knight, {{ state.status | lower }}" width="154" height="240"
-           style="filter: grayscale({{ h * 0.2 }}) brightness({{ 1 - h * 0.1 }})">
+      {{ hero(cls="knight sprite" ~ (" alive" if h < max_hollowing else ""),
+              style="filter: grayscale(" ~ (h * 0.2) ~ ") brightness(" ~ (1 - h * 0.1) ~ ")",
+              label="Your hero, " ~ state.status | lower) }}
       <div class="fire sprite {{ 'lit' if state.lit_today else 'unlit' }}" role="img"
            aria-label="{{ 'A lit bonfire' if state.lit_today else 'An unlit bonfire' }}"></div>
     </div>

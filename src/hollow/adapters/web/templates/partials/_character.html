@@ -1,3 +1,4 @@
+{% from "partials/_hero.html" import hero with context %}
 <div id="character" style="display: flex; flex-direction: column; gap: 16px">
   {% if flash %}<div class="flash" role="status">{{ flash }}</div>{% endif %}
   {% if warning %}<div class="panel blood" role="alert" style="color: var(--blood-ink)">{{ warning }}</div>{% endif %}
@@ -5,8 +6,9 @@
   <section class="panel" aria-label="Character">
     <div class="grid-2">
       <div class="char-hero">
-        <img class="sprite" src="{{ asset('sprites/knight_front.png') }}" alt="Your knight, {{ state.status | lower }}" width="154" height="240"
-             style="filter: grayscale({{ state.hollowing * 0.2 }}) brightness({{ 1 - state.hollowing * 0.1 }})">
+        {{ hero(cls="sprite", label="Your hero, " ~ state.status | lower,
+                style="width: 154px; height: 240px; filter: grayscale(" ~ (state.hollowing * 0.2)
+                      ~ ") brightness(" ~ (1 - state.hollowing * 0.1) ~ ")") }}
         <div class="stats">
           <div class="stat"><span class="label">Level</span><span class="value">{{ state.character_level }}</span></div>
           <div class="stat"><span class="label">Souls</span><span class="value souls"><img src="{{ asset('sprites/item_soul.png') }}" alt="" width="27" height="27">{{ "{:,}".format(state.souls) }}</span></div>
@@ -60,7 +62,7 @@
       <div class="slots">
         {% for slot in equipment %}
         <div class="slot {{ 'empty' if slot.empty or not slot.item }}">
-          <img src="{{ asset('sprites/' + slot.sprite) }}" alt="" width="54" height="54">
+          <img src="{{ asset('sprites/' + slot.sprite) }}" alt="" width="{{ slot.size or 54 }}" height="{{ slot.size or 54 }}">
           <div>
             <div class="label">{{ slot.name }}</div>
             <div><strong>{{ slot.item or 'Empty' }}</strong></div>

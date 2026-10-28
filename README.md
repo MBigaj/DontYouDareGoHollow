@@ -99,7 +99,9 @@ The fog gate at the top of Firelink Shrine leads to the first boss, the て-form
 
 ## Weapons and the blacksmith
 
-Each job has its own weapon: Ronin weapons deal damage in Japanese fights, Architect weapons in dev fights. You start with a Rusted Katana and a Worn Hammer (10 damage per hit). The blacksmith (`/blacksmith`, from the Character page or the Firelink bonfire) sells better basic weapons, and bosses drop their own: the て-form Warden drops the Warden's Maul, whose Soul Siphon adds 15% to Ronin lesson souls while it is equipped.
+Each job has its own weapon: Ronin weapons deal damage in Japanese fights, Architect weapons in dev fights. You start with a Rusted Katana and a Pilgrim's Shakujō, a monk's ringed staff (10 damage per hit). The blacksmith (`/blacksmith`, from the Character page or the Firelink bonfire) sells better basic weapons (the Uchigatana, the Surveyor's Shakujō), and bosses drop their own: the て-form Warden drops the Warden's Maul, whose Soul Siphon adds 15% to Ronin lesson souls while it is equipped.
+
+The hero carries what you equip. On the home page, the character page and the maps he holds the weapon of the road you last walked (the map remembers it); in a fight he holds the one for that boss's road. Gauntlets such as Golem's Iron Fist are worn rather than held. The Architect's weapons were hammers until branch 20: events stored with the old ids (`worn-hammer`, `smiths-hammer`) are read as the two shakujō.
 
 Reinforcing costs souls (200 x the new level) and titanite:
 
@@ -194,14 +196,18 @@ Both roads are **generated art**, and so is the hero, a hollow ronin: one painti
 - the bonfire (`bonfire.py`): the generated ash mound and a crisp greatsword, with an 8-frame flame that spirals up the blade and firelight that flickers on the stones, plus the cold, unlit bonfire;
 - the home page stage: a shrine nook under the moon, cold until the day is lit, then warm around the fire.
 
+`tools/sprites/weapons.py` (run after `ronin.py`) cuts every weapon out of one generated sheet (`weapons.jpg`) and makes, for each, a 72 px icon for the blacksmith and the character page and a layer on the hero's own canvas with its grip in his fist. The page stacks the hero, the weapon and his fingers (`hero_hand.png`), so any weapon fits the same sprite.
+
 ```sh
 uv run --with pillow --with numpy --with scipy --with opencv-python-headless \
     python tools/sprites/ronin.py src/hollow/adapters/web/static/sprites
 uv run --with pillow --with numpy --with scipy --with opencv-python-headless \
     python tools/sprites/architect.py src/hollow/adapters/web/static/sprites
+uv run --with pillow --with numpy --with scipy --with opencv-python-headless \
+    python tools/sprites/weapons.py src/hollow/adapters/web/static/sprites
 ```
 
-The output is deterministic: running them again rewrites the same files. The item icons, the slash and the anvil are still drawn in code:
+The output is deterministic: running them again rewrites the same files. The other item icons, the slash and the anvil are still drawn in code:
 
 ```sh
 uv run --with pillow python tools/sprites/sprites.py src/hollow/adapters/web/static/sprites

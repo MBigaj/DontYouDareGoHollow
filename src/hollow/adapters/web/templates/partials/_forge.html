@@ -34,7 +34,7 @@
       <div class="weapons">
         {% for w in track.weapons %}
         <div class="weapon {{ 'equipped' if w.equipped }} {{ 'unowned' if not w.owned }}">
-          <img src="{{ asset('sprites/' + w.spec.sprite) }}" alt="" width="54" height="54">
+          <img src="{{ asset('sprites/' + w.spec.sprite) }}" alt="" width="72" height="72">
           <div class="weapon-body">
             <div><strong>{{ w.spec.name }}</strong>{% if w.owned %} +{{ w.level }}{% endif %}{% if w.equipped %} <span class="chip new">Equipped</span>{% endif %}</div>
             <div class="muted" style="font-size: 13px">{{ w.spec.blurb }}</div>

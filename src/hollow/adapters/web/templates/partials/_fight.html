@@ -1,3 +1,4 @@
+{% from "partials/_hero.html" import hero with context %}
 {% from "partials/_ja.html" import ja %}
 {% set a = view.attempt %}
 {% set rec = view.record %}
@@ -26,7 +27,7 @@
       {% if beat in ('hit', 'phase', 'won') %}<span class="pop dmg">-{{ damage }}</span>{% endif %}
     </div>
     <div class="hero">
-      <img src="{{ asset('sprites/knight_front.png') }}" alt="Your knight">
+      {{ hero(road=view.boss.track.value, label="Your hero") }}
       {% if beat in ('miss', 'died') %}<span class="pop hurt">-{{ a.mistake_cost }}</span>{% endif %}
       {% if beat == 'estus' %}<span class="pop heal">+{{ heal }}</span>{% endif %}
     </div>

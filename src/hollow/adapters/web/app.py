@@ -150,6 +150,9 @@ def asset(path: str) -> str:
     return f"/static/{path}?v={version}"
 
 
+WORN_WEAPONS = {"golem-fist"}
+"""Weapons worn rather than held: the hero's fingers are not drawn over them."""
+
 RUN_LABELS = {Run.FIRST: "New lesson", Run.REFRESHER: "Refresher", Run.PRACTICE: "Practice"}
 HINTS = {
     Ending.RU_VERB: "る-verb: drop る, add て.",
@@ -262,8 +265,21 @@ def create_app(
                 and not (github_sync and s.kind is ActivityKind.PULL_REQUEST)
             ],
             "anki_enabled": anki_sync is not None,
+            "heroes": heroes(state),
             **extra,
         }
+
+    def heroes(state: WorldState) -> dict[str, dict[str, Any]]:
+        """What the hero holds on each road: the weapon equipped for it."""
+        kits = {}
+        for track in (Track.RONIN, Track.ARCHITECT):
+            weapon, _ = state.armory.weapon(track)
+            kits[track.value] = {
+                "weapon": weapon.id,
+                "name": weapon.name,
+                "hand": weapon.id not in WORN_WEAPONS,
+            }
+        return kits
 
     def equipment(state: WorldState) -> list[dict[str, Any]]:
         rings = 2 if state.stats[Stat.INTELLIGENCE] >= 10 else 1
@@ -276,6 +292,7 @@ def create_app(
                 {
                     "name": f"{'Ronin' if track is Track.RONIN else 'Architect'} weapon",
                     "sprite": weapon.sprite,
+                    "size": 72,
                     "item": f"{weapon.name} +{level}",
                     "note": note + (f" {SKILLS[weapon.skill]}." if weapon.skill else ""),
                 }

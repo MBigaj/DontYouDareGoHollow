@@ -87,25 +87,38 @@ class WeaponSpec:
 WEAPONS: dict[str, WeaponSpec] = {
     w.id: w
     for w in (
-        WeaponSpec("rusted-katana", "Rusted Katana", Track.RONIN, 10, 1, "item_katana.png",
-                   "Every Ronin starts with one.", starter=True),
-        WeaponSpec("uchigatana", "Uchigatana", Track.RONIN, 11, 1, "item_katana.png",
+        WeaponSpec("rusted-katana", "Rusted Katana", Track.RONIN, 10, 1,
+                   "weapon_rusted-katana.png", "Every Ronin starts with one.", starter=True),
+        WeaponSpec("uchigatana", "Uchigatana", Track.RONIN, 11, 1, "weapon_uchigatana.png",
                    "A keen, honest blade.", price=1500),
-        WeaponSpec("warden-maul", "Warden's Maul", Track.RONIN, 10, 1, "item_hammer.png",
+        WeaponSpec("warden-maul", "Warden's Maul", Track.RONIN, 10, 1, "weapon_warden-maul.png",
                    "Pried from the て-form Warden. It still hums with stolen souls.",
                    skill=Skill.SOUL_SIPHON),
-        WeaponSpec("worn-hammer", "Worn Hammer", Track.ARCHITECT, 10, 1, "item_hammer.png",
-                   "Every Architect starts with one.", starter=True),
-        WeaponSpec("smiths-hammer", "Smith's Hammer", Track.ARCHITECT, 11, 1, "item_hammer.png",
-                   "Balanced for long days at the forge.", price=1500),
-        WeaponSpec("golem-fist", "Golem's Iron Fist", Track.ARCHITECT, 10, 1, "item_hammer.png",
+        WeaponSpec("pilgrim-shakujo", "Pilgrim's Shakujō", Track.ARCHITECT, 10, 1,
+                   "weapon_pilgrim-shakujo.png",
+                   "Every Architect starts with one. Its rings ring once for every step walked.",
+                   starter=True),
+        WeaponSpec("surveyor-shakujo", "Surveyor's Shakujō", Track.ARCHITECT, 11, 1,
+                   "weapon_surveyor-shakujo.png",
+                   "Notched along its length: measure twice, build once.", price=1500),
+        WeaponSpec("golem-fist", "Golem's Iron Fist", Track.ARCHITECT, 10, 1,
+                   "weapon_golem-fist.png",
                    "Torn from the Strict Golem. Every joint still checks its types.",
                    skill=Skill.SOUL_SIPHON),
-        WeaponSpec("wyrm-chain", "Lock Wyrm's Chain", Track.ARCHITECT, 12, 1, "item_chain.png",
+        WeaponSpec("wyrm-chain", "Lock Wyrm's Chain", Track.ARCHITECT, 12, 1,
+                   "weapon_wyrm-chain.png",
                    "Pulled from the Lock Wyrm's coils. It never waits for a lock.",
                    skill=Skill.SOUL_SIPHON),
-    )
+)
 }  # fmt: skip
+LEGACY_WEAPONS = {"worn-hammer": "pilgrim-shakujo", "smiths-hammer": "surveyor-shakujo"}
+"""Weapons that were renamed. Stored events keep the old ids; replay reads them as the new ones."""
+
+
+def weapon_id(stored: str) -> str:
+    return LEGACY_WEAPONS.get(stored, stored)
+
+
 BOSS_WEAPONS = {
     "te-warden": "warden-maul",
     "forge-boss": "golem-fist",
@@ -197,14 +210,16 @@ def build(events: Iterable[Event], defeated: dict[str, datetime]) -> Armory:
                     armory.drops.append(Drop(event.occurred_at, Material.CHUNK, 1, source))
         elif isinstance(event, MaterialDropped):
             armory.drops.append(Drop(event.occurred_at, event.material, event.count, event.source))
-        elif isinstance(event, WeaponBought) and event.weapon_id in WEAPONS:
-            armory.levels.setdefault(event.weapon_id, 0)
-        elif isinstance(event, WeaponUpgraded) and armory.owns(event.weapon_id):
-            armory.levels[event.weapon_id] = max(armory.levels[event.weapon_id], event.level)
+        elif isinstance(event, WeaponBought) and weapon_id(event.weapon_id) in WEAPONS:
+            armory.levels.setdefault(weapon_id(event.weapon_id), 0)
+        elif isinstance(event, WeaponUpgraded) and armory.owns(weapon_id(event.weapon_id)):
+            wid = weapon_id(event.weapon_id)
+            armory.levels[wid] = max(armory.levels[wid], event.level)
             armory.materials[event.material] -= event.material_count
-        elif isinstance(event, WeaponEquipped) and armory.owns(event.weapon_id):
-            armory.equipped[WEAPONS[event.weapon_id].track] = event.weapon_id
-            armory.equips.append((event.occurred_at, event.weapon_id))
+        elif isinstance(event, WeaponEquipped) and armory.owns(weapon_id(event.weapon_id)):
+            wid = weapon_id(event.weapon_id)
+            armory.equipped[WEAPONS[wid].track] = wid
+            armory.equips.append((event.occurred_at, wid))
     for drop in armory.drops:
         armory.materials[drop.material] += drop.count
     armory.drops.sort(key=lambda d: d.at)

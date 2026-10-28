@@ -1,3 +1,4 @@
+{% from "partials/_hero.html" import hero with context %}
 {# A walkable map: `points` in walking order, each with x/y in percent and a panel. #}
 <div class="map" data-map="{{ map_id }}" data-at="{{ at }}" data-size="{{ size[0] }}x{{ size[1] }}"
      style="aspect-ratio: {{ size[0] }} / {{ size[1] }}; background-image: url({{ asset('sprites/' + art) }})">
@@ -23,6 +24,6 @@
     <span class="node-label">{{ p.name }}</span>
   </a>
   {% endfor %}
-  <div class="map-knight" aria-hidden="true"><img src="{{ asset('sprites/knight_front.png') }}" alt=""></div>
+  <div class="map-knight" aria-hidden="true">{{ hero(road=road) }}</div>
 </div>
 <p class="muted map-help">Click a place, or use ← and → to move. Enter opens it.</p>

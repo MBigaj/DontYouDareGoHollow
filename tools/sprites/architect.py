@@ -5,8 +5,8 @@ the Strict Golem, the Lock Wyrm and their arenas. This road is cold: night blue,
 soul cyan, with the violet of the Distributed Abyss in the sky (Dark Souls leaning; the Ronin
 road is golden dusk). The pipeline runs darker here (gamma above 1) so night stays night.
 Hand cleanup restores the Golem's visor and the Wyrm's eye, and the region maps get a trail of
-cyan motes along their atlas paths. The iron waypoints and the Lock Wyrm's Chain icon are
-small enough to draw in code.
+cyan motes along their atlas paths. The iron waypoints are small enough to draw in code; the
+weapons, the Lock Wyrm's Chain among them, are in weapons.py.
 
 Usage:
   uv run --with pillow --with numpy --with scipy --with opencv-python-headless \\
@@ -62,7 +62,7 @@ ARENA_CROP = (0, 40, 1536, 1000)
 
 def world(tmp: Path) -> Image.Image:
     """Eight regions on one road, under the abyss. atlas.ARCH_POINTS sit on the landmarks."""
-    w, h = ARCH_WORLD_SIZE[0] * 2, ARCH_WORLD_SIZE[1] * 2
+    w = ARCH_WORLD_SIZE[0] * 2
     src = cropped(SRC / "architect_world.jpg", WORLD_CROP, tmp)
     return scaled(pixelate(src, tmp, "--preset", "landscape", "--width", str(w), *NIGHT), 2)
 
@@ -158,23 +158,6 @@ def obelisks() -> dict[str, Image.Image]:
     return {name: c.img().resize((48, 56), Image.NEAREST) for name, c in stones.items()}
 
 
-def chain_icon() -> Image.Image:
-    """The Lock Wyrm's Chain, an item icon like the Ronin road's (18x18 at 3x)."""
-    c = Canvas(18, 18)
-    for i, (x, y) in enumerate(((2, 13), (5, 10), (8, 7), (11, 4))):
-        box = (x, y, x + 3, y + 2) if i % 2 else (x, y, x + 2, y + 3)
-        ring_ = c.rect(box) & ~c.rect((box[0] + 1, box[1] + 1, box[2] - 1, box[3] - 1))
-        c.fill(ring_, STEEL[4] if i % 2 else STEEL[3])
-    lock = c.rect((11, 9, 16, 15))
-    c.shade(lock, STEEL, light=(-0.7, -0.7), soft=0.6, lo=0.25, hi=1.0)
-    shackle = c.rect((12, 5, 15, 9)) & ~c.rect((13, 6, 14, 9))
-    c.fill(shackle, STEEL[4])
-    c.dot(13, 12, hx("9ee2ee"))
-    c.dot(13, 13, hx("0a080c"))
-    c.outline(darken=0.2)
-    return scaled(c.img(), 3)
-
-
 if __name__ == "__main__":
     out = Path(sys.argv[1])
     with tempfile.TemporaryDirectory() as d:
@@ -188,5 +171,4 @@ if __name__ == "__main__":
         arena(tmp, "arena_data_depths").save(out / "arena_data_depths.png")
     for name, img in obelisks().items():
         img.save(out / name)
-    chain_icon().save(out / "item_chain.png")
     landmarks(out)

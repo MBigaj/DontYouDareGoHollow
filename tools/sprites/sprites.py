@@ -1,5 +1,7 @@
 """Procedural pixel-art sprites for DontYouDareGoHollow: item icons, the slash and the anvil.
 
+Weapon icons are generated art now (weapons.py).
+
 Draws each sprite at native size, outlines it and scales it up with NEAREST.
 Usage: uv run --with pillow python tools/sprites/sprites.py src/hollow/adapters/web/static/sprites
 """
@@ -178,21 +180,6 @@ def soul(img, d):
     d.point((7, 9), (255, 255, 255, 255))
 
 
-def katana_icon(img, d):
-    d.line((3, 12, 14, 1), fill=C["l2"])
-    d.line((4, 12, 15, 1), fill=C["l1"])
-    d.line((2, 10, 6, 14), fill=C["g2"])
-    d.line((0, 15, 3, 12), fill=C["c3"])
-
-
-def hammer_icon(img, d):
-    d.line((2, 15, 10, 7), fill=C["d5"])
-    d.line((3, 15, 11, 7), fill=C["d4"])
-    d.polygon([(8, 1), (12, 0), (15, 4), (13, 8), (9, 9), (6, 5)], fill=C["b2"])
-    d.line((8, 1, 12, 0), fill=C["b3"])
-    d.point((10, 2), C["b4"])
-
-
 # ---------------- slash ----------------
 def slash():
     img, d = new(40, 40)
@@ -236,8 +223,6 @@ for name, fn in dict(
     tome=tome,
     titanite=titanite,
     soul=soul,
-    katana=katana_icon,
-    hammer=hammer_icon,
 ).items():
     save(item(fn), f"item_{name}.png", 3)
 save(slash(), "slash.png", 8)

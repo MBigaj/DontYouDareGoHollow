@@ -1,0 +1,15 @@
+{# The hero, drawn in layers: his body, the weapon equipped on this road, and his fingers closed
+   over its handle (a worn gauntlet covers the hand instead). Pages that belong to a road pass
+   it; the rest (bonfire, character) follow the road picked on the map. #}
+{% macro hero(road=None, cls="", style="", label="") %}
+  {% set cookie = request.cookies.get("hollow_road") %}
+  {% set pick = road if road in heroes else (cookie if cookie in heroes else "ronin") %}
+  {% set kit = heroes[pick] %}
+  <span class="hero-fig {{ cls }}" data-weapon="{{ kit.weapon }}"
+        {% if label %}role="img" aria-label="{{ label }}, {{ kit.name }} in hand"{% else %}aria-hidden="true"{% endif %}
+        {% if style %}style="{{ style }}"{% endif %}>
+    <img src="{{ asset('sprites/knight_front.png') }}" alt="">
+    <img src="{{ asset('sprites/held_' + kit.weapon + '.png') }}" alt="">
+    {% if kit.hand %}<img src="{{ asset('sprites/hero_hand.png') }}" alt="">{% endif %}
+  </span>
+{% endmacro %}

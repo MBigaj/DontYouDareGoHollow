@@ -1,5 +1,6 @@
 import re
 from datetime import timedelta
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -123,9 +124,20 @@ def test_dry_streak_counts_good_runs_since_the_last_drop(
 
 def test_you_start_with_a_plain_weapon_per_job(store: SqlEventStore, clock: FakeClock) -> None:
     arm = state(store, clock).armory
-    assert arm.equipped == {Track.RONIN: "rusted-katana", Track.ARCHITECT: "worn-hammer"}
+    assert arm.equipped == {Track.RONIN: "rusted-katana", Track.ARCHITECT: "pilgrim-shakujo"}
     assert arm.weapon(Track.RONIN)[1] == 0
     assert set(arm.materials.values()) == {0}
+
+
+def test_the_old_hammers_are_read_as_shakujo(store: SqlEventStore, clock: FakeClock) -> None:
+    """The Architect's hammers became staffs; events stored before keep the old ids."""
+    store.append(WeaponBought(clock.now(), "smiths-hammer", 1500))
+    clock.advance(seconds=1)
+    store.append(WeaponEquipped(clock.now(), "smiths-hammer"))
+    arm = state(store, clock).armory
+    assert arm.equipped[Track.ARCHITECT] == "surveyor-shakujo"
+    assert arm.owns("surveyor-shakujo") and arm.owns("pilgrim-shakujo")
+    assert not arm.owns("smiths-hammer")
 
 
 def test_prs_and_new_card_milestones_drop_titanite(store: SqlEventStore, clock: FakeClock) -> None:
@@ -305,7 +317,9 @@ def test_blacksmith_page_buys_reinforces_and_equips(
 
 
 def test_blacksmith_without_javascript_and_bad_actions(client: TestClient) -> None:
-    ok = client.post("/blacksmith/equip", data={"weapon": "worn-hammer"}, follow_redirects=False)
+    ok = client.post(
+        "/blacksmith/equip", data={"weapon": "pilgrim-shakujo"}, follow_redirects=False
+    )
     assert ok.headers["location"] == "/blacksmith"
     bad = client.post("/blacksmith/buy", data={"weapon": "warden-maul"}, follow_redirects=False)
     assert bad.status_code == 303
@@ -340,3 +354,36 @@ def test_fight_gate_names_your_weapon(
 ) -> None:
     learn(store, clock)
     assert "Your Rusted Katana +0 deals 10 per hit here." in client.get("/boss/te-warden").text
+
+
+def hero_weapon(page: str) -> str:
+    """The weapon drawn in the hero's hand on a page."""
+    match = re.search(r'class="hero-fig[^"]*" data-weapon="([\w-]+)"', page)
+    assert match, "no hero on the page"
+    held = str(match.group(1))
+    assert f"sprites/held_{held}.png" in page
+    return held
+
+
+def test_the_hero_holds_the_weapon_of_the_road(client: TestClient, store: SqlEventStore,
+                                               clock: FakeClock) -> None:  # fmt: skip
+    assert hero_weapon(client.get("/").text) == "rusted-katana"
+    assert hero_weapon(client.get("/map/firelink").text) == "rusted-katana"
+    assert hero_weapon(client.get("/map/architect/forge").text) == "pilgrim-shakujo"
+    assert hero_weapon(client.get("/boss/forge-boss").text) == "pilgrim-shakujo"
+    client.cookies.set("hollow_road", "architect")
+    assert hero_weapon(client.get("/").text) == "pilgrim-shakujo"
+    assert hero_weapon(client.get("/character").text) == "pilgrim-shakujo"
+    assert hero_weapon(client.get("/boss/te-warden").text) == "rusted-katana"
+    store.append(WeaponBought(clock.now(), "surveyor-shakujo", 1500))
+    clock.advance(seconds=1)
+    store.append(WeaponEquipped(clock.now(), "surveyor-shakujo"))
+    assert hero_weapon(client.get("/").text) == "surveyor-shakujo"
+    assert "sprites/hero_hand.png" in client.get("/").text
+
+
+def test_every_weapon_has_its_art() -> None:
+    sprites = Path(__file__).parent.parent / "src/hollow/adapters/web/static/sprites"
+    for weapon in WEAPONS.values():
+        assert (sprites / weapon.sprite).is_file(), weapon.sprite
+        assert (sprites / f"held_{weapon.id}.png").is_file(), weapon.id

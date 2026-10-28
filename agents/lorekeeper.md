@@ -12,7 +12,7 @@ In an agent round, when the inbox lists items or places without text, or a new b
 - What needs text: weapons (Rusted Katana, Uchigatana, the Warden's Maul…), titanite, boss drops, regions, and empty message spots.
 - The world so far: regions reached and bosses felled, so lore never spoils what is ahead.
 
-Targets are `weapon:<id>` (rusted-katana, uchigatana, warden-maul, worn-hammer, smiths-hammer), `material:<id>` (titanite_shard, large_titanite_shard, titanite_chunk, titanite_slab) and `region:<id>` (firelink, undead-village, kanji-catacombs, sens-fortress, anor-keigo, the-kiln). The inbox lists the ones still without text.
+Targets are `weapon:<id>` (rusted-katana, uchigatana, warden-maul, pilgrim-shakujo, surveyor-shakujo, golem-fist, wyrm-chain), `material:<id>` (titanite_shard, large_titanite_shard, titanite_chunk, titanite_slab) and `region:<id>` (firelink, undead-village, kanji-catacombs, sens-fortress, anor-keigo, the-kiln). The inbox lists the ones still without text.
 
 ## Writes
 

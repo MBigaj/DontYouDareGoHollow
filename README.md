@@ -92,6 +92,7 @@ The maps of both roads are generated paintings run through the ASHEN pixel pipel
 The fog gate at the top of Firelink Shrine leads to the first boss, the て-form Warden (`/boss/te-warden`). It opens once you know 6 verbs.
 
 - Phase 1, Swift conjugation: the て-form of your verbs, 20 seconds per answer. Phase 2, Requests and sequences: 〜てください and 〜て、〜.
+- Phase 3, the Warden's question: he speaks four lines ("Ask me, politely, to return", "Tell me what you do: first you wake up, then you eat") and you answer each in one Japanese sentence. Nothing is scored yet: the fight waits until the Sensei judges your replies in your next agent round (`hollow-agent-inbox` lists the task). 3 good replies of 4 fell the Warden; fewer, and he strikes you down, and the next attempt starts at his question. Good replies pay souls either way, and the fog gate shows the verdict, reply by reply, with the Sensei's corrections. Estus is useless here.
 - Each right answer deals 10 damage and pays 5 souls, even in a lost fight. Each mistake (or running out of time) costs HP: 35, less with Endurance. You have 100 HP (more with Vigor and armour) and 2 Estus flasks of 50 HP (3 with the Golem's gauntlets).
 - Dying never locks you out: try again straight away. The next attempt starts at the furthest phase you reached, and every death leaves the Warden 10% weaker, down to 70%.
 - Leave mid-fight ("Rest at the fog gate") and the fight waits exactly as you left it.

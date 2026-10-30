@@ -14,6 +14,7 @@ from hollow.domain.bosses import (
     BossRecord,
     ChoiceQuestion,
     Question,
+    lines,
     question,
 )
 from hollow.domain.calendar import GameCalendar
@@ -21,6 +22,9 @@ from hollow.domain.conjugation import Verb
 from hollow.domain.events import FightAction, FightStarted, FightTurn
 from hollow.domain.vocabulary import known_verbs
 from hollow.domain.world import WorldState, replay
+
+REPLY_LIMIT = 120
+"""A reply is one sentence; the Sensei's result shape allows 200 characters."""
 
 
 class FightError(LessonError):
@@ -74,9 +78,18 @@ class FightService:
         record = state.bosses[boss.id]
         current = record.current
         ask = None
-        if current is not None:
-            ask = question(boss, current.phase, current.seed, current.turns, self.verbs())
+        if current is not None and not current.judging:
+            turn = len(current.replies) if current.conversing else current.turns
+            ask = question(boss, current.phase, current.seed, turn, self.verbs())
         return FightView(boss, record, state, ask, answered)
+
+    def transcript(self, boss_id: str) -> list[tuple[Question, str]]:
+        """The current conversation phase so far: each line the boss spoke and your reply."""
+        view = self.view(boss_id)
+        current = view.record.current
+        if current is None:
+            return []
+        return list(zip(lines(view.boss, current, self.verbs()), current.replies, strict=False))
 
     @staticmethod
     def damage(boss: Boss, state: WorldState) -> int:
@@ -115,6 +128,7 @@ class FightService:
                 view.state.mistake_cost,
                 self.damage(view.boss, view.state),
                 view.state.estus,
+                len(view.boss.phases),
             )
         )
         return self.view(boss_id)
@@ -129,12 +143,27 @@ class FightService:
     def answer(self, boss_id: str, attempt_id: str, turn: int, given: str) -> FightView:
         view = self._current(boss_id, attempt_id)
         current, ask = view.record.current, view.question
-        assert current is not None and ask is not None
-        if turn != current.turns:
-            return view  # a double submit: that turn is already played
+        assert current is not None
+        if ask is None or current.conversing or turn != current.turns:
+            return view  # a double submit, or a conversation (answered with reply())
         correct = ask.accepts(given)
         self._store.append(FightTurn(self._now(), UUID(attempt_id), FightAction.ANSWER, correct))
         return self.view(boss_id, Answered(ask, given.strip()[:40], correct))
+
+    def reply(self, boss_id: str, attempt_id: str, turn: int, text: str) -> FightView:
+        """One reply in a conversation phase. It is judged later, by the Sensei."""
+        view = self._current(boss_id, attempt_id)
+        current = view.record.current
+        assert current is not None
+        if not current.conversing or current.judging or turn != len(current.replies):
+            return view  # not a conversation, already answered, or a double submit
+        text = " ".join(text.split())
+        if not text:
+            raise FightError("Answer the Warden in Japanese: a whole sentence.")
+        if len(text) > REPLY_LIMIT:
+            raise FightError(f"Keep it to one sentence ({REPLY_LIMIT} characters at most).")
+        self._store.append(FightTurn(self._now(), UUID(attempt_id), FightAction.REPLY, text=text))
+        return self.view(boss_id)
 
     def drink(self, boss_id: str, attempt_id: str) -> FightView:
         view = self._current(boss_id, attempt_id)

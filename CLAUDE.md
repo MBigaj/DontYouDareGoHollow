@@ -65,7 +65,7 @@ tests/             pytest; conftest has FakeClock, store and client fixtures
   - `intro`: the text at its fog gate.
   - `region`: for Architect bosses only. The boss waits until every step of that region is cleared.
 
-  `Kind.CHOICE` phases ask quiz questions from the listed steps. Drops are set in `armory.BOSS_WEAPONS`, `armory.BOSS_ARMOUR` and `armory.BOSS_MATERIALS`.
+  `Kind.CHOICE` phases ask quiz questions from the listed steps. `Kind.CONVERSATION` phases (the Warden's third) speak `prompts` lines built from the player's verbs; the replies are `FightTurn`s with `FightAction.REPLY`, and the fight waits for a Sensei `AgentResult` on `verdict_task(attempt)`, which `bosses.verdict()` applies by the game's rule (`PASS_REPLIES`). `FightStarted.phases` records how many phases an attempt began with, so adding a phase never rewrites an old fight. Drops are set in `armory.BOSS_WEAPONS`, `armory.BOSS_ARMOUR` and `armory.BOSS_MATERIALS`.
 - **Armour is data too.** `armory.ARMOUR` holds one piece per `Slot`, each with one `Effect` (`EFFECTS` words it). The armory says what is owned and worn and what the worn effects add up to (`max_hp_bonus`, `mistake_reduction`, `extra_estus`, `drop_bonus`); `WorldState.max_hp`, `mistake_cost` and `estus` apply them, and `FightStarted` records them so a fight never changes under you. A new effect needs a rule there and a test in `tests/test_armour.py`.
 - **Every form works without JavaScript.** HTMX swaps panels. Static files go through `asset()`, which fingerprints them so a changed sprite always loads.
 

@@ -18,7 +18,16 @@ from hollow.domain.architect import LESSON_PREFIX, PROVE_MARK, REGION_BY_ID, TOP
 from hollow.domain.architect import REGIONS as ARCHITECT_REGIONS
 from hollow.domain.armory import MATERIAL_NAMES, WEAPONS
 from hollow.domain.atlas import REGIONS
-from hollow.domain.bosses import BOSSES, Question, question
+from hollow.domain.bosses import (
+    BOSSES,
+    PASS_REPLIES,
+    RUBRIC,
+    Question,
+    lines,
+    question,
+    spoken,
+    verdict_task,
+)
 from hollow.domain.calendar import GameCalendar
 from hollow.domain.events import (
     AgentResult,
@@ -268,14 +277,38 @@ class AgentDesk:
             raise AgentError("Only placement trials can clear topics directly.")
 
     def _check_judgement(self, result: Sensei, state: WorldState) -> None:
-        if not result.task.startswith("quest:"):
-            raise AgentError("Boss phase 3 is not built yet; only quest judgements are saved.")
+        if result.task.startswith("boss:"):
+            self._check_verdict(result, state)
+            return
         quest_id = result.task.removeprefix("quest:")
         judged = {s.quest.id: s for s in state.quests if s.quest.judged}
         if quest_id not in judged:
             raise AgentError(f"No judged quest {quest_id} today.")
         if judged[quest_id].done:
             raise AgentError(f"Quest {quest_id} is already passed.")
+
+    @staticmethod
+    def _check_verdict(result: Sensei, state: WorldState) -> None:
+        """A verdict on a boss's conversation phase must judge exactly the replies that are
+        waiting, in order, and its `passed` must follow the game's rule."""
+        boss_id = result.task.split(":")[1]
+        if boss_id not in BOSSES:
+            raise AgentError(f"No boss called {boss_id}.")
+        current = state.bosses[boss_id].current
+        if current is None or not current.judging or verdict_task(current) != result.task:
+            raise AgentError(f"No conversation is waiting for a verdict as {result.task}.")
+        given = [" ".join(t.reply.split()) for t in result.turns]
+        if given != list(current.replies):
+            raise AgentError(
+                f"Judge the {len(current.replies)} replies in the inbox, in order and word for "
+                "word."
+            )
+        good = sum(t.ok for t in result.turns)
+        if result.passed != (good >= min(PASS_REPLIES, current.prompts)):
+            raise AgentError(
+                f"{good} good replies {'pass' if not result.passed else 'do not pass'}: the game "
+                f"needs {PASS_REPLIES} of {current.prompts}. Set passed to match the turns."
+            )
 
     # --- inbox ----------------------------------------------------------------
 
@@ -296,6 +329,25 @@ class AgentDesk:
                     "do": f"Judge when the player submits: {status.quest.title}",
                     "rubric": status.quest.check.get("rubric", ""),
                 })  # fmt: skip
+        verbs = known_verbs(events)
+        for boss_id, record in state.bosses.items():
+            current = record.current
+            if current is None or not current.judging:
+                continue
+            boss = BOSSES[boss_id]
+            tasks.append({
+                "agent": "sensei", "task": verdict_task(current),
+                "do": f"Judge each reply of {boss.name}'s conversation phase "
+                      "(agents/sensei.md). The fight waits for it.",
+                "rubric": RUBRIC,
+                "pass": f"{PASS_REPLIES} good replies of {current.prompts}",
+                "transcript": [
+                    {"line": spoken(line), "kind": line.kind.value,
+                     "verbs": [[v.written, v.kana] for v in line.verbs], "reply": reply}
+                    for line, reply in zip(lines(boss, current, verbs), current.replies,
+                                           strict=False)
+                ],
+            })  # fmt: skip
         written = {e.task for e in events if isinstance(e, AgentResult) and e.agent == "lorekeeper"}
         wanted = [f"weapon:{w}" for w in state.armory.levels] + [
             f"material:{m.value}" for m, n in state.armory.materials.items() if n

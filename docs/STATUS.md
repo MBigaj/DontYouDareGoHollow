@@ -50,15 +50,15 @@ _Nothing. The last branch is ready for review; take the next number after it mer
 | 21 | `21-item-art` | The last code-drawn art replaced: the item icons (estus, ember, lens, sign, ring, tome, soul) and a sprite per titanite grade cut from one generated sheet (`items.py`), a generated anvil for the blacksmith and a crescent hit slash; icons shown at their file size (48 px, the souls counter's soul at 28) |
 | 22 | `22-sound` | Sound effects: Kenney CC0 recordings layered with synthesis (`tools/sounds/sounds.py`) for the bonfire, souls, drops, fights (fog, strikes, blows, estus, phase, felled, death), the anvil, coins, equipping, levelling up, map footsteps and soft lesson ticks; cues sent by the server as `data-sfx`, played on HTMX swaps only; a ♪ mute toggle in the header |
 | 23 | `23-hero-armour` | Armour with real effects, one piece per slot drawn on the hero: Wanderer's Iron Hood (bought, +20 HP), Warden's Bronze Pauldrons (mistakes -5 HP), Golem's Riveted Gauntlets (+1 Estus), Wyrm-scale Greaves (+15 points lesson titanite); the blacksmith split into Weapons, Armour, Rings and items, Recent finds; the Architect road's cyan eye and scarf; `armour.py` cuts a generated sheet into icons and paints each piece onto the hero's own silhouette; the status rule for agents in `CLAUDE.md` |
+| 24 | `24-warden-phase-3` | The Warden's third phase: he speaks four lines built from your verbs, you answer each in a Japanese sentence in the fight, and the Sensei judges the transcript in the next agent round (3 good of 4 fell him; fewer is a death and the retry starts at his question); attempts record their phase count; the verdict shows on the fog gate |
 
 ## Up next
 
 In a sensible order. Each one fits a branch.
 
-1. **Warden phase 3.** A short conversation judged by the Sensei agent. It needs a saved "pending phase" state, an inbox task and a Sensei result shape for `boss:<id>`. `agents/README.md` lists it as not saved yet.
-2. **Ronin region 2, Undead Village.** Lessons for 〜ている, 〜た and the plain form, its region map and the Plain-Form Gargoyle (recommended weapon level +4). The lesson engine may need more `LessonSpec` kinds than て-form endings.
-3. **Lore for the Architect road.** `lore_targets()` in `application/agents.py` only knows the Ronin regions. Add the Architect regions, so the Lorekeeper can write region and boss lore for them.
-4. **Deploy.** Put the Docker image on one small host (DigitalOcean was the plan) with PostgreSQL and `HOLLOW_PASSWORD`. Anki sync keeps running from his PC with `hollow-sync-anki` on a schedule, which needs the API to accept pushed reviews or a remote database URL. That design decision is Mikołaj's: ask first.
+1. **Ronin region 2, Undead Village.** Lessons for 〜ている, 〜た and the plain form, its region map and the Plain-Form Gargoyle (recommended weapon level +4). The lesson engine may need more `LessonSpec` kinds than て-form endings.
+2. **Lore for the Architect road.** `lore_targets()` in `application/agents.py` only knows the Ronin regions. Add the Architect regions, so the Lorekeeper can write region and boss lore for them.
+3. **Deploy.** Put the Docker image on one small host (DigitalOcean was the plan) with PostgreSQL and `HOLLOW_PASSWORD`. Anki sync keeps running from his PC with `hollow-sync-anki` on a schedule, which needs the API to accept pushed reviews or a remote database URL. That design decision is Mikołaj's: ask first.
 
 ## Backlog
 
@@ -77,6 +77,8 @@ Grouped by area. Ask Mikołaj before starting anything marked *(decide)*.
 - **Armour lore:** `lore_targets()` in `application/agents.py` asks for `weapon:` and `material:` lore only. Add `armour:<id>` so the Lorekeeper writes for the pieces, and show it at the blacksmith like weapon lore.
 
 ### Ronin road
+- **A waiting verdict on the bonfire:** while the Warden waits for the Sensei, or once a verdict comes in, the home page could say so (today it shows only on the fog gate and in the inbox).
+- **More conversation phases:** the engine is generic (`Kind.CONVERSATION`, `Phase.prompts`), so later Ronin bosses (the Plain-Form Gargoyle) can end the same way, with lines for their own grammar in `spoken()`.
 - Regions 3 to 6 (Kanji Catacombs, Sen's Fortress, Anor Keigo, the Kiln) with their grammar and bosses; the Kiln lines up with JLPT N4.
 - **Furigana fading:** readings fade as the Ronin levels up.
 - **Free conversation with the Sensei:** practice only, nothing saved.

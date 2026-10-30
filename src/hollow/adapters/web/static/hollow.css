@@ -453,3 +453,16 @@ td:last-child { text-align: right; color: var(--ember-hi); }
 .foe.foe-golem { aspect-ratio: 432 / 504; height: 70%; }
 .foe.foe-wyrm { aspect-ratio: 480 / 504; height: 70%; right: 7%; }
 @media (max-width: 720px) { .foe.foe-golem, .foe.foe-wyrm { height: 52%; right: 3%; } }
+
+/* the Warden's question: a conversation judged later by the Sensei */
+.duel.conversation .judging, .duel.conversation .said { grid-column: 1 / -1; }
+.said { margin: 0 0 6px; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; font-size: 15px; }
+.said li.ok span[lang="ja"] { color: var(--gold); }
+.said li.miss span[lang="ja"] { color: var(--blood-ink); }
+.judging p { margin: 6px 0 10px; }
+.duel .quiz input[name=reply] { font-family: "DotGothic16", system-ui, sans-serif; font-size: 20px; padding: 8px; }
+.verdict-box { margin-top: 16px; }
+.verdict-box.won { box-shadow: inset 0 0 0 2px var(--gold); }
+.verdict-box.died { box-shadow: inset 0 0 0 2px var(--blood); }
+.verdict-box p { margin: 4px 0; }
+.correction { font-size: 14px; }

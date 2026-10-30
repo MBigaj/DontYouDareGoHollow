@@ -17,8 +17,9 @@ from hollow.domain.armory import (
     lesson_drop,
     upgrade_cost,
 )
-from hollow.domain.bosses import WARDEN
+from hollow.domain.bosses import WARDEN, Attempt, verdict_task
 from hollow.domain.events import (
+    AgentResult,
     Event,
     FightAction,
     FightStarted,
@@ -179,12 +180,27 @@ def test_events_for_weapons_you_do_not_own_are_ignored(
 
 
 def fell_the_warden(store: SqlEventStore, clock: FakeClock, damage: int = 10) -> None:
+    """Every answer right through phases 1 and 2, then phase 3: four replies and a passing
+    verdict from the Sensei."""
     clock.advance(seconds=1)
     started = FightStarted(clock.now(), WARDEN.id, 1, 100, 35, damage)
     store.append(started)
-    while not state(store, clock).bosses[WARDEN.id].defeated:
+
+    def current() -> Attempt:
+        attempt = state(store, clock).bosses[WARDEN.id].current
+        assert attempt is not None
+        return attempt
+
+    while not current().conversing:
         clock.advance(seconds=1)
         store.append(FightTurn(clock.now(), started.id, FightAction.ANSWER, True))
+    for _ in range(current().prompts):
+        clock.advance(seconds=1)
+        store.append(FightTurn(clock.now(), started.id, FightAction.REPLY, text="待ってください。"))
+    clock.advance(seconds=1)
+    judging = current()
+    turns = [{"prompt": "…", "reply": r, "ok": True} for r in judging.replies]
+    store.append(AgentResult(clock.now(), "sensei", verdict_task(judging), {"turns": turns}))
 
 
 def test_the_warden_drops_its_maul_and_titanite(store: SqlEventStore, clock: FakeClock) -> None:
@@ -198,7 +214,7 @@ def test_the_warden_drops_its_maul_and_titanite(store: SqlEventStore, clock: Fak
 def test_a_stronger_weapon_takes_fewer_hits(store: SqlEventStore, clock: FakeClock) -> None:
     fell_the_warden(store, clock, damage=16)
     hits = state(store, clock).bosses[WARDEN.id].last
-    assert hits is not None and hits.hits == 8 + 5  # 120 HP / 16, then 80 HP / 16
+    assert hits is not None and hits.hits == 8 + 5 + 4  # 120 HP / 16, 80 HP / 16, 4 replies
 
 
 def test_soul_siphon_adds_15_percent_to_lesson_souls(

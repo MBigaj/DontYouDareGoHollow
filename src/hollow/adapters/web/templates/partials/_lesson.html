@@ -31,7 +31,7 @@
 
   {% elif mode == 'feedback' %}
     {% set verb = questions[answers | length - 1] %}
-    <div class="verdict {{ 'ok' if correct else 'miss' }}" role="status">
+    <div class="verdict {{ 'ok' if correct else 'miss' }}" role="status" data-sfx="{{ 'right' if correct else 'wrong' }}">
       <div class="prompt small" lang="ja">{{ ja(verb.written, verb.kana) }} → <strong>{{ ja(verb.te_form.written, verb.te_form.kana) }}</strong></div>
       {% if correct %}<div class="verdict-line">正解 · Correct</div>
       {% else %}<div class="verdict-line">You wrote <span lang="ja">{{ answers[-1] }}</span></div>{% endif %}
@@ -43,7 +43,7 @@
     </form>
 
   {% else %}
-    <div class="result {{ 'ok' if outcome.passed else 'miss' }}">
+    <div class="result {{ 'ok' if outcome.passed else 'miss' }}" data-sfx="souls{{ ' drop' if drop }}">
       <div class="score">{{ outcome.correct }} / {{ outcome.total }}</div>
       <div class="verdict-line">{% if outcome.passed %}{{ 'Lesson cleared' if outcome.run.value == 'first' else ('Refresher cleared' if outcome.run.value == 'refresher' else 'Practice done') }}{% else %}Not cleared yet · clear at 80%{% endif %}</div>
       <div class="souls"><img src="{{ asset('sprites/item_soul_small.png') }}" alt="" width="28" height="28">+{{ outcome.souls }} souls <span class="muted">({{ run_labels[outcome.run] | lower }})</span></div>

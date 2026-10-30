@@ -150,6 +150,12 @@ def asset(path: str) -> str:
     return f"/static/{path}?v={version}"
 
 
+def sounds() -> dict[str, str]:
+    """Every sound effect's fingerprinted URL by name (static/sounds/, made by
+    tools/sounds/sounds.py). The page plays them by name; see js/sound.js."""
+    return {p.stem: asset(f"sounds/{p.name}") for p in sorted((STATIC / "sounds").glob("*.mp3"))}
+
+
 WORN_WEAPONS = {"golem-fist"}
 """Weapons worn rather than held: the hero's fingers are not drawn over them."""
 
@@ -213,6 +219,7 @@ def create_app(
     )
     templates = Jinja2Templates(directory=HERE / "templates")
     templates.env.globals["asset"] = asset
+    templates.env.globals["sounds"] = sounds
     templates.env.globals["with_readings"] = with_readings
     templates.env.globals["lesson_title"] = lesson_title
     templates.env.filters["markdown"] = markdown
@@ -318,7 +325,11 @@ def create_app(
         return slots
 
     def character_page(
-        request: Request, state: WorldState, flash: str | None = None, warning: str | None = None
+        request: Request,
+        state: WorldState,
+        flash: str | None = None,
+        warning: str | None = None,
+        sfx: str | None = None,
     ) -> Response:
         name = "partials/_character.html" if request.headers.get("HX-Request") else "character.html"
         return templates.TemplateResponse(
@@ -331,15 +342,24 @@ def create_app(
                 syncing=syncing,
                 flash=flash,
                 warning=warning,
+                sfx=sfx,
             ),
         )
 
     def respond(
-        request: Request, state: WorldState, flash: str | None = None, warning: str | None = None
+        request: Request,
+        state: WorldState,
+        flash: str | None = None,
+        warning: str | None = None,
+        sfx: str | None = None,
     ) -> Response:
+        """The home panel after an action. `sfx` names the sounds the action makes (js/sound.js
+        plays them when the panel swaps in)."""
         if request.headers.get("HX-Request"):
             return templates.TemplateResponse(
-                request, "partials/_world.html", context(state, flash=flash, warning=warning)
+                request,
+                "partials/_world.html",
+                context(state, flash=flash, warning=warning, sfx=sfx),
             )
         return RedirectResponse("/", status_code=status.HTTP_303_SEE_OTHER)
 
@@ -405,11 +425,15 @@ def create_app(
     @app.post("/light")
     def light(request: Request) -> Response:
         if anki_sync is None and github_sync is None:
-            return respond(request, service.light(), flash="The bonfire is lit.")
+            return respond(request, service.light(), flash="The bonfire is lit.", sfx="bonfire")
         found, warnings = sync(force=True)
         state = service.state()
         return respond(
-            request, state, flash=summary(found, state), warning=" ".join(warnings) or None
+            request,
+            state,
+            flash=summary(found, state),
+            warning=" ".join(warnings) or None,
+            sfx="bonfire" if state.lit_today else None,
         )
 
     @app.post("/log")
@@ -419,12 +443,18 @@ def create_app(
         quantity: Annotated[int, Form()],
         note: Annotated[str, Form()] = "",
     ) -> Response:
+        was_lit = service.state().lit_today
         try:
             state = service.log_study(kind, quantity, note)
         except ValueError as error:
             raise HTTPException(422, str(error)) from error
         spec = ACTIVITIES[kind]
-        return respond(request, state, flash=f"Logged {quantity} {spec.unit} of {spec.label}.")
+        return respond(
+            request,
+            state,
+            flash=f"Logged {quantity} {spec.unit} of {spec.label}.",
+            sfx="souls bonfire" if state.lit_today and not was_lit else "souls",
+        )
 
     @app.get("/character", response_class=HTMLResponse)
     def character(request: Request) -> Response:
@@ -465,6 +495,7 @@ def create_app(
                 f"{spec.label} rose to {state.stats[stat]}. "
                 f"{before.level_cost:,} souls spent at the bonfire."
             ),
+            sfx="level",
         )
 
     @app.get("/lessons", response_class=HTMLResponse)
@@ -1140,6 +1171,7 @@ def create_app(
         state: WorldState,
         flash: str | None = None,
         warning: str | None = None,
+        sfx: str | None = None,
     ) -> Response:
         arm = state.armory
         tracks = []
@@ -1204,6 +1236,7 @@ def create_app(
                 materials=materials,
                 flash=flash,
                 warning=warning,
+                sfx=sfx,
             ),
         )
 
@@ -1229,7 +1262,8 @@ def create_app(
             return forge_page(request, service.state(), warning=str(error))
         if not request.headers.get("HX-Request"):
             return RedirectResponse("/blacksmith", status_code=status.HTTP_303_SEE_OTHER)
-        return forge_page(request, state, flash=flash)
+        cue = {"buy": "coins", "upgrade": "anvil", "equip": "equip"}[action]
+        return forge_page(request, state, flash=flash, sfx=cue)
 
     @app.post("/blacksmith/{action}")
     def blacksmith_action(
@@ -1259,7 +1293,7 @@ def create_app(
             state = service.leave_message(text)
         except ValueError as error:
             raise HTTPException(422, str(error)) from error
-        return respond(request, state, flash="Message left for tomorrow's you.")
+        return respond(request, state, flash="Message left for tomorrow's you.", sfx="message")
 
     @app.get("/healthz")
     def healthz() -> dict[str, str]:

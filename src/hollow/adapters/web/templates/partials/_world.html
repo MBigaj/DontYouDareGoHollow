@@ -1,6 +1,7 @@
 {% from "partials/_hero.html" import hero with context %}
 <div id="world" style="display: flex; flex-direction: column; gap: 16px">
   {% if flash %}<div class="flash" role="status">{{ flash }}</div>{% endif %}
+  {% if sfx %}<i hidden data-sfx="{{ sfx }}"></i>{% endif %}
   {% if warning %}<div class="panel blood" role="alert" style="color: var(--blood-ink)">{{ warning }}</div>{% endif %}
 
   {% if state.bloodstain %}

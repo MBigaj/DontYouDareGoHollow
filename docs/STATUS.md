@@ -38,6 +38,7 @@ _Nothing. The last branch is merged; take the next number._
 | 19 | `19-hollow-ronin` | A new hero: a hollow ronin (kasa hat, one ember eye, ragged indigo haori, bandaged hands), generated empty-handed in a weapon-agnostic stance with his grip point recorded for the weapons to come; mirrored to face the bosses |
 | 20 | `20-equipment` | The hero carries what you equip: every weapon cut from one generated sheet (`weapons.py`) into a 72 px icon and a layer gripped in his fist, stacked on the home stage, the character page, the maps (the road you walk) and in fights (the boss's road); the Architect's hammers became the Pilgrim's and Surveyor's Shakujō (old ids read as the staffs) |
 | 21 | `21-item-art` | The last code-drawn art replaced: the item icons (estus, ember, lens, sign, ring, tome, soul) and a sprite per titanite grade cut from one generated sheet (`items.py`), a generated anvil for the blacksmith and a crescent hit slash; icons shown at their file size (48 px, the souls counter's soul at 28) |
+| 22 | `22-sound` | Sound effects: Kenney CC0 recordings layered with synthesis (`tools/sounds/sounds.py`) for the bonfire, souls, drops, fights (fog, strikes, blows, estus, phase, felled, death), the anvil, coins, equipping, levelling up, map footsteps and soft lesson ticks; cues sent by the server as `data-sfx`, played on HTMX swaps only; a ♪ mute toggle in the header |
 
 ## Up next
 
@@ -82,5 +83,6 @@ Grouped by area. Ask Mikołaj before starting anything marked *(decide)*.
 - Infrastructure as code: deploy with Terraform (Iron Keep).
 
 ### Art and platform
+- **Ambience:** quiet loops under the pages: crackle at the lit bonfire, wind on the maps, a low drone in boss arenas, the flooded archive dripping. Off by default or its own toggle, so it never fights study.
 - **Art redesign:** replace the procedural placeholder sprites through the ASHEN pixel pipeline. Keep file names and sizes.
 - **PWA or native app** *(decide)*: still an open question in the plan.

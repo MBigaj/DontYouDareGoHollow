@@ -211,3 +211,17 @@ uv run --with pillow --with numpy --with scipy --with opencv-python-headless \
 
 The output is deterministic: running them again rewrites the same files. Icons are shown at their file size (two screen pixels per art pixel), so they stay crisp.
 
+## Sound
+
+The game has sound effects: the bonfire catching, souls flowing in, a titanite glint, the fog gate, blade strikes and blows in fights, estus, a boss's second wind, the boom of a felled boss, death, the anvil, coins, drawing a weapon, levelling up and footsteps on the maps. Lessons only get a soft ting for a right answer and a muted thunk for a wrong one. The ♪ in the header mutes everything; the choice is remembered in the browser. Without JavaScript there is no sound, and everything still works.
+
+The server says what happened: an action's panel carries `data-sfx="souls drop"`, and `static/js/sound.js` plays those sounds when HTMX swaps the panel in. Sounds already on a page when it loads stay quiet, so a reload never replays a boss falling.
+
+`tools/sounds/sounds.py` builds the MP3s in `static/sounds/`. Recordings cover what the world makes (a blade, a punch, an anvil, coins, footsteps, a bell), from Kenney's CC0 packs in `tools/sounds/source/` (see `LICENSE.md` there). Synthesis covers what nothing recorded covers (fire, fog, souls, the felled boss's boom, death's low tones) and the quiet lesson ticks. The big moments get a touch of stone-hall reverb.
+
+```sh
+uv run --with numpy --with scipy python tools/sounds/sounds.py src/hollow/adapters/web/static/sounds
+```
+
+It needs `ffmpeg` and is deterministic like the art scripts.
+

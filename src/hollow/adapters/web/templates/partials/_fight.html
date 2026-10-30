@@ -4,7 +4,8 @@
 {% set rec = view.record %}
 {% set on = rec.current is not none %}
 {% set beat = a.beat.value if a and (on or a.outcome.value in ('died', 'won')) and not gate else 'gate' %}
-<section id="fight" class="fight beat-{{ beat }} road-{{ 'architect' if view.boss.region else 'ronin' }}" aria-label="{{ view.boss.name }}">
+{% set cues = {"start": "fog", "hit": "strike", "miss": "hurt", "estus": "estus", "phase": "strike phase", "won": "strike felled", "died": "hurt died"} %}
+<section id="fight" class="fight beat-{{ beat }} road-{{ 'architect' if view.boss.region else 'ronin' }}" {% if cues.get(beat) %}data-sfx="{{ cues[beat] }}" {% endif %}aria-label="{{ view.boss.name }}">
   {% set home = view.boss.home ~ '?at=' ~ view.boss.node %}
   <div class="arena" style="background-image: url({{ asset('sprites/' + view.boss.arena) }})">
     {% if a and beat != 'gate' %}

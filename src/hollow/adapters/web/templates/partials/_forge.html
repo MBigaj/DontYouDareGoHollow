@@ -1,6 +1,7 @@
 {% set arm = state.armory %}
 <div id="forge" class="forge">
   {% if flash %}<div class="flash" role="status">{{ flash }}</div>{% endif %}
+  {% if sfx %}<i hidden data-sfx="{{ sfx }}"></i>{% endif %}
   {% if warning %}<div class="panel blood" role="alert" style="color: var(--blood-ink)">{{ warning }}</div>{% endif %}
 
   <section class="panel forge-head">

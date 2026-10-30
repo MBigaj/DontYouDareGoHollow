@@ -4,14 +4,29 @@ The project's board. To pick up work:
 
 1. Choose one task from **Up next**, or from the **Backlog** if Mikołaj asks for it. Prefer the top of Up next.
 2. Create the next numbered branch. The last used number is in **Done**.
-3. In that branch, move the task to **In progress** with your branch name. When it is finished, move it to **Done** with a one-line summary.
+3. In that branch, move the task to **In progress** with your branch name and keep its entry current with every commit (done, next, decisions, open questions), so another agent can pick it up mid-branch. When it is finished, move it to **Done** with a one-line summary and update Up next and the Backlog. The full rule is in `CLAUDE.md` under Conventions.
 4. Keep tasks small enough for one branch. If a task turns out bigger, split it here and do the first part.
 
 The full design is the plan document, "DontYouDareGoHollow: A Souls-like Study Game", in Mikołaj's claude.ai docs. This board is the short version, kept true to the code.
 
 ## In progress
 
-_Nothing. The last branch is merged; take the next number._
+Template for an entry:
+
+```
+### <branch>
+- Done: ...
+- Next: ...
+- Decisions: ...
+- Open: ...
+```
+
+### 23-hero-armour
+The hero's armour: four slots drawn as layers over the knight, with real effects, plus the Architect road accent.
+- Done: the status rule (this board and `CLAUDE.md`).
+- Next: armour domain and events, effects, blacksmith sections, character page, art (Figma AI sources through the ASHEN pipeline), accent.
+- Decisions (Mikołaj, 30 Oct): armour pieces shown on the hero; rings and other items never drawn on him, they come later with the inventory. Most armour drops from bosses, one piece is bought at the blacksmith. Effects are real and checked by code. The blacksmith gets sections (Weapons, Armour, a "Rings and items" placeholder). Architect accent: both a cyan eye and a cyan scarf. Pieces: Wanderer's Iron Hood (head, blacksmith, +20 max HP), Warden's Bronze Pauldrons (chest, te-form Warden, mistakes cost 5 HP less), Golem's Riveted Gauntlets (arms, Strict Golem, +1 Estus), Wyrm-scale Greaves (legs, Lock Wyrm, +15 points lesson titanite chance). Armour works on both roads and is not reinforced.
+- Open: nothing yet.
 
 ## Done
 
@@ -44,11 +59,10 @@ _Nothing. The last branch is merged; take the next number._
 
 In a sensible order. Each one fits a branch.
 
-1. **The hero's other equipment.** A road accent on the Architect road (a cyan eye or scarf), then rings and armour as more layers over `knight_front.png`, the way weapons are (`weapons.HERO_GRIP`). Ask Mikołaj what items he wants first; they come with the inventory in the backlog.
-2. **Warden phase 3.** A short conversation judged by the Sensei agent. It needs a saved "pending phase" state, an inbox task and a Sensei result shape for `boss:<id>`. `agents/README.md` lists it as not saved yet.
-3. **Ronin region 2, Undead Village.** Lessons for 〜ている, 〜た and the plain form, its region map and the Plain-Form Gargoyle (recommended weapon level +4). The lesson engine may need more `LessonSpec` kinds than て-form endings.
-4. **Lore for the Architect road.** `lore_targets()` in `application/agents.py` only knows the Ronin regions. Add the Architect regions, so the Lorekeeper can write region and boss lore for them.
-5. **Deploy.** Put the Docker image on one small host (DigitalOcean was the plan) with PostgreSQL and `HOLLOW_PASSWORD`. Anki sync keeps running from his PC with `hollow-sync-anki` on a schedule, which needs the API to accept pushed reviews or a remote database URL. That design decision is Mikołaj's: ask first.
+1. **Warden phase 3.** A short conversation judged by the Sensei agent. It needs a saved "pending phase" state, an inbox task and a Sensei result shape for `boss:<id>`. `agents/README.md` lists it as not saved yet.
+2. **Ronin region 2, Undead Village.** Lessons for 〜ている, 〜た and the plain form, its region map and the Plain-Form Gargoyle (recommended weapon level +4). The lesson engine may need more `LessonSpec` kinds than て-form endings.
+3. **Lore for the Architect road.** `lore_targets()` in `application/agents.py` only knows the Ronin regions. Add the Architect regions, so the Lorekeeper can write region and boss lore for them.
+4. **Deploy.** Put the Docker image on one small host (DigitalOcean was the plan) with PostgreSQL and `HOLLOW_PASSWORD`. Anki sync keeps running from his PC with `hollow-sync-anki` on a schedule, which needs the API to accept pushed reviews or a remote database URL. That design decision is Mikołaj's: ask first.
 
 ## Backlog
 

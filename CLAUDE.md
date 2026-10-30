@@ -120,7 +120,12 @@ Sound is a JavaScript-only extra (`static/js/sound.js`). A handler names the sou
   - ruff's line length is 100, and CJK characters count double.
   - RUF001 flags ambiguous characters (`–`, `×`, `’`, full-width punctuation). Use plain ones or `\u2019`.
   - ruff also formats Python code blocks inside Markdown files.
-- **Docs:** keep `README.md` current when behaviour changes. Update `docs/STATUS.md` in the same branch: move your task to Done with the branch number.
+- **Docs:** keep `README.md` current when behaviour changes.
+- **Always keep `docs/STATUS.md` current, so a new agent can continue the work without this conversation.** The board, not chat history, is the handoff.
+  - **On starting:** move the task to **In progress** with the branch name, in the branch's first commit.
+  - **While working:** with every commit, update the task's entry under In progress: what is done, what is next, decisions made with Mikołaj (and his answers), open questions and anything surprising found in the code.
+  - **On finishing:** move the task to **Done** with a one-line summary, and update **Up next** and the **Backlog**: add follow-ups you discovered, split tasks that turned out bigger, and drop what is no longer true.
+  - **If you stop before finishing**, the In progress entry must say exactly where to resume.
 - **UI changes:** check them visually. Playwright and Chromium are at `/opt/pw-browsers` in cloud sessions. Run `uv run --with playwright python`, launching with `executable_path` set to the `chromium-*/chrome-linux*/chrome` binary.
 
 ## Working on Mikołaj's computer

@@ -346,7 +346,9 @@ def test_lesson_results_show_their_drop(
 
     monkeypatch.setattr("hollow.application.lessons.SystemRandom.random", lambda self: 0.0)
     learn(store, clock)
-    assert "Titanite Shard dropped" in play(client, "te-ru")
+    page = play(client, "te-ru")
+    assert "Titanite Shard dropped" in page
+    assert "item_titanite_shard.png" in page
 
 
 def test_fight_gate_names_your_weapon(
@@ -387,3 +389,12 @@ def test_every_weapon_has_its_art() -> None:
     for weapon in WEAPONS.values():
         assert (sprites / weapon.sprite).is_file(), weapon.sprite
         assert (sprites / f"held_{weapon.id}.png").is_file(), weapon.id
+
+
+def test_every_titanite_grade_has_its_art(client: TestClient) -> None:
+    """Each grade is its own sprite, shown at the blacksmith."""
+    sprites = Path(__file__).parent.parent / "src/hollow/adapters/web/static/sprites"
+    page = client.get("/blacksmith").text
+    for material in Material:
+        assert (sprites / f"item_{material.value}.png").is_file(), material
+        assert f"item_{material.value}.png" in page, material

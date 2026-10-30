@@ -14,7 +14,7 @@
         <span class="hp-num">{{ a.hp }} / {{ a.max_hp }}</span>
       </div>
       <div class="flasks" aria-label="{{ a.estus }} Estus flasks left">
-        {% for i in range(2) %}<img class="flask {{ 'empty' if i >= a.estus }}" src="{{ asset('sprites/item_estus.png') }}" alt="" width="36" height="36">{% endfor %}
+        {% for i in range(2) %}<img class="flask {{ 'empty' if i >= a.estus }}" src="{{ asset('sprites/item_estus.png') }}" alt="" width="48" height="48">{% endfor %}
       </div>
       <div class="phase-tag label">Phase {{ a.phase + 1 }} of {{ view.boss.phases | length }} · {{ view.boss.phases[a.phase].name }}{% if a.wound < 1 %} · wounded {{ ((1 - a.wound) * 100) | round | int }}%{% endif %}</div>
     </div>

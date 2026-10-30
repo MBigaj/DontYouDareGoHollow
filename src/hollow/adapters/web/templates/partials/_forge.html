@@ -4,21 +4,21 @@
   {% if warning %}<div class="panel blood" role="alert" style="color: var(--blood-ink)">{{ warning }}</div>{% endif %}
 
   <section class="panel forge-head">
-    <img class="anvil" src="{{ asset('sprites/anvil.png') }}" alt="" width="160">
+    <img class="anvil" src="{{ asset('sprites/anvil.png') }}" alt="" width="208" height="128">
     <div>
       <div class="label">Firelink Shrine · the blacksmith</div>
       <h2 class="map-title">"Bring me titanite, and souls. I'll see to the rest."</h2>
       <p class="muted">Reinforcing makes right answers hit harder in that job's fights. Bosses scale by region, so a weapon ahead of pace helps half as much, and every boss still needs 60% of its hits.</p>
     </div>
-    <div class="forge-souls"><span class="label">Souls</span><span class="value souls"><img src="{{ asset('sprites/item_soul.png') }}" alt="" width="27" height="27">{{ "{:,}".format(state.souls) }}</span></div>
+    <div class="forge-souls"><span class="label">Souls</span><span class="value souls"><img src="{{ asset('sprites/item_soul_small.png') }}" alt="" width="28" height="28">{{ "{:,}".format(state.souls) }}</span></div>
   </section>
 
   <section class="panel" aria-label="Titanite">
     <h2 class="label">Titanite</h2>
     <div class="mats">
       {% for m in materials %}
-      <div class="mat tier-{{ loop.index }} {{ 'none' if arm.materials[m.material] == 0 }}">
-        <img src="{{ asset('sprites/item_titanite.png') }}" alt="" width="40" height="40">
+      <div class="mat {{ 'none' if arm.materials[m.material] == 0 }}">
+        <img src="{{ asset('sprites/item_' + m.material.value + '.png') }}" alt="" width="48" height="48">
         <div><strong>{{ arm.materials[m.material] }}</strong> {{ m.name }}<div class="muted" style="font-size: 13px">{{ m.levels }} · {{ m.source }}</div>
           {% set text = lore().get('material:' + m.material.value) %}
           {% if text %}<details class="lore"><summary lang="ja">{{ with_readings(text.ja, text.readings) }}</summary><span class="muted">{{ text.en }}</span></details>{% endif %}</div>

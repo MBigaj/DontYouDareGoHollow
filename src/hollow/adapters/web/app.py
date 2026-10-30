@@ -308,7 +308,7 @@ def create_app(
             },
             {
                 "name": "Titanite",
-                "sprite": "item_titanite.png",
+                "sprite": "item_titanite_shard.png",
                 "item": ", ".join(f"{n} {MATERIAL_NAMES[m]}" for m, n in mats.items() if n)
                 or "None yet",
                 "empty": total == 0,
@@ -597,7 +597,7 @@ def create_app(
             outcome=outcome,
             misses=misses,
             state=state,
-            drop=MATERIAL_NAMES[drop] if drop else None,
+            drop={"material": drop.value, "name": MATERIAL_NAMES[drop]} if drop else None,
         )
 
     def explored() -> int:
@@ -1030,7 +1030,7 @@ def create_app(
             outcome=outcome,
             misses=misses,
             state=state,
-            drop=MATERIAL_NAMES[drop] if drop else None,
+            drop={"material": drop.value, "name": MATERIAL_NAMES[drop]} if drop else None,
             boss_ready=ready is not None
             and state.architect.region_ready(current.topic.region)
             and not state.bosses[ready.id].defeated,

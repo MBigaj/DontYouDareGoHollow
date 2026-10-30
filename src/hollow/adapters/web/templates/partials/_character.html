@@ -11,7 +11,7 @@
                       ~ ") brightness(" ~ (1 - state.hollowing * 0.1) ~ ")") }}
         <div class="stats">
           <div class="stat"><span class="label">Level</span><span class="value">{{ state.character_level }}</span></div>
-          <div class="stat"><span class="label">Souls</span><span class="value souls"><img src="{{ asset('sprites/item_soul.png') }}" alt="" width="27" height="27">{{ "{:,}".format(state.souls) }}</span></div>
+          <div class="stat"><span class="label">Souls</span><span class="value souls"><img src="{{ asset('sprites/item_soul_small.png') }}" alt="" width="28" height="28">{{ "{:,}".format(state.souls) }}</span></div>
           <div class="stat"><span class="label">Spent</span><span class="value">{{ "{:,}".format(state.souls_spent) }}</span></div>
           <div class="stat"><span class="label">State</span><span class="value">{{ state.status }}</span></div>
         </div>
@@ -62,7 +62,7 @@
       <div class="slots">
         {% for slot in equipment %}
         <div class="slot {{ 'empty' if slot.empty or not slot.item }}">
-          <img src="{{ asset('sprites/' + slot.sprite) }}" alt="" width="{{ slot.size or 54 }}" height="{{ slot.size or 54 }}">
+          <img src="{{ asset('sprites/' + slot.sprite) }}" alt="" width="{{ slot.size or 48 }}" height="{{ slot.size or 48 }}">
           <div>
             <div class="label">{{ slot.name }}</div>
             <div><strong>{{ slot.item or 'Empty' }}</strong></div>

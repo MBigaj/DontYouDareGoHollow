@@ -14,6 +14,14 @@
     <div class="forge-souls"><span class="label">Souls</span><span class="value souls"><img src="{{ asset('sprites/item_soul_small.png') }}" alt="" width="28" height="28">{{ "{:,}".format(state.souls) }}</span></div>
   </section>
 
+  <nav class="forge-nav panel" aria-label="The blacksmith's wares">
+    <a href="#weapons">Weapons</a>
+    <a href="#armour">Armour</a>
+    <a href="#rings">Rings and items</a>
+    <a href="#finds">Recent finds</a>
+  </nav>
+
+  <h2 id="weapons" class="forge-title">Weapons</h2>
   <section class="panel" aria-label="Titanite">
     <h2 class="label">Titanite</h2>
     <div class="mats">
@@ -63,7 +71,45 @@
     {% endfor %}
   </div>
 
-  <section class="panel" aria-label="Recent titanite">
+  <h2 id="armour" class="forge-title">Armour</h2>
+  <section class="panel" aria-label="Armour">
+    <p class="muted" style="margin: 0 0 10px; font-size: 14px">One piece per slot, worn on both roads. Bosses leave theirs behind; the blacksmith sells only what he can hammer out himself. Armour is never reinforced.</p>
+    <div class="armour-grid">
+      {% for a in armour %}
+      <div class="weapon {{ 'equipped' if a.worn }} {{ 'unowned' if not a.owned }}">
+        <img src="{{ asset('sprites/' + a.spec.sprite) }}" alt="" width="72" height="72">
+        <div class="weapon-body">
+          <div class="label">{{ a.slot }}</div>
+          <div><strong>{{ a.spec.name }}</strong>{% if a.worn %} <span class="chip new">Worn</span>{% endif %}</div>
+          <div class="muted" style="font-size: 13px">{{ a.spec.blurb }}</div>
+          <div class="skill">{{ a.effect }}</div>
+          <div class="weapon-actions">
+            {% if a.worn %}
+              <form method="post" action="/blacksmith/armour/take-off" hx-post="/blacksmith/armour/take-off" hx-target="#forge" hx-swap="outerHTML"><input type="hidden" name="slot" value="{{ a.spec.slot.value }}"><button class="btn" type="submit">Take off</button></form>
+            {% elif a.owned %}
+              <form method="post" action="/blacksmith/armour/wear" hx-post="/blacksmith/armour/wear" hx-target="#forge" hx-swap="outerHTML"><input type="hidden" name="armour" value="{{ a.spec.id }}"><button class="btn ember" type="submit">Wear</button></form>
+            {% elif a.spec.price %}
+              <form method="post" action="/blacksmith/armour/buy" hx-post="/blacksmith/armour/buy" hx-target="#forge" hx-swap="outerHTML"><input type="hidden" name="armour" value="{{ a.spec.id }}"><button class="btn {{ 'ember' if state.souls >= a.spec.price }}" type="submit" {{ 'disabled' if state.souls < a.spec.price }}>Buy · {{ "{:,}".format(a.spec.price) }} souls</button></form>
+            {% else %}<span class="muted">{{ a.source }}</span>{% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <h2 id="rings" class="forge-title">Rings and items</h2>
+  <section class="panel" aria-label="Rings and items">
+    <div class="weapon unowned">
+      <img src="{{ asset('sprites/item_ring.png') }}" alt="" width="48" height="48">
+      <div class="weapon-body">
+        <div><strong>Not yet</strong></div>
+        <div class="muted" style="font-size: 13px">"Rings, embers, tomes. Bring me the materials and I'll have them on this bench." Rings are worn, not shown; they arrive with the inventory.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="finds" class="panel" aria-label="Recent titanite">
     <h2 class="label">Recent finds</h2>
     {% if recent %}
     <table>{% for d in recent %}<tr><td>{{ d.count }} × {{ d.name }} <span class="muted">· {{ d.source }}</span></td><td class="muted">{{ d.when }}</td></tr>{% endfor %}</table>

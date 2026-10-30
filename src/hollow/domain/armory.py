@@ -1,4 +1,4 @@
-"""Weapons, titanite and the blacksmith.
+"""Weapons, armour, titanite and the blacksmith.
 
 From the plan:
 - Each job has its own weapon line. A Ronin weapon only deals damage in Japanese fights,
@@ -10,6 +10,9 @@ From the plan:
   extra level adds half the damage, and every boss still needs 60% of its base hits.
 - Titanite drops from lessons (rolled when a run ends, see MaterialDropped), bosses,
   merged pull requests (a Chunk each, a Slab for the very first) and every 100 new cards.
+- Armour is worn on the one body, so it counts on both roads: a head, a chest, arms and legs
+  piece, one per slot. Most pieces drop from bosses, one is sold by the blacksmith. Each has
+  one effect that the game rules apply; armour is never reinforced.
 """
 
 import math
@@ -22,9 +25,13 @@ from uuid import UUID
 
 from hollow.domain.activities import ActivityKind, Track
 from hollow.domain.events import (
+    ArmourBought,
+    ArmourEquipped,
+    ArmourRemoved,
     Event,
     Material,
     MaterialDropped,
+    Slot,
     StudyLogged,
     WeaponBought,
     WeaponEquipped,
@@ -130,12 +137,78 @@ BOSS_MATERIALS = {
     "data-depths-boss": ((Material.LARGE_SHARD, 3), (Material.CHUNK, 2)),
 }
 
+
+class Effect(StrEnum):
+    VITALITY = "vitality"
+    BULWARK = "bulwark"
+    FLASK = "flask"
+    PROSPECTOR = "prospector"
+
+
+VITALITY_HP = 20
+BULWARK_HP = 5
+FLASK_EXTRA = 1
+PROSPECTOR_CHANCE = 0.15
+EFFECTS = {
+    Effect.VITALITY: f"+{VITALITY_HP} max HP in boss fights",
+    Effect.BULWARK: f"Mistakes in boss fights cost {BULWARK_HP} HP less",
+    Effect.FLASK: f"+{FLASK_EXTRA} Estus flask in every boss fight",
+    Effect.PROSPECTOR: f"Good lessons drop titanite {round(PROSPECTOR_CHANCE * 100)}% more often",
+}
+SLOT_NAMES = {Slot.HEAD: "Head", Slot.CHEST: "Chest", Slot.ARMS: "Arms", Slot.LEGS: "Legs"}
+
+
+@dataclass(frozen=True)
+class ArmourSpec:
+    id: str
+    name: str
+    slot: Slot
+    effect: Effect
+    blurb: str
+    price: int = 0
+    """Souls at the blacksmith; 0 for boss drops."""
+
+    @property
+    def sprite(self) -> str:
+        return f"armour_{self.id}.png"
+
+
+ARMOUR: dict[str, ArmourSpec] = {
+    a.id: a
+    for a in (
+        ArmourSpec("wanderer-hood", "Wanderer's Iron Hood", Slot.HEAD, Effect.VITALITY,
+                   "A dented iron cap under a ragged hood. It has turned worse blows than yours.",
+                   price=2000),
+        ArmourSpec("warden-pauldrons", "Warden's Bronze Pauldrons", Slot.CHEST, Effect.BULWARK,
+                   "Cut from the て-form Warden's shoulders. Green with age, and still too heavy."),
+        ArmourSpec("golem-gauntlets", "Golem's Riveted Gauntlets", Slot.ARMS, Effect.FLASK,
+                   "Iron plates riveted to the Strict Golem's forearms. They never drop a flask."),
+        ArmourSpec("wyrm-greaves", "Wyrm-scale Greaves", Slot.LEGS, Effect.PROSPECTOR,
+                   "Scales shed by the Lock Wyrm. Whoever wears them walks toward titanite."),
+)
+}  # fmt: skip
+BOSS_ARMOUR = {
+    "te-warden": "warden-pauldrons",
+    "forge-boss": "golem-gauntlets",
+    "data-depths-boss": "wyrm-greaves",
+}
+
 MATERIAL_NAMES = {
     Material.SHARD: "Titanite Shard",
     Material.LARGE_SHARD: "Large Titanite Shard",
     Material.CHUNK: "Titanite Chunk",
     Material.SLAB: "Titanite Slab",
 }
+
+
+def boss_loot(boss_id: str) -> list[str]:
+    """What a boss leaves the first time it falls, in words: its weapon, its armour, titanite."""
+    loot = [WEAPONS[BOSS_WEAPONS[boss_id]].name] if boss_id in BOSS_WEAPONS else []
+    if boss_id in BOSS_ARMOUR:
+        loot.append(ARMOUR[BOSS_ARMOUR[boss_id]].name)
+    for material, count in BOSS_MATERIALS.get(boss_id, ()):
+        loot.append(f"{count} {MATERIAL_NAMES[material]}{'s' if count != 1 else ''}")
+    return loot
 
 
 def upgrade_cost(to_level: int) -> tuple[int, Material, int]:
@@ -163,6 +236,31 @@ class Armory:
     materials: dict[Material, int] = field(default_factory=lambda: dict.fromkeys(Material, 0))
     drops: list[Drop] = field(default_factory=list)
     equips: list[tuple[datetime, str]] = field(default_factory=list)
+    armour: set[str] = field(default_factory=set)
+    """Owned armour."""
+    worn: dict[Slot, str] = field(default_factory=dict)
+
+    def owns_armour(self, armour_id: str) -> bool:
+        return armour_id in self.armour
+
+    def wears(self, effect: Effect) -> bool:
+        return any(ARMOUR[a].effect is effect for a in self.worn.values())
+
+    @property
+    def max_hp_bonus(self) -> int:
+        return VITALITY_HP if self.wears(Effect.VITALITY) else 0
+
+    @property
+    def mistake_reduction(self) -> int:
+        return BULWARK_HP if self.wears(Effect.BULWARK) else 0
+
+    @property
+    def extra_estus(self) -> int:
+        return FLASK_EXTRA if self.wears(Effect.FLASK) else 0
+
+    @property
+    def drop_bonus(self) -> float:
+        return PROSPECTOR_CHANCE if self.wears(Effect.PROSPECTOR) else 0.0
 
     def owns(self, weapon_id: str) -> bool:
         return weapon_id in self.levels
@@ -191,6 +289,8 @@ def build(events: Iterable[Event], defeated: dict[str, datetime]) -> Armory:
     for boss_id, at in defeated.items():
         if boss_id in BOSS_WEAPONS:
             armory.levels.setdefault(BOSS_WEAPONS[boss_id], 0)
+        if boss_id in BOSS_ARMOUR:
+            armory.armour.add(BOSS_ARMOUR[boss_id])
         for material, count in BOSS_MATERIALS.get(boss_id, ()):
             armory.drops.append(Drop(at, material, count, f"boss:{boss_id}"))
 
@@ -220,6 +320,12 @@ def build(events: Iterable[Event], defeated: dict[str, datetime]) -> Armory:
             wid = weapon_id(event.weapon_id)
             armory.equipped[WEAPONS[wid].track] = wid
             armory.equips.append((event.occurred_at, wid))
+        elif isinstance(event, ArmourBought) and event.armour_id in ARMOUR:
+            armory.armour.add(event.armour_id)
+        elif isinstance(event, ArmourEquipped) and armory.owns_armour(event.armour_id):
+            armory.worn[ARMOUR[event.armour_id].slot] = event.armour_id
+        elif isinstance(event, ArmourRemoved):
+            armory.worn.pop(event.slot, None)
     for drop in armory.drops:
         armory.materials[drop.material] += drop.count
     armory.drops.sort(key=lambda d: d.at)
@@ -240,13 +346,22 @@ LARGE_FROM_STEP = 2
 
 
 def lesson_drop(
-    refresher: bool, practice: bool, correct: int, total: int, step: int, dry: int, roll: float
+    refresher: bool,
+    practice: bool,
+    correct: int,
+    total: int,
+    step: int,
+    dry: int,
+    roll: float,
+    bonus: float = 0.0,
 ) -> Material | None:
     """What a finished lesson drops. `step` is the refresher interval before this run,
-    `dry` the good runs since the last lesson drop, `roll` a random number in [0, 1)."""
+    `dry` the good runs since the last lesson drop, `roll` a random number in [0, 1),
+    `bonus` extra chance from armour."""
     if practice or correct < GOOD * total:
         return None
-    chance = 1.0 if dry >= DRY_LIMIT else DROP_CHANCE[(refresher, correct == total)]
+    base = DROP_CHANCE[(refresher, correct == total)]
+    chance = 1.0 if dry >= DRY_LIMIT else min(1.0, base + bonus)
     if roll >= chance:
         return None
     return Material.LARGE_SHARD if refresher and step >= LARGE_FROM_STEP else Material.SHARD

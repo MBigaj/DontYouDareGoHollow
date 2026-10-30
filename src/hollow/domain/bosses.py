@@ -337,6 +337,8 @@ class Attempt:
     outcome: Outcome = Outcome.ACTIVE
     beat: Beat = Beat.START
     last_correct: bool | None = None
+    flasks: int = ESTUS_FLASKS
+    """Estus flasks the attempt began with (armour can add one)."""
 
     @property
     def can_drink(self) -> bool:
@@ -417,8 +419,9 @@ def start(record: BossRecord, event: FightStarted, day: date) -> Attempt:
         max_hp=event.max_hp,
         mistake_cost=event.mistake_cost,
         damage=event.damage,
-        estus=ESTUS_FLASKS,
+        estus=event.estus,
         wound=wound,
+        flasks=event.estus,
     )
 
 

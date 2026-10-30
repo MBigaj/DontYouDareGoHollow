@@ -45,11 +45,15 @@ from hollow.domain.architect import (
 from hollow.domain.architect import REGION_BY_ID as ARCH_REGION_BY_ID
 from hollow.domain.architect import REGIONS as ARCH_REGIONS
 from hollow.domain.armory import (
-    BOSS_MATERIALS,
+    ARMOUR,
+    BOSS_ARMOUR,
     BOSS_WEAPONS,
+    EFFECTS,
     MATERIAL_NAMES,
     SKILLS,
+    SLOT_NAMES,
     WEAPONS,
+    boss_loot,
     upgrade_cost,
 )
 from hollow.domain.atlas import (
@@ -74,7 +78,7 @@ from hollow.domain.bosses import (
     architect_foe,
 )
 from hollow.domain.conjugation import Ending, Verb
-from hollow.domain.events import AgentResult, Material
+from hollow.domain.events import AgentResult, Material, Slot
 from hollow.domain.lessons import LESSONS, LessonProgress, Run, grade
 from hollow.domain.progression import STATS, Stat
 from hollow.domain.world import EFFIGIES_PER_WEEK, MAX_HOLLOWING, WorldState
@@ -157,6 +161,8 @@ def sounds() -> dict[str, str]:
 
 
 WORN_WEAPONS = {"golem-fist"}
+HERO_SLOTS = (Slot.LEGS, Slot.CHEST, Slot.ARMS, Slot.HEAD)
+"""The order worn armour is stacked on the hero: the hood's brim over the pauldrons."""
 """Weapons worn rather than held: the hero's fingers are not drawn over them."""
 
 RUN_LABELS = {Run.FIRST: "New lesson", Run.REFRESHER: "Refresher", Run.PRACTICE: "Practice"}
@@ -277,15 +283,22 @@ def create_app(
         }
 
     def heroes(state: WorldState) -> dict[str, dict[str, Any]]:
-        """What the hero holds on each road: the weapon equipped for it."""
+        """The hero on each road, as the layers to stack: his body, the road's accent, the armour
+        he wears (legs, chest, arms, head), the weapon equipped for that road, and his fingers
+        (or a gauntlet's) closed over its handle."""
+        worn = [state.armory.worn[s] for s in HERO_SLOTS if s in state.armory.worn]
         kits = {}
         for track in (Track.RONIN, Track.ARCHITECT):
             weapon, _ = state.armory.weapon(track)
-            kits[track.value] = {
-                "weapon": weapon.id,
-                "name": weapon.name,
-                "hand": weapon.id not in WORN_WEAPONS,
-            }
+            layers = ["knight_front.png"]
+            if track is Track.ARCHITECT:
+                layers.append("accent_architect.png")
+            layers += [f"worn_{a}.png" for a in worn]
+            layers.append(f"held_{weapon.id}.png")
+            if weapon.id not in WORN_WEAPONS:  # an arms piece closes its own fist over it
+                arms = state.armory.worn.get(Slot.ARMS)
+                layers.append(f"worn_{arms}_fist.png" if arms else "hero_hand.png")
+            kits[track.value] = {"weapon": weapon.id, "name": weapon.name, "layers": layers}
         return kits
 
     def equipment(state: WorldState) -> list[dict[str, Any]]:
@@ -302,6 +315,20 @@ def create_app(
                     "size": 72,
                     "item": f"{weapon.name} +{level}",
                     "note": note + (f" {SKILLS[weapon.skill]}." if weapon.skill else ""),
+                }
+            )
+        for slot in Slot:
+            worn = state.armory.worn.get(slot)
+            piece = ARMOUR[worn] if worn else next(a for a in ARMOUR.values() if a.slot is slot)
+            slots.append(
+                {
+                    "name": SLOT_NAMES[slot],
+                    "sprite": piece.sprite,
+                    "size": 72,
+                    "item": piece.name if worn else None,
+                    "note": EFFECTS[piece.effect] + "."
+                    if worn
+                    else "Nothing worn. Armour is put on at the blacksmith.",
                 }
             )
         mats = state.armory.materials
@@ -1069,11 +1096,7 @@ def create_app(
         )
 
     def boss_drops(boss_id: str) -> str:
-        parts = [WEAPONS[BOSS_WEAPONS[boss_id]].name] if boss_id in BOSS_WEAPONS else []
-        for material, count in BOSS_MATERIALS.get(boss_id, ()):
-            plural = "s" if count != 1 else ""
-            parts.append(f"{count} {MATERIAL_NAMES[material]}{plural}")
-        return ", ".join(parts)
+        return ", ".join(boss_loot(boss_id))
 
     def weapon_line(view: FightView) -> str:
         weapon, level = view.state.armory.weapon(view.boss.track)
@@ -1224,6 +1247,19 @@ def create_app(
             {"material": m, "name": MATERIAL_NAMES[m], "levels": lv, "source": src}
             for m, lv, src in MATERIAL_INFO
         ]
+        armour = []
+        for piece in ARMOUR.values():
+            source = next((BOSSES[b].name for b, a in BOSS_ARMOUR.items() if a == piece.id), "")
+            armour.append(
+                {
+                    "spec": piece,
+                    "slot": SLOT_NAMES[piece.slot],
+                    "effect": EFFECTS[piece.effect],
+                    "owned": arm.owns_armour(piece.id),
+                    "worn": arm.worn.get(piece.slot) == piece.id,
+                    "source": f"Dropped by {source}." if source else "",
+                }
+            )
         name = "partials/_forge.html" if request.headers.get("HX-Request") else "blacksmith.html"
         return templates.TemplateResponse(
             request,
@@ -1232,6 +1268,7 @@ def create_app(
                 state,
                 page="blacksmith",
                 tracks=tracks,
+                armour=armour,
                 recent=recent,
                 materials=materials,
                 flash=flash,
@@ -1272,6 +1309,36 @@ def create_app(
         if action not in ("buy", "upgrade", "equip"):
             raise HTTPException(404, "The blacksmith does not do that.")
         return forge_action(request, action, weapon)
+
+    @app.post("/blacksmith/armour/{action}")
+    def blacksmith_armour(
+        request: Request,
+        action: str,
+        armour: Annotated[str, Form()] = "",
+        slot: Annotated[str, Form()] = "",
+    ) -> Response:
+        try:
+            if action == "buy":
+                state = smith.buy_armour(armour)
+                flash, cue = f"Bought the {ARMOUR[armour].name}.", "coins"
+            elif action == "wear":
+                state = smith.wear(armour)
+                flash, cue = f"You put on the {ARMOUR[armour].name}.", "equip"
+            elif action == "take-off":
+                worn = smith.state().armory.worn.get(Slot(slot)) if slot in Slot else None
+                if worn is None:
+                    raise BlacksmithError("Nothing is worn there.")
+                state = smith.take_off(Slot(slot))
+                flash, cue = f"You took off the {ARMOUR[worn].name}.", "equip"
+            else:
+                raise HTTPException(404, "The blacksmith does not do that.")
+        except BlacksmithError as error:
+            if not request.headers.get("HX-Request"):
+                return RedirectResponse("/blacksmith#armour", status_code=status.HTTP_303_SEE_OTHER)
+            return forge_page(request, service.state(), warning=str(error))
+        if not request.headers.get("HX-Request"):
+            return RedirectResponse("/blacksmith#armour", status_code=status.HTTP_303_SEE_OTHER)
+        return forge_page(request, state, flash=flash, sfx=cue)
 
     @app.get("/journal", response_class=HTMLResponse)
     def journal(request: Request) -> Response:

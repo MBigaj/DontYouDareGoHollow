@@ -57,6 +57,12 @@ The blacksmith's anvil. `items.py` takes the background off the whole painting, 
 
 Dark fantasy game prop concept art, side view: an old blacksmith's anvil of dark pitted iron with a long horn pointing left, standing on a squat stump of charred oak bound with iron bands. A heavy smith's hammer rests on the anvil's face, and beside it a glowing orange-hot blade blank, with a small burst of bright sparks flying up and to the right. A few pale blue titanite shards lie on the stump's edge. Strong warm orange rim light from the forge on the right and cool light from the upper left, deep shadows, high contrast, clear readable silhouette, large simple shapes, painterly, inspired by Dark Souls and Elden Ring. The whole prop visible and centred, isolated on a plain flat light grey background, no floor, no shadow, no text.
 
+## armour.jpg (1536x1024)
+
+The four armour pieces, one per cell of a 2x2 grid, for `tools/sprites/armour.py` (`CELLS` for the icons, `WORN` for the parts set on the hero). Generated in the Figma file "ASHEN source art - armour", drafted on `gemini-3.1-flash-lite-image` and kept from `gpt-image-2.5-sunburst`.
+
+Dark fantasy game armour inventory concept sheet: four separate original armour pieces arranged in a clean grid of two columns and two rows, evenly spaced, each piece centred in its own cell, none touching or overlapping, each shown whole. Top left: a wanderer's iron hood, a dented dark iron skullcap with a riveted brow band, worn under a ragged grey cloth hood with frayed edges. Top right: a pair of massive bronze pauldrons joined by a leather strap, layered rounded bronze plates green with verdigris, rivets and a small embossed sun disc. Bottom left: a pair of riveted dark iron gauntlets with stone plates on the forearms and a faint glowing cyan seam at the wrist. Bottom right: a pair of greaves made of overlapping dark iridescent wyrm scales, grey blue and steel, bound with old leather straps and a small iron padlock charm. Strong warm rim light from the upper left, deep shadows, high contrast, clear readable silhouettes, large simple shapes, painterly, inspired by Dark Souls and Elden Ring item icons, on a plain flat light grey background, no floor, no shadow, no text, no labels.
+
 ## The Architect road
 
 Same rules, colder: night blue, cold steel, soul cyan and abyss violet, Dark Souls leaning. `tools/sprites/architect.py` runs these darker than the Ronin sources (gamma above 1), so night stays night.

@@ -126,6 +126,8 @@ class FightStarted:
     """Your Vigor and Endurance when the attempt began, so levelling later never rewrites it."""
     damage: int = 10
     """Your weapon's damage against this boss when the attempt began."""
+    estus: int = 2
+    """Estus flasks for the attempt, set by your armour when it began (2 before armour existed)."""
     id: UUID = field(default_factory=uuid4)
 
     def __post_init__(self) -> None:
@@ -202,6 +204,39 @@ class WeaponEquipped:
     id: UUID = field(default_factory=uuid4)
 
 
+class Slot(StrEnum):
+    """Where a piece of armour is worn. Each slot holds one piece."""
+
+    HEAD = "head"
+    CHEST = "chest"
+    ARMS = "arms"
+    LEGS = "legs"
+
+
+@dataclass(frozen=True)
+class ArmourBought:
+    occurred_at: datetime
+    armour_id: str
+    cost: int
+    id: UUID = field(default_factory=uuid4)
+
+
+@dataclass(frozen=True)
+class ArmourEquipped:
+    """A piece put on; it replaces whatever was worn in its slot."""
+
+    occurred_at: datetime
+    armour_id: str
+    id: UUID = field(default_factory=uuid4)
+
+
+@dataclass(frozen=True)
+class ArmourRemoved:
+    occurred_at: datetime
+    slot: Slot
+    id: UUID = field(default_factory=uuid4)
+
+
 @dataclass(frozen=True)
 class AgentResult:
     """What an agent (Claude, in a session) returned, after the app validated it.
@@ -233,5 +268,8 @@ Event = (
     | WeaponBought
     | WeaponUpgraded
     | WeaponEquipped
+    | ArmourBought
+    | ArmourEquipped
+    | ArmourRemoved
     | AgentResult
 )

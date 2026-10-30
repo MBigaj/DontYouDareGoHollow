@@ -361,6 +361,13 @@ td:last-child { text-align: right; color: var(--ember-hi); }
 .weapon-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
 .weapon-actions form { margin: 0; }
 .skill { font-size: 13px; color: var(--gold); }
+.forge-nav { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 10px 14px; position: sticky; top: 0; z-index: 2; }
+.forge-nav a { color: var(--gold); text-decoration: none; font-weight: 700; letter-spacing: .04em; }
+.forge-nav a:hover, .forge-nav a:focus-visible { color: var(--ember); text-decoration: underline; }
+.forge-title { margin: 8px 0 -4px; font-size: 20px; letter-spacing: .06em; text-transform: uppercase; color: var(--gold); scroll-margin-top: 64px; }
+#finds { scroll-margin-top: 64px; }
+.armour-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 720px) { .armour-grid { grid-template-columns: minmax(0, 1fr); } .forge-nav { position: static; } .forge-title, #finds { scroll-margin-top: 8px; } }
 
 /* ---- agents ---- */
 .quests { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }

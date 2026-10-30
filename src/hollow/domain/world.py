@@ -21,10 +21,11 @@ from hollow.domain.architect import LESSON_PREFIX, ArchitectState
 from hollow.domain.architect import track as track_architect
 from hollow.domain.armory import SIPHON_PERCENT, WEAPONS, Armory, Skill
 from hollow.domain.armory import build as build_armory
-from hollow.domain.bosses import BossRecord
+from hollow.domain.bosses import ESTUS_FLASKS, BossRecord
 from hollow.domain.bosses import track as track_bosses
 from hollow.domain.calendar import GameCalendar
 from hollow.domain.events import (
+    ArmourBought,
     Event,
     MessageLeft,
     StatLevelled,
@@ -47,6 +48,9 @@ from hollow.domain.quests import QuestStatus, evaluate, issued, verdicts
 
 MAX_HOLLOWING = 5
 EFFIGIES_PER_WEEK = 2
+
+
+Purchase = StatLevelled | WeaponBought | WeaponUpgraded | ArmourBought
 
 
 @dataclass(frozen=True)
@@ -126,11 +130,18 @@ class WorldState:
 
     @property
     def max_hp(self) -> int:
-        return max_hp(self.stats[Stat.VIGOR])
+        """Vigor, plus armour."""
+        return max_hp(self.stats[Stat.VIGOR]) + self.armory.max_hp_bonus
 
     @property
     def mistake_cost(self) -> int:
-        return mistake_cost(self.stats[Stat.ENDURANCE])
+        """Endurance, less armour; never below the floor."""
+        return mistake_cost(self.stats[Stat.ENDURANCE], self.armory.mistake_reduction)
+
+    @property
+    def estus(self) -> int:
+        """Estus flasks a new boss attempt starts with."""
+        return ESTUS_FLASKS + self.armory.extra_estus
 
     @property
     def status(self) -> str:
@@ -155,9 +166,7 @@ def replay(
     souls_by_day: dict[date, int] = defaultdict(int)
     today_souls: dict[ActivityKind, int] = defaultdict(int)
     lessons_cleared_by_day: dict[date, int] = defaultdict(int)
-    purchases_by_day: dict[date, list[StatLevelled | WeaponBought | WeaponUpgraded]] = defaultdict(
-        list
-    )
+    purchases_by_day: dict[date, list[Purchase]] = defaultdict(list)
     xp: dict[Track, int] = dict.fromkeys(Track, 0)
     message: Message | None = None
     message_key: tuple[date, float] | None = None
@@ -172,7 +181,7 @@ def replay(
             xp[ACTIVITIES[event.kind].track] += souls_for(event.kind, event.quantity)
             if day == today:
                 today_souls[event.kind] += souls_for(event.kind, event.quantity)
-        elif isinstance(event, StatLevelled | WeaponBought | WeaponUpgraded):
+        elif isinstance(event, StatLevelled | WeaponBought | WeaponUpgraded | ArmourBought):
             purchases_by_day[day].append(event)
         elif isinstance(event, MessageLeft) and day < today:
             key = (day, event.occurred_at.timestamp())

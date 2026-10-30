@@ -4,14 +4,24 @@ The project's board. To pick up work:
 
 1. Choose one task from **Up next**, or from the **Backlog** if Mikołaj asks for it. Prefer the top of Up next.
 2. Create the next numbered branch. The last used number is in **Done**.
-3. In that branch, move the task to **In progress** with your branch name. When it is finished, move it to **Done** with a one-line summary.
+3. In that branch, move the task to **In progress** with your branch name and keep its entry current with every commit (done, next, decisions, open questions), so another agent can pick it up mid-branch. When it is finished, move it to **Done** with a one-line summary and update Up next and the Backlog. The full rule is in `CLAUDE.md` under Conventions.
 4. Keep tasks small enough for one branch. If a task turns out bigger, split it here and do the first part.
 
 The full design is the plan document, "DontYouDareGoHollow: A Souls-like Study Game", in Mikołaj's claude.ai docs. This board is the short version, kept true to the code.
 
 ## In progress
 
-_Nothing. The last branch is merged; take the next number._
+Template for an entry:
+
+```
+### <branch>
+- Done: ...
+- Next: ...
+- Decisions: ...
+- Open: ...
+```
+
+_Nothing. The last branch is ready for review; take the next number after it merges._
 
 ## Done
 
@@ -39,16 +49,16 @@ _Nothing. The last branch is merged; take the next number._
 | 20 | `20-equipment` | The hero carries what you equip: every weapon cut from one generated sheet (`weapons.py`) into a 72 px icon and a layer gripped in his fist, stacked on the home stage, the character page, the maps (the road you walk) and in fights (the boss's road); the Architect's hammers became the Pilgrim's and Surveyor's Shakujō (old ids read as the staffs) |
 | 21 | `21-item-art` | The last code-drawn art replaced: the item icons (estus, ember, lens, sign, ring, tome, soul) and a sprite per titanite grade cut from one generated sheet (`items.py`), a generated anvil for the blacksmith and a crescent hit slash; icons shown at their file size (48 px, the souls counter's soul at 28) |
 | 22 | `22-sound` | Sound effects: Kenney CC0 recordings layered with synthesis (`tools/sounds/sounds.py`) for the bonfire, souls, drops, fights (fog, strikes, blows, estus, phase, felled, death), the anvil, coins, equipping, levelling up, map footsteps and soft lesson ticks; cues sent by the server as `data-sfx`, played on HTMX swaps only; a ♪ mute toggle in the header |
+| 23 | `23-hero-armour` | Armour with real effects, one piece per slot drawn on the hero: Wanderer's Iron Hood (bought, +20 HP), Warden's Bronze Pauldrons (mistakes -5 HP), Golem's Riveted Gauntlets (+1 Estus), Wyrm-scale Greaves (+15 points lesson titanite); the blacksmith split into Weapons, Armour, Rings and items, Recent finds; the Architect road's cyan eye and scarf; `armour.py` cuts a generated sheet into icons and paints each piece onto the hero's own silhouette; the status rule for agents in `CLAUDE.md` |
 
 ## Up next
 
 In a sensible order. Each one fits a branch.
 
-1. **The hero's other equipment.** A road accent on the Architect road (a cyan eye or scarf), then rings and armour as more layers over `knight_front.png`, the way weapons are (`weapons.HERO_GRIP`). Ask Mikołaj what items he wants first; they come with the inventory in the backlog.
-2. **Warden phase 3.** A short conversation judged by the Sensei agent. It needs a saved "pending phase" state, an inbox task and a Sensei result shape for `boss:<id>`. `agents/README.md` lists it as not saved yet.
-3. **Ronin region 2, Undead Village.** Lessons for 〜ている, 〜た and the plain form, its region map and the Plain-Form Gargoyle (recommended weapon level +4). The lesson engine may need more `LessonSpec` kinds than て-form endings.
-4. **Lore for the Architect road.** `lore_targets()` in `application/agents.py` only knows the Ronin regions. Add the Architect regions, so the Lorekeeper can write region and boss lore for them.
-5. **Deploy.** Put the Docker image on one small host (DigitalOcean was the plan) with PostgreSQL and `HOLLOW_PASSWORD`. Anki sync keeps running from his PC with `hollow-sync-anki` on a schedule, which needs the API to accept pushed reviews or a remote database URL. That design decision is Mikołaj's: ask first.
+1. **Warden phase 3.** A short conversation judged by the Sensei agent. It needs a saved "pending phase" state, an inbox task and a Sensei result shape for `boss:<id>`. `agents/README.md` lists it as not saved yet.
+2. **Ronin region 2, Undead Village.** Lessons for 〜ている, 〜た and the plain form, its region map and the Plain-Form Gargoyle (recommended weapon level +4). The lesson engine may need more `LessonSpec` kinds than て-form endings.
+3. **Lore for the Architect road.** `lore_targets()` in `application/agents.py` only knows the Ronin regions. Add the Architect regions, so the Lorekeeper can write region and boss lore for them.
+4. **Deploy.** Put the Docker image on one small host (DigitalOcean was the plan) with PostgreSQL and `HOLLOW_PASSWORD`. Anki sync keeps running from his PC with `hollow-sync-anki` on a schedule, which needs the API to accept pushed reviews or a remote database URL. That design decision is Mikołaj's: ask first.
 
 ## Backlog
 
@@ -62,13 +72,17 @@ Grouped by area. Ask Mikołaj before starting anything marked *(decide)*.
 - **Weekly Trade-off Duels:** 20-minute ADRs (PostgreSQL vs MongoDB, Kafka vs RabbitMQ, microservices vs modular monolith, REST vs gRPC, sync vs async).
 - **Portfolio export:** each felled Lord becomes a case study for mbigaj.github.io (problem, diagram, ADR, 10x section).
 
+### Armour
+- **More pieces per slot** as bosses arrive: each new boss (Plain-Form Gargoyle, the Architect regions 3 to 8) can drop one, with its own effect. Positioning is already saved per slot (`FITS` in `tools/sprites/armour.py`): a new piece needs its painting, an `ARMOUR` entry and a `LOOKS` entry (icon cell and painter), as `CLAUDE.md` under Armour art lists.
+- **Armour lore:** `lore_targets()` in `application/agents.py` asks for `weapon:` and `material:` lore only. Add `armour:<id>` so the Lorekeeper writes for the pieces, and show it at the blacksmith like weapon lore.
+
 ### Ronin road
 - Regions 3 to 6 (Kanji Catacombs, Sen's Fortress, Anor Keigo, the Kiln) with their grammar and bosses; the Kiln lines up with JLPT N4.
 - **Furigana fading:** readings fade as the Ronin levels up.
 - **Free conversation with the Sensei:** practice only, nothing saved.
 
 ### Systems from the plan
-- **Items:** Ember (restores all hollowing), Furigana lens, Phantom sign (one hint from the Sensei or Tech Lead in a fight, losing the no-help bonus), Tomes, Rings. Their sprites exist; there is no inventory yet. Faith and Intelligence perks are described in `domain/progression.py` but mostly not wired.
+- **Items:** Ember (restores all hollowing), Furigana lens, Phantom sign (one hint from the Sensei or Tech Lead in a fight, losing the no-help bonus), Tomes, Rings. Their sprites exist; there is no inventory yet. Rings are worn but never drawn on the hero (Mikołaj, 30 Oct); the blacksmith's "Rings and items" section is waiting for them, and Intelligence 10 already promises a second ring slot. Faith and Intelligence perks are described in `domain/progression.py` but mostly not wired.
 - **Weapon infusions** at +5 and **weapon arts** at +10; more boss weapon skills.
 - **Skill decay and Revenants:** untouched regions dim on the map, and beaten bosses return for short rematches.
 - **Invasions:** surprise 3-minute quizzes on older material, opt in.

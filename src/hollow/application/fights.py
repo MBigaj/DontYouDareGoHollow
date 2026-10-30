@@ -114,6 +114,7 @@ class FightService:
                 view.state.max_hp,
                 view.state.mistake_cost,
                 self.damage(view.boss, view.state),
+                view.state.estus,
             )
         )
         return self.view(boss_id)

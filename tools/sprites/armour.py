@@ -6,12 +6,15 @@ per cell of a 2x2 grid: the hood, the pauldrons, the gauntlets and the greaves. 
 
 - armour_<id>.png: the icon, 36x36 at 2x (72 px on the page), the whole piece (a pair stays a
   pair, like a Souls inventory icon);
-- worn_<id>.png: the piece on the hero's canvas (77x120 at 2x). Each part of it (one pauldron,
-  one greave) is cut from the sheet, pixelated at its size beside the hero and set where it
-  sits on him (WORN). Layers only add pixels, so the hood is worn under the kasa: the layer
-  carries the hat's own pixels back over it and leaves a hole for his eye. The gauntlets turn
-  his hands to iron instead of covering them with a sticker, and bring their own fist
-  (worn_golem-gauntlets_fist.png) to close over the weapon's handle in place of hero_hand.png.
+- worn_<id>.png: the piece on the hero's canvas (77x120 at 2x). Pasting the painted pieces on
+  him never sat right (his pose is three-quarter, the sheet's pieces are front-on), so each is
+  painted onto his own silhouette instead: the regions below (in hero pixels) say where it
+  sits, his own shading is kept, and the piece's material comes from ASHEN ramps matched to
+  its painting, with its details in code (the hood's folds and frayed hem, the pauldrons'
+  lames, rivets and sun disc, the gauntlets' plates and cyan seam, the greaves' scales and
+  straps). Layers only add pixels, so the hood is worn under the kasa, framing his face, and
+  the gauntlets bring their own fist (worn_golem-gauntlets_fist.png) to close over the
+  weapon's handle in place of hero_hand.png.
 
 The page stacks knight_front.png, accent_architect.png (on the Architect road), the worn pieces
 (legs, chest, arms, head), the weapon and the fist (see partials/_hero.html). Run after
@@ -24,7 +27,6 @@ Usage:
 
 import sys
 import tempfile
-from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -34,8 +36,8 @@ HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent.parent / "src"))
 from generated import SRC, scaled  # noqa: E402
-from kit import IRON, Canvas, hx  # noqa: E402
-from weapons import HERO, HERO_GRIP, ICON, pixel  # noqa: E402
+from kit import ASH, IRON, LEATHER, Canvas, hx, shift  # noqa: E402
+from weapons import HERO, ICON, pixel  # noqa: E402
 
 from hollow.domain.armory import ARMOUR  # noqa: E402
 
@@ -48,48 +50,44 @@ CELLS: dict[str, tuple[int, int, int, int]] = {
 }
 
 
-@dataclass(frozen=True)
-class Part:
-    box: tuple[int, int, int, int]
-    """Where the part is on the sheet."""
-    width: int
-    """Its width beside the hero, in hero pixels."""
-    centre: int
-    """The column of the hero it is centred on."""
-    top: int
-    """The row of the hero its top lands on."""
-    keep: float = 1.0
-    """How much of it to keep from the top (a gauntlet's cuff without the hand)."""
-    turn: float = 0.0
+# Each material in ASHEN ramps (palettes/ashen.hex via kit.py), matched to its painting.
+CLOTH = ASH[2:8]
+BRONZE = [hx(h) for h in ("1c120e", "3a2a14", "5a4020", "7a5a24", "a07a34", "c99a48")]
+VERDIGRIS = [hx(h) for h in ("34462c", "52683e", "6e8a62")]
+WYRM = [hx(h) for h in ("101520", "1b2230", "2b3646", "3e4c5e", "566a7e", "7a8fa3", "a9bccb")]
+SHEEN = hx("563a7a")
+"""The abyss violet glint on the wyrm scales."""
 
-
-WORN: dict[str, tuple[Part, ...]] = {
-    # the hood under the kasa: its iron cap hidden by the brim, the cloth framing his face
-    "wanderer-hood": (Part((100, 0, 640, 470), 25, 35, 6),),
-    # one plate on each shoulder; the strap between them is hidden by the coat
-    "warden-pauldrons": (
-        Part((760, 0, 1040, 445), 13, 22, 19),
-        Part((1230, 0, 1510, 445), 13, 49, 16),
-    ),
-    # the cuffs on both forearms: the lowered weapon arm and the arm across the sash
-    "golem-gauntlets": (
-        Part((415, 468, 700, 1000), 9, 51, 42, keep=0.5),
-        Part((120, 468, 410, 1000), 10, 25, 40, keep=0.5, turn=-80),
-    ),
-    "wyrm-greaves": (
-        Part((885, 436, 1135, 1010), 11, 24, 92),
-        Part((1140, 436, 1380, 1010), 10, 54, 94),
-    ),
-}
-
-KASA_ROWS = 11
-"""The kasa fills the hero's rows down to this one."""
-EYE = (33, 14)
-HANDS = ((HERO_GRIP[0], HERO_GRIP[1] - 4, 4.2, 4.6), (24, 45, 3.5, 3.0))
-"""The fists the gauntlets cover: the weapon hand and the hand on the sash (x, y, rx, ry)."""
+# Where each piece sits on the hero, in hero pixels (77x120; see knight_front.png at 1x).
+EYE = (32, 14)
+"""His one ember eye, under the brim."""
+BRIM = 12
+"""The first row under the kasa's brim."""
+COWL = ((26, 12), (40, 12), (42, 16), (44, 22), (42, 26), (37, 24), (33, 26), (29, 24), (25, 26),
+        (22, 22), (24, 16))  # fmt: skip
+FACE = ((29, 11), (38, 11), (38, 15), (37, 20), (30, 20), (29, 15))
+"""The opening of the hood: his face in shadow, with the eye."""
+PAULDRONS = (
+    ((20, 25), (23, 21), (28, 19), (32, 21), (31, 26), (27, 30), (21, 32), (19, 29)),
+    ((40, 21), (44, 18), (49, 19), (52, 23), (51, 28), (46, 31), (41, 28)),
+)
+FOREARMS = (
+    # the weapon arm, lowered: forearm, wrist seam row, fist
+    ((46, 37), (52, 37), (54, 46), (54, 59), (47, 59), (45, 46)),
+    # the arm across the sash: forearm and hand
+    ((19, 40), (34, 39), (35, 46), (19, 47)),
+)
+WRISTS = ((47, 52, 46, 46), (26, 26, 42, 44))
+"""The cyan seam on each gauntlet (x0, x1, y0, y1)."""
+SHINS = (
+    ((23, 93), (32, 93), (33, 114), (14, 114), (14, 106), (23, 106)),
+    ((47, 94), (58, 94), (60, 119), (46, 119)),
+)
+STRAPS = ((99, 104), (100, 105))
+"""Rows of the leather straps on each greave."""
 
 SOUL = [hx(h) for h in ("101a2e", "1e3150", "34507a", "5a7fae", "4fb4d0", "9ee2ee", "e6fbff")]
-"""Night blue into soul cyan (palettes/ashen.hex), for the Architect accent."""
+"""Night blue into soul cyan (palettes/ashen.hex), for the Architect accent and the seams."""
 SCARF = ((38, 12), (73, 12), (73, 45), (38, 45))
 """The box the trailing scarf lies in, on the hero."""
 
@@ -121,32 +119,119 @@ def ellipse(cx: float, cy: float, rx: float, ry: float) -> np.ndarray:
     return ((xx - cx) / rx) ** 2 + ((yy - cy) / ry) ** 2 <= 1
 
 
-def worn(armour_id: str, sheet: Image.Image, mask: np.ndarray, hero: np.ndarray,
-         tmp: Path) -> Image.Image:  # fmt: skip
-    layer = Image.new("RGBA", HERO, (0, 0, 0, 0))
-    for n, part in enumerate(WORN[armour_id]):
-        img = cut(sheet, mask, part.box)
-        if part.keep < 1:
-            img = img.crop((0, 0, img.width, round(img.height * part.keep)))
-        if part.turn:
-            img = img.rotate(part.turn, Image.BICUBIC, expand=True)
-        h = round(img.height * part.width / img.width)
-        sprite = pixel(img, (part.width + 4, h + 4), tmp, f"{armour_id}-{n}", "--preset", "character")
-        layer.alpha_composite(sprite, (part.centre - sprite.width // 2, part.top - 2))
-    a = np.array(layer)
-    opaque = hero[..., 3] > 0
-    if armour_id == "wanderer-hood":
-        yy, xx = np.mgrid[0 : HERO[1], 0 : HERO[0]]
-        kasa = (yy <= KASA_ROWS) & opaque
-        a[kasa] = hero[kasa]
-        eye = ellipse(*EYE, 1.5, 1.5)
-        a[eye] = 0  # his eye shows through (ember, or cyan on the Architect road)
-    if armour_id == "golem-gauntlets":
-        for hand in HANDS:
-            near = ellipse(*hand) & opaque
-            a[near] = hero[near]
-            recolour(a, near, IRON, 20, 200)
-    return Image.fromarray(a)
+def scarf_of(hero: np.ndarray) -> np.ndarray:
+    """The scarf's pale warm cloth, which lies over everything at the neck and shoulder."""
+    r, b = hero[..., 0].astype(int), hero[..., 2].astype(int)
+    return Canvas(*HERO).poly(SCARF) & (r > b + 12) & (lum(hero) > 95) & (hero[..., 3] > 0)
+
+
+def form(c: Canvas, hero: np.ndarray, mask: np.ndarray, weight: float) -> np.ndarray:
+    """Lightness to paint `mask` with, 0..1: his own shading, mixed with the piece's own
+    rounded form lit from the upper left (`weight` of it)."""
+    own = np.clip((lum(hero) - 25) / 150, 0, 1)
+    tmp = Canvas(*HERO)
+    tmp.shade(mask, [np.array([v, v, v], np.uint8) for v in range(0, 256, 16)], dither=0)
+    hgt = tmp.a[..., 0] / 255.0
+    return np.where(hero[..., 3] > 0, own * (1 - weight) + hgt * weight, hgt)
+
+
+def hood(c: Canvas, hero: np.ndarray) -> None:
+    """A ragged cloth hood under the kasa, framing his face and falling to his shoulders, its
+    iron cap's brow band just showing under the brim."""
+    cowl = c.poly(COWL) & ~c.poly(FACE) & ~scarf_of(hero)
+    rng = np.random.default_rng(3)
+    for x in range(20, 47):  # a frayed hem: every other thread ends a little higher
+        if x % 2:
+            cowl[23 + int(rng.integers(0, 4)) :, x] = False
+    val = form(c, hero, cowl, 0.7)
+    val[(c.xx % 3 == 0) & (c.yy > 17)] *= 0.75  # folds
+    c.levels(cowl, val, CLOTH, dither=0.4)
+    band = c.rect((28, BRIM, 39, BRIM))
+    c.fill(band, IRON[2])
+    c.fill(band & (c.xx % 3 == 0), IRON[5])  # rivets
+
+
+def pauldrons(c: Canvas, hero: np.ndarray) -> None:
+    """Rounded bronze plates on both shoulders: three lames each, rivets along the rim, a sun
+    disc on the top plate, green with verdigris. The scarf still lies over the right one."""
+    for n, shape in enumerate(PAULDRONS):
+        plate = c.poly(shape) & ~scarf_of(hero)
+        c.shade(plate, BRONZE, light=(-0.6, -0.8), soft=2.0, lo=0.15, hi=0.85, dither=0.3)
+        ys = np.where(plate.any(1))[0]
+        top, bottom = int(ys.min()), int(ys.max())
+        for k in (1, 2):  # the lames: a dark lower edge, the next plate's lit rim below it
+            y = top + (bottom - top) * k // 3
+            c.fill(plate & (c.yy == y), BRONZE[0])
+            c.fill(plate & (c.yy == y + 1), BRONZE[4])
+        rng = np.random.default_rng(n)
+        patina = plate & (rng.random(plate.shape) < 0.2) & (c.yy > top + 1)
+        c.levels(patina, np.clip((lum(c.a) - 40) / 120, 0, 1), VERDIGRIS, dither=0)
+        xs = np.where(plate.any(0))[0]
+        cx, cy = int(xs.mean()), top + (bottom - top) // 3
+        c.fill(c.rect((cx - 1, cy - 1, cx, cy)) & plate, BRONZE[5])  # the sun disc
+        c.fill(c.rect((cx, cy, cx, cy)) & plate, BRONZE[3])
+        edge = plate & ~shift(plate, 0, 1)
+        c.fill(edge & (c.xx % 2 == n % 2), BRONZE[4])  # rivets along the lower rim
+
+
+def gauntlets(c: Canvas, hero: np.ndarray) -> None:
+    """Riveted iron over both forearms and hands, plate lines every few rows, a faint cyan
+    seam at the wrist. The iron follows his sleeves and hands, not the coat behind them."""
+    from scipy.ndimage import binary_closing
+
+    for shape, (x0, x1, y0, y1) in zip(FOREARMS, WRISTS, strict=True):
+        arm = binary_closing(c.poly(shape) & (hero[..., 3] > 0) & (lum(hero) > 38))
+        arm &= c.poly(shape) & (hero[..., 3] > 0)
+        val = form(c, hero, arm, 0.35)
+        c.levels(arm, val, IRON[1:7], dither=0.3)
+        lines = arm & (c.yy < y0) & (x0 != x1)
+        c.fill(lines & (c.yy % 4 == 1), IRON[1])  # plate lines on the lowered forearm
+        c.fill(lines & (c.yy % 4 == 2) & (c.xx % 3 == 0), IRON[6])  # rivets
+        seam = c.rect((x0, y0, x1, y1)) & arm
+        c.fill(seam, SOUL[3])
+        c.fill(seam & ((c.xx + c.yy) % 2 == 0), SOUL[4])
+
+
+def greaves(c: Canvas, hero: np.ndarray) -> None:
+    """Overlapping wyrm scales from knee to toe, two leather straps across each shin."""
+    for shape, straps in zip(SHINS, STRAPS, strict=True):
+        leg = c.poly(shape) & (hero[..., 3] > 0)
+        val = form(c, hero, leg, 0.4) * 0.82  # as dark as the coat they stand under
+        # scales: rows two pixels tall, every other row offset, each scale lit on top
+        row = c.yy // 2
+        tip = (c.yy % 2 == 1) & ((c.xx + (row % 2) * 2) % 4 == 0)
+        crown = (c.yy % 2 == 0) & ((c.xx + (row % 2) * 2) % 4 == 2)
+        val = np.where(tip, val * 0.45, np.where(crown, np.minimum(1, val + 0.3), val))
+        c.levels(leg, val, WYRM, dither=0.2)
+        c.fill(leg & crown & ((c.xx // 4 + row) % 3 == 0), SHEEN)  # an iridescent glint
+        leather = LEATHER[2:5]
+        for y in straps:
+            band = leg & (c.yy == y)
+            c.fill(band, leather[1])
+            c.fill(band & (c.xx % 3 == 0), leather[2])
+
+
+RAISED = {"wanderer-hood", "warden-pauldrons"}
+"""Pieces that stand out from his body, so their outline parts them from it too."""
+
+PAINTERS = {
+    "wanderer-hood": hood,
+    "warden-pauldrons": pauldrons,
+    "golem-gauntlets": gauntlets,
+    "wyrm-greaves": greaves,
+}
+
+
+def worn(armour_id: str, hero: np.ndarray) -> Image.Image:
+    """The piece painted onto the hero's own silhouette, in its own colours, then outlined
+    wherever it stands off his body."""
+    c = Canvas(*HERO)
+    PAINTERS[armour_id](c, hero)
+    piece = c.opaque()
+    c.outline(darken=0.25)
+    if armour_id not in RAISED:  # flush with his limbs: outlined only against the background
+        c.a[c.opaque() & ~piece & (hero[..., 3] > 0)] = 0
+    return c.img()
 
 
 def fist(hand_layer: Image.Image) -> Image.Image:
@@ -158,17 +243,14 @@ def fist(hand_layer: Image.Image) -> Image.Image:
 
 def accent(hero: np.ndarray) -> Image.Image:
     """The Architect road: his ember eye and his ash-white scarf turned soul cyan."""
-    c = Canvas(*HERO)
     a = hero.copy()
-    r, g, b = (a[..., i].astype(int) for i in range(3))
-    warm = (r > b + 12) & (lum(a) > 95)
-    scarf = c.poly(SCARF) & warm & (a[..., 3] > 0)
+    r = a[..., 0].astype(int)
+    scarf = scarf_of(hero)
     eye = ellipse(*EYE, 1.6, 1.6) & (r > 150) & (a[..., 3] > 0)
     recolour(a, scarf, SOUL[1:6], 90, 230)
     a[eye, :3] = SOUL[5]
     a[eye & (lum(hero) > 200), :3] = SOUL[6]
-    keep = scarf | eye
-    a[~keep] = 0
+    a[~(scarf | eye)] = 0
     return Image.fromarray(a)
 
 
@@ -185,7 +267,7 @@ def build(out: Path) -> None:
             icon = pixel(cut(sheet, mask, CELLS[armour_id]), (ICON, ICON), tmp,
                          f"{armour_id}-icon", "--preset", "item")  # fmt: skip
             scaled(icon, 2).save(out / f"armour_{armour_id}.png")
-            scaled(worn(armour_id, sheet, mask, hero, tmp), 2).save(out / f"worn_{armour_id}.png")
+            scaled(worn(armour_id, hero), 2).save(out / f"worn_{armour_id}.png")
     scaled(fist(Image.open(out / "hero_hand.png")), 2).save(out / "worn_golem-gauntlets_fist.png")
     scaled(accent(hero), 2).save(out / "accent_architect.png")
 

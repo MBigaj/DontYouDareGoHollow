@@ -36,6 +36,7 @@
       if (!still) await knight.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 110 }).finished;
       place(to);
       at = to;
+      if (window.hollowSound) window.hollowSound("step");
       if (!still) {
         await knight.animate(
           [

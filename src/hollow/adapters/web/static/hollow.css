@@ -26,7 +26,10 @@ a { color: var(--ember-hi); }
 a:hover { color: #ffe2bf; }
 
 .wrap { max-width: 960px; margin: 0 auto; padding: 20px 16px 48px; display: flex; flex-direction: column; gap: 16px; }
-.topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; position: relative; }
+/* The sync indicator floats under the nav: it is invisible between syncs and must not take room
+   in the row, or the nav wraps onto a second line. */
+#sync-status { position: absolute; right: 0; top: 100%; margin-top: 2px; }
 .title { font-size: 26px; font-weight: 700; letter-spacing: .02em; margin: 0; }
 .label { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
 
@@ -123,6 +126,9 @@ td:last-child { text-align: right; color: var(--ember-hi); }
 .nav a { color: var(--ink-2); text-decoration: none; font-weight: 600; padding: 4px 0; border-bottom: 3px solid transparent; }
 .nav a:hover { color: var(--ink); }
 .nav a[aria-current="page"] { color: var(--ember-hi); border-bottom-color: var(--ember); }
+.sound-toggle { background: none; border: 0; padding: 0 2px; cursor: pointer; font-family: inherit; font-size: 20px; font-weight: 600; line-height: 1; color: var(--ember-hi); }
+.sound-toggle:hover { color: var(--ink); }
+.sound-toggle[aria-pressed="false"] { color: var(--ink-3); text-decoration: line-through; }
 .charlink { display: flex; align-items: center; gap: 14px; color: var(--ink); text-decoration: none; }
 .charlink:hover { box-shadow: inset 0 0 0 3px var(--edge-light); }
 .charlink .go { margin-left: auto; font-size: 32px; color: var(--ember-hi); }

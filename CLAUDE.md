@@ -44,6 +44,8 @@ agents/            playbooks for the four agents (Quest Master, Sensei, Lorekeep
 tools/sprites/     the pixel art: ronin.py, architect.py, weapons.py and items.py (generated
                    sources in art/source/ through the ASHEN pipeline in pipeline/, shared steps
                    in generated.py; bonfire.py, waypoints.py, kit.py helpers)
+tools/sounds/      sounds.py: the sound effects (Kenney CC0 recordings in source/ layered with
+                   synthesis) as MP3s in static/sounds/
 migrations/        Alembic (only the events table)
 tests/             pytest; conftest has FakeClock, store and client fixtures
 ```
@@ -98,6 +100,10 @@ Both roads are generated art: a painting per sprite or scene (Figma AI, files "A
 Keep that split; the two maps must stay visibly distinct.
 
 The hero is layered: the `hero()` macro in `partials/_hero.html` stacks `knight_front.png`, `held_<weapon>.png` and `hero_hand.png` (his fingers over the handle). His pose is weapon-agnostic; every weapon is drawn so its grip lands on `weapons.HERO_GRIP`. Which weapon he holds comes from `heroes` in the template context: the road of the page (a fight, a map), else the `hollow_road` cookie. A new weapon needs an `ARSENAL` entry in `weapons.py` (its band on the sheet, grip, angle and length); `WORN_WEAPONS` in `app.py` lists the ones worn over the hand. The CSS theme for the Architect road is `.road-architect`. Scenes are prompted with each landmark's place in the frame, and the atlas points are then set on the landmarks. A place that is a painted building gets an `area` (a rough polygon in atlas units around it, containing its point): the map draws it as the click target, and `ronin.py` snaps it to the painting to make the hover glow and the fog veil. Rerun `ronin.py` after changing an area. Sprites are drawn at 2x the old density, so the files keep their sizes except the knight (154x240), the bonfire sheet (1152x180, plus `bonfire_unlit.png`), the icons (above) and the anvil (208x128). Generating costs Figma AI credits (the Starter plan has 500 a month, 150 a day), so draft compositions on a cheaper model and keep the expensive one for keepers. The shared style guide (`STYLE.md`) is in the claude.ai project "Studying - GAMIFIED".
+
+## Sound
+
+Sound is a JavaScript-only extra (`static/js/sound.js`). A handler names the sounds of what just happened with `sfx="..."` in the template context (`respond()`, `character_page()`, `forge_page()`), which the panel renders as a hidden `data-sfx` marker; templates that already know the outcome set `data-sfx` themselves (lesson verdicts and results, the fight's beat table in `_fight.html`). Markers present at page load are skipped, so only HTMX swaps make sound. `window.hollowSound(name)` plays one from other scripts (the map's footsteps). A new sound is a `SOUNDS` entry in `tools/sounds/sounds.py`; names ending `_<n>` are variants picked at random. `tests/test_sound.py` checks that every cue the code can send has its file. Keep lessons quiet: the ticks there have the lowest levels.
 
 ## Conventions (from Mikołaj, not negotiable)
 

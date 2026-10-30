@@ -31,7 +31,7 @@
   {% elif mode == 'feedback' %}
     {% set n = answers | length - 1 %}
     {% set q = run.questions[n] %}
-    <div class="verdict {{ 'ok' if correct else 'miss' }}" role="status">
+    <div class="verdict {{ 'ok' if correct else 'miss' }}" role="status" data-sfx="{{ 'right' if correct else 'wrong' }}">
       <div class="verdict-line">{{ 'Correct' if correct else 'Not quite' }}</div>
       <div class="ask-text small">{{ q.prompt | inline_md }}</div>
       <div><strong>{{ q.options[q.answer] | inline_md }}</strong></div>
@@ -44,7 +44,7 @@
     </form>
 
   {% else %}
-    <div class="result {{ 'ok' if outcome.passed else 'miss' }}">
+    <div class="result {{ 'ok' if outcome.passed else 'miss' }}" data-sfx="souls{{ ' drop' if drop }}">
       <div class="score">{{ outcome.correct }} / {{ outcome.total }}</div>
       <div class="verdict-line">{% if outcome.passed %}{{ 'Step cleared' if outcome.run.value == 'first' else ('Refresher cleared' if outcome.run.value == 'refresher' else 'Practice done') }}{% else %}Not cleared yet · clear at 80%{% endif %}</div>
       <div class="souls"><img src="{{ asset('sprites/item_soul_small.png') }}" alt="" width="28" height="28">+{{ outcome.souls }} souls <span class="muted">({{ run_labels[outcome.run] | lower }})</span></div>

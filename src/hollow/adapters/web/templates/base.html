@@ -9,6 +9,8 @@
   <link rel="stylesheet" href="{{ asset('hollow.css') }}">
   <link rel="icon" href="{{ asset('sprites/item_ember.png') }}">
   <script src="{{ asset('htmx.min.js') }}" defer></script>
+  <script type="application/json" id="sounds">{{ sounds() | tojson }}</script>
+  <script src="{{ asset('js/sound.js') }}" defer></script>
   <script>
     // After HTMX swaps a panel in, put the cursor where the new panel asks for it
     // (the answer box, or the Next button), so a whole lesson works from the keyboard.
@@ -28,6 +30,7 @@
         <a href="/lessons" {{ 'aria-current="page"' | safe if page == 'lessons' }}>Lessons{% if state.lessons_due %} <span class="badge">{{ state.lessons_due }}</span>{% endif %}</a>
         <a href="/character" {{ 'aria-current="page"' | safe if page == 'character' }}>Character</a>
         <span class="label">{{ state.today.strftime("%A %d %B") }}</span>
+        <button class="sound-toggle" type="button" data-sound-toggle aria-pressed="true" aria-label="Sound" title="Sound on" hidden>♪</button>
         {% if syncing %}<span id="sync-status" class="label htmx-indicator" role="status">Syncing…</span>{% endif %}
       </nav>
     </header>

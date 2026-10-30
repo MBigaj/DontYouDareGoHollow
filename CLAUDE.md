@@ -27,7 +27,7 @@ src/hollow/
     world.py       replay: souls, bloodstains, hollowing, streak, XP, lessons, bosses, armory...
     lessons.py     lesson runs, refreshers (1, 3, 7, 21, 60 days), souls per run
     bosses.py      Boss/Phase data (WARDEN, GOLEM, WYRM), questions, attempts, wounds, rewards
-    armory.py      weapons, titanite, upgrade costs, drops
+    armory.py      weapons, armour and its effects, titanite, upgrade costs, drops
     atlas.py       map coordinates: Ronin REGIONS/FIRELINK, Architect ARCH_POINTS/FORGE/DEPTHS
     architect.py   Architect road: REGIONS/TOPICS loaded from the curriculum, LORDS, progress
     curriculum.py  parser for the Markdown steps (pure: text in, values out)
@@ -41,9 +41,9 @@ src/hollow/
   cli.py           hollow-sync-anki, hollow-anki-check, hollow-sync-github,
                    hollow-agent-inbox, hollow-agent-submit
 agents/            playbooks for the four agents (Quest Master, Sensei, Lorekeeper, Tech Lead)
-tools/sprites/     the pixel art: ronin.py, architect.py, weapons.py and items.py (generated
-                   sources in art/source/ through the ASHEN pipeline in pipeline/, shared steps
-                   in generated.py; bonfire.py, waypoints.py, kit.py helpers)
+tools/sprites/     the pixel art: ronin.py, architect.py, weapons.py, items.py and armour.py
+                   (generated sources in art/source/ through the ASHEN pipeline in pipeline/,
+                   shared steps in generated.py; bonfire.py, waypoints.py, kit.py helpers)
 tools/sounds/      sounds.py: the sound effects (Kenney CC0 recordings in source/ layered with
                    synthesis) as MP3s in static/sounds/
 migrations/        Alembic (only the events table)
@@ -65,7 +65,8 @@ tests/             pytest; conftest has FakeClock, store and client fixtures
   - `intro`: the text at its fog gate.
   - `region`: for Architect bosses only. The boss waits until every step of that region is cleared.
 
-  `Kind.CHOICE` phases ask quiz questions from the listed steps. Drops are set in `armory.BOSS_WEAPONS` and `armory.BOSS_MATERIALS`.
+  `Kind.CHOICE` phases ask quiz questions from the listed steps. Drops are set in `armory.BOSS_WEAPONS`, `armory.BOSS_ARMOUR` and `armory.BOSS_MATERIALS`.
+- **Armour is data too.** `armory.ARMOUR` holds one piece per `Slot`, each with one `Effect` (`EFFECTS` words it). The armory says what is owned and worn and what the worn effects add up to (`max_hp_bonus`, `mistake_reduction`, `extra_estus`, `drop_bonus`); `WorldState.max_hp`, `mistake_cost` and `estus` apply them, and `FightStarted` records them so a fight never changes under you. A new effect needs a rule there and a test in `tests/test_armour.py`.
 - **Every form works without JavaScript.** HTMX swaps panels. Static files go through `asset()`, which fingerprints them so a changed sprite always loads.
 
 ## Writing Architect content
@@ -92,14 +93,14 @@ To make a new region playable:
 
 ## Art direction
 
-Both roads are generated art: a painting per sprite or scene (Figma AI, files "ASHEN source art" and "ASHEN source art - items"), kept in `tools/sprites/art/source/` with its prompt in `PROMPTS.md`, and turned into pixel art by `tools/sprites/ronin.py` and `tools/sprites/architect.py` through the ASHEN pipeline (`pipeline/pixelate.py`, palette `ashen.hex`; shared steps in `generated.py`). Hand cleanup in code restores what the pipeline loses, and anything with text (the て sigil), animation (the bonfire's flame), effects (the hit slash) or tiny size (waypoints) is drawn in code. The weapons come from one generated sheet cut apart by `tools/sprites/weapons.py` (run it after `ronin.py`), the items from another by `tools/sprites/items.py`, which also makes the anvil and the code-drawn hit slash. No old code-drawn art is left. Show icons at their file size (`item_*.png` are 48 px, `item_soul_small.png` 28 px, `weapon_*.png` 72 px): a non-integer scale smears the pixels. Each titanite grade has its own sprite, `item_<material>.png`.
+Both roads are generated art: a painting per sprite or scene (Figma AI, files "ASHEN source art", "ASHEN source art - items" and "ASHEN source art - armour" (key `F1cFNBgcoaeXrKaJZdJqmg`)), kept in `tools/sprites/art/source/` with its prompt in `PROMPTS.md`, and turned into pixel art by `tools/sprites/ronin.py` and `tools/sprites/architect.py` through the ASHEN pipeline (`pipeline/pixelate.py`, palette `ashen.hex`; shared steps in `generated.py`). Hand cleanup in code restores what the pipeline loses, and anything with text (the て sigil), animation (the bonfire's flame), effects (the hit slash) or tiny size (waypoints) is drawn in code. The weapons come from one generated sheet cut apart by `tools/sprites/weapons.py` (run it after `ronin.py`), the items from another by `tools/sprites/items.py`, which also makes the anvil and the code-drawn hit slash. No old code-drawn art is left. Show icons at their file size (`item_*.png` are 48 px, `item_soul_small.png` 28 px, `weapon_*.png` 72 px): a non-integer scale smears the pixels. Each titanite grade has its own sprite, `item_<material>.png`.
 
 - **Ronin road:** warm ember, bone and gold, golden dusk under an eclipsed sun (Elden Ring leaning).
 - **Architect road:** cool steel, night blue and soul cyan at night, with abyss violet for the Distributed Abyss (Dark Souls leaning). Its sources run darker through the pipeline (gamma above 1), its hover outlines are cyan and its fog veils dim rather than lighten.
 
 Keep that split; the two maps must stay visibly distinct.
 
-The hero is layered: the `hero()` macro in `partials/_hero.html` stacks `knight_front.png`, `held_<weapon>.png` and `hero_hand.png` (his fingers over the handle). His pose is weapon-agnostic; every weapon is drawn so its grip lands on `weapons.HERO_GRIP`. Which weapon he holds comes from `heroes` in the template context: the road of the page (a fight, a map), else the `hollow_road` cookie. A new weapon needs an `ARSENAL` entry in `weapons.py` (its band on the sheet, grip, angle and length); `WORN_WEAPONS` in `app.py` lists the ones worn over the hand. The CSS theme for the Architect road is `.road-architect`. Scenes are prompted with each landmark's place in the frame, and the atlas points are then set on the landmarks. A place that is a painted building gets an `area` (a rough polygon in atlas units around it, containing its point): the map draws it as the click target, and `ronin.py` snaps it to the painting to make the hover glow and the fog veil. Rerun `ronin.py` after changing an area. Sprites are drawn at 2x the old density, so the files keep their sizes except the knight (154x240), the bonfire sheet (1152x180, plus `bonfire_unlit.png`), the icons (above) and the anvil (208x128). Generating costs Figma AI credits (the Starter plan has 500 a month, 150 a day), so draft compositions on a cheaper model and keep the expensive one for keepers. The shared style guide (`STYLE.md`) is in the claude.ai project "Studying - GAMIFIED".
+The hero is layered: the `hero()` macro in `partials/_hero.html` stacks the layers `heroes()` in `app.py` lists: `knight_front.png`, `accent_architect.png` on the Architect road (cyan eye and scarf), `worn_<armour>.png` for each worn piece (legs, chest, arms, head: `HERO_SLOTS`), `held_<weapon>.png` and `hero_hand.png` (his fingers over the handle; `FISTS` swaps in a gauntlet's). Armour comes from one generated sheet cut by `tools/sprites/armour.py` (run after `weapons.py`): each part is placed on the hero in `WORN`, and since layers can only add pixels, the hood is worn under the kasa and the gauntlets recolour his own hands. His pose is weapon-agnostic; every weapon is drawn so its grip lands on `weapons.HERO_GRIP`. Which weapon he holds comes from `heroes` in the template context: the road of the page (a fight, a map), else the `hollow_road` cookie. A new weapon needs an `ARSENAL` entry in `weapons.py` (its band on the sheet, grip, angle and length); `WORN_WEAPONS` in `app.py` lists the ones worn over the hand. The CSS theme for the Architect road is `.road-architect`. Scenes are prompted with each landmark's place in the frame, and the atlas points are then set on the landmarks. A place that is a painted building gets an `area` (a rough polygon in atlas units around it, containing its point): the map draws it as the click target, and `ronin.py` snaps it to the painting to make the hover glow and the fog veil. Rerun `ronin.py` after changing an area. Sprites are drawn at 2x the old density, so the files keep their sizes except the knight (154x240), the bonfire sheet (1152x180, plus `bonfire_unlit.png`), the icons (above) and the anvil (208x128). Generating costs Figma AI credits (the Starter plan has 500 a month, 150 a day), so draft compositions on a cheaper model and keep the expensive one for keepers. figma.com is not reachable from cloud sessions: to bring a generated image in at full size, call `get_screenshot` on its node with `maxDimension` at the image's size and `enableBase64Response`, and save the copy the session keeps of the inline image. The shared style guide (`STYLE.md`) is in the claude.ai project "Studying - GAMIFIED".
 
 ## Sound
 

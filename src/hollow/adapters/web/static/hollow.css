@@ -367,7 +367,7 @@ td:last-child { text-align: right; color: var(--ember-hi); }
 .forge-title { margin: 8px 0 -4px; font-size: 20px; letter-spacing: .06em; text-transform: uppercase; color: var(--gold); scroll-margin-top: 64px; }
 #finds { scroll-margin-top: 64px; }
 .armour-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-@media (max-width: 720px) { .armour-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 720px) { .armour-grid { grid-template-columns: minmax(0, 1fr); } .forge-nav { position: static; } .forge-title, #finds { scroll-margin-top: 8px; } }
 
 /* ---- agents ---- */
 .quests { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }

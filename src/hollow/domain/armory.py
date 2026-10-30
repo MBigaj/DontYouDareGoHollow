@@ -201,6 +201,16 @@ MATERIAL_NAMES = {
 }
 
 
+def boss_loot(boss_id: str) -> list[str]:
+    """What a boss leaves the first time it falls, in words: its weapon, its armour, titanite."""
+    loot = [WEAPONS[BOSS_WEAPONS[boss_id]].name] if boss_id in BOSS_WEAPONS else []
+    if boss_id in BOSS_ARMOUR:
+        loot.append(ARMOUR[BOSS_ARMOUR[boss_id]].name)
+    for material, count in BOSS_MATERIALS.get(boss_id, ()):
+        loot.append(f"{count} {MATERIAL_NAMES[material]}{'s' if count != 1 else ''}")
+    return loot
+
+
 def upgrade_cost(to_level: int) -> tuple[int, Material, int]:
     """Souls, material and count to reach `to_level`."""
     if to_level >= 10:

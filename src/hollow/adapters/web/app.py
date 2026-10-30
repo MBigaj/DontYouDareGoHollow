@@ -47,13 +47,13 @@ from hollow.domain.architect import REGIONS as ARCH_REGIONS
 from hollow.domain.armory import (
     ARMOUR,
     BOSS_ARMOUR,
-    BOSS_MATERIALS,
     BOSS_WEAPONS,
     EFFECTS,
     MATERIAL_NAMES,
     SKILLS,
     SLOT_NAMES,
     WEAPONS,
+    boss_loot,
     upgrade_cost,
 )
 from hollow.domain.atlas import (
@@ -161,6 +161,10 @@ def sounds() -> dict[str, str]:
 
 
 WORN_WEAPONS = {"golem-fist"}
+HERO_SLOTS = (Slot.LEGS, Slot.CHEST, Slot.ARMS, Slot.HEAD)
+"""The order worn armour is stacked on the hero: the hood's brim over the pauldrons."""
+FISTS = {"golem-gauntlets": "worn_golem-gauntlets_fist.png"}
+"""Gauntlets close their own fingers over the weapon's handle (tools/sprites/armour.py)."""
 """Weapons worn rather than held: the hero's fingers are not drawn over them."""
 
 RUN_LABELS = {Run.FIRST: "New lesson", Run.REFRESHER: "Refresher", Run.PRACTICE: "Practice"}
@@ -281,15 +285,22 @@ def create_app(
         }
 
     def heroes(state: WorldState) -> dict[str, dict[str, Any]]:
-        """What the hero holds on each road: the weapon equipped for it."""
+        """The hero on each road, as the layers to stack: his body, the road's accent, the armour
+        he wears (legs, chest, arms, head), the weapon equipped for that road, and his fingers
+        (or a gauntlet's) closed over its handle."""
+        worn = [state.armory.worn[s] for s in HERO_SLOTS if s in state.armory.worn]
         kits = {}
         for track in (Track.RONIN, Track.ARCHITECT):
             weapon, _ = state.armory.weapon(track)
-            kits[track.value] = {
-                "weapon": weapon.id,
-                "name": weapon.name,
-                "hand": weapon.id not in WORN_WEAPONS,
-            }
+            layers = ["knight_front.png"]
+            if track is Track.ARCHITECT:
+                layers.append("accent_architect.png")
+            layers += [f"worn_{a}.png" for a in worn]
+            layers.append(f"held_{weapon.id}.png")
+            if weapon.id not in WORN_WEAPONS:
+                fist = FISTS.get(state.armory.worn.get(Slot.ARMS, ""), "hero_hand.png")
+                layers.append(fist)
+            kits[track.value] = {"weapon": weapon.id, "name": weapon.name, "layers": layers}
         return kits
 
     def equipment(state: WorldState) -> list[dict[str, Any]]:
@@ -1087,11 +1098,7 @@ def create_app(
         )
 
     def boss_drops(boss_id: str) -> str:
-        parts = [WEAPONS[BOSS_WEAPONS[boss_id]].name] if boss_id in BOSS_WEAPONS else []
-        for material, count in BOSS_MATERIALS.get(boss_id, ()):
-            plural = "s" if count != 1 else ""
-            parts.append(f"{count} {MATERIAL_NAMES[material]}{plural}")
-        return ", ".join(parts)
+        return ", ".join(boss_loot(boss_id))
 
     def weapon_line(view: FightView) -> str:
         weapon, level = view.state.armory.weapon(view.boss.track)

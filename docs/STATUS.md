@@ -21,13 +21,7 @@ Template for an entry:
 - Open: ...
 ```
 
-### 23-hero-armour
-The hero's armour: four slots drawn as layers over the knight, with real effects, plus the Architect road accent.
-- Done: the status rule (this board and `CLAUDE.md`). Armour domain: `ArmourBought`, `ArmourEquipped`, `ArmourRemoved` (in `SIMPLE`), `ARMOUR`/`BOSS_ARMOUR`/`EFFECTS` in `armory.py`, boss drops derived from `defeated` like boss weapons, purchases spend souls in `world.replay`. Effects: `WorldState.max_hp`, `mistake_cost` (floor kept) and `estus`; `FightStarted` gained `estus` (default 2 for old rows) and `Attempt.flasks`, so the fight draws as many flasks as it began with; `lesson_drop(bonus=...)`. `Blacksmith.buy_armour`, `wear`, `take_off`. Tests in `tests/test_armour.py`.
-  Blacksmith page in sections (Weapons, Armour, Rings and items placeholder, Recent finds) with a sticky anchor nav, routes `POST /blacksmith/armour/{buy,wear,take-off}` (form fields `armour` or `slot`, no-JS redirect to `/blacksmith#armour`); the character page lists the four armour slots and the real Estus count.
-- Next: the art. Generate the pieces in Figma AI (prompts in `tools/sprites/art/source/PROMPTS.md`), cut them in a new `tools/sprites/armour.py` into `armour_<id>.png` icons (72 px) and `worn_<id>.png` layers on the hero's canvas; the Architect accent (cyan eye and scarf, recoloured from `knight_front.png`); stack them in `partials/_hero.html` via `heroes()` in `app.py`. The pages already reference `armour_<id>.png`; until it exists the icon is a broken image.
-- Decisions (Mikołaj, 30 Oct): armour pieces shown on the hero; rings and other items never drawn on him, they come later with the inventory. Most armour drops from bosses, one piece is bought at the blacksmith. Effects are real and checked by code. The blacksmith gets sections (Weapons, Armour, a "Rings and items" placeholder). Architect accent: both a cyan eye and a cyan scarf. Pieces: Wanderer's Iron Hood (head, blacksmith, +20 max HP), Warden's Bronze Pauldrons (chest, te-form Warden, mistakes cost 5 HP less), Golem's Riveted Gauntlets (arms, Strict Golem, +1 Estus), Wyrm-scale Greaves (legs, Lock Wyrm, +15 points lesson titanite chance). Armour works on both roads and is not reinforced.
-- Open: nothing yet.
+_Nothing. The last branch is ready for review; take the next number after it merges._
 
 ## Done
 
@@ -55,6 +49,7 @@ The hero's armour: four slots drawn as layers over the knight, with real effects
 | 20 | `20-equipment` | The hero carries what you equip: every weapon cut from one generated sheet (`weapons.py`) into a 72 px icon and a layer gripped in his fist, stacked on the home stage, the character page, the maps (the road you walk) and in fights (the boss's road); the Architect's hammers became the Pilgrim's and Surveyor's Shakujō (old ids read as the staffs) |
 | 21 | `21-item-art` | The last code-drawn art replaced: the item icons (estus, ember, lens, sign, ring, tome, soul) and a sprite per titanite grade cut from one generated sheet (`items.py`), a generated anvil for the blacksmith and a crescent hit slash; icons shown at their file size (48 px, the souls counter's soul at 28) |
 | 22 | `22-sound` | Sound effects: Kenney CC0 recordings layered with synthesis (`tools/sounds/sounds.py`) for the bonfire, souls, drops, fights (fog, strikes, blows, estus, phase, felled, death), the anvil, coins, equipping, levelling up, map footsteps and soft lesson ticks; cues sent by the server as `data-sfx`, played on HTMX swaps only; a ♪ mute toggle in the header |
+| 23 | `23-hero-armour` | Armour with real effects, one piece per slot drawn on the hero: Wanderer's Iron Hood (bought, +20 HP), Warden's Bronze Pauldrons (mistakes -5 HP), Golem's Riveted Gauntlets (+1 Estus), Wyrm-scale Greaves (+15 points lesson titanite); the blacksmith split into Weapons, Armour, Rings and items, Recent finds; the Architect road's cyan eye and scarf; `armour.py` cuts a generated sheet into icons and worn layers; the status rule for agents in `CLAUDE.md` |
 
 ## Up next
 
@@ -77,13 +72,17 @@ Grouped by area. Ask Mikołaj before starting anything marked *(decide)*.
 - **Weekly Trade-off Duels:** 20-minute ADRs (PostgreSQL vs MongoDB, Kafka vs RabbitMQ, microservices vs modular monolith, REST vs gRPC, sync vs async).
 - **Portfolio export:** each felled Lord becomes a case study for mbigaj.github.io (problem, diagram, ADR, 10x section).
 
+### Armour
+- **More pieces per slot** as bosses arrive: each new boss (Plain-Form Gargoyle, the Architect regions 3 to 8) can drop one, with its own effect. Every piece added needs a part list in `WORN` in `tools/sprites/armour.py` (its own sheet, or a new cell), and a head piece has to fit under or around the kasa, since layers only add pixels.
+- **Armour lore:** `lore_targets()` in `application/agents.py` asks for `weapon:` and `material:` lore only. Add `armour:<id>` so the Lorekeeper writes for the pieces, and show it at the blacksmith like weapon lore.
+
 ### Ronin road
 - Regions 3 to 6 (Kanji Catacombs, Sen's Fortress, Anor Keigo, the Kiln) with their grammar and bosses; the Kiln lines up with JLPT N4.
 - **Furigana fading:** readings fade as the Ronin levels up.
 - **Free conversation with the Sensei:** practice only, nothing saved.
 
 ### Systems from the plan
-- **Items:** Ember (restores all hollowing), Furigana lens, Phantom sign (one hint from the Sensei or Tech Lead in a fight, losing the no-help bonus), Tomes, Rings. Their sprites exist; there is no inventory yet. Faith and Intelligence perks are described in `domain/progression.py` but mostly not wired.
+- **Items:** Ember (restores all hollowing), Furigana lens, Phantom sign (one hint from the Sensei or Tech Lead in a fight, losing the no-help bonus), Tomes, Rings. Their sprites exist; there is no inventory yet. Rings are worn but never drawn on the hero (Mikołaj, 30 Oct); the blacksmith's "Rings and items" section is waiting for them, and Intelligence 10 already promises a second ring slot. Faith and Intelligence perks are described in `domain/progression.py` but mostly not wired.
 - **Weapon infusions** at +5 and **weapon arts** at +10; more boss weapon skills.
 - **Skill decay and Revenants:** untouched regions dim on the map, and beaten bosses return for short rematches.
 - **Invasions:** surprise 3-minute quizzes on older material, opt in.

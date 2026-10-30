@@ -1,4 +1,7 @@
+import re
+import struct
 from datetime import timedelta
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -13,6 +16,7 @@ from hollow.domain.armory import (
     DROP_CHANCE,
     EFFECTS,
     Effect,
+    boss_loot,
     lesson_drop,
 )
 from hollow.domain.bosses import WARDEN
@@ -258,3 +262,61 @@ def test_the_character_page_counts_flasks_from_armour(
     wear(store, clock, "golem-gauntlets")
     page = client.get("/character").text
     assert "3 × 50 HP" in page and "Golem&#39;s Riveted Gauntlets" in page  # noqa: RUF001
+
+
+# --- the hero -------------------------------------------------------------------
+
+
+def hero_layers(page: str) -> list[str]:
+    """The sprites stacked in the first hero on a page, in order."""
+    match = re.search(r'class="hero-fig.*?</span>', page, re.S)
+    assert match, "no hero on the page"
+    return re.findall(r"sprites/([\w.-]+\.png)", match.group(0))
+
+
+def test_the_hero_wears_his_armour_in_order(
+    client: TestClient, store: SqlEventStore, clock: FakeClock
+) -> None:
+    plain = ["knight_front.png", "held_rusted-katana.png", "hero_hand.png"]
+    assert hero_layers(client.get("/").text) == plain
+    wear(store, clock, "wanderer-hood", "wyrm-greaves", "warden-pauldrons")
+    assert hero_layers(client.get("/").text) == [
+        "knight_front.png",
+        "worn_wyrm-greaves.png",
+        "worn_warden-pauldrons.png",
+        "worn_wanderer-hood.png",
+        "held_rusted-katana.png",
+        "hero_hand.png",
+    ]
+
+
+def test_gauntlets_close_their_own_fist(
+    client: TestClient, store: SqlEventStore, clock: FakeClock
+) -> None:
+    wear(store, clock, "golem-gauntlets")
+    layers = hero_layers(client.get("/").text)
+    assert layers[-2:] == ["held_rusted-katana.png", "worn_golem-gauntlets_fist.png"]
+    assert "hero_hand.png" not in layers
+
+
+def test_the_architect_road_has_its_accent(client: TestClient) -> None:
+    assert "accent_architect.png" not in hero_layers(client.get("/").text)
+    forge = hero_layers(client.get("/map/architect/forge").text)
+    assert forge[:2] == ["knight_front.png", "accent_architect.png"]
+
+
+def test_every_piece_of_armour_has_its_art() -> None:
+    sprites = Path(__file__).parent.parent / "src/hollow/adapters/web/static/sprites"
+    names = [s for a in ARMOUR.values() for s in (a.sprite, f"worn_{a.id}.png")]
+    for name in [*names, "worn_golem-gauntlets_fist.png", "accent_architect.png"]:
+        size = struct.unpack(">II", (sprites / name).read_bytes()[16:24])  # the PNG header
+        assert size == ((72, 72) if name.startswith("armour_") else (154, 240)), name
+
+
+def test_a_felled_boss_names_the_armour_it_drops() -> None:
+    assert boss_loot("te-warden") == [
+        "Warden's Maul",
+        "Warden's Bronze Pauldrons",
+        "3 Large Titanite Shards",
+        "1 Titanite Chunk",
+    ]

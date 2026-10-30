@@ -92,7 +92,7 @@ The maps of both roads are generated paintings run through the ASHEN pixel pipel
 The fog gate at the top of Firelink Shrine leads to the first boss, the て-form Warden (`/boss/te-warden`). It opens once you know 6 verbs.
 
 - Phase 1, Swift conjugation: the て-form of your verbs, 20 seconds per answer. Phase 2, Requests and sequences: 〜てください and 〜て、〜.
-- Each right answer deals 10 damage and pays 5 souls, even in a lost fight. Each mistake (or running out of time) costs HP: 35, less with Endurance. You have 100 HP (more with Vigor) and 2 Estus flasks of 50 HP.
+- Each right answer deals 10 damage and pays 5 souls, even in a lost fight. Each mistake (or running out of time) costs HP: 35, less with Endurance. You have 100 HP (more with Vigor and armour) and 2 Estus flasks of 50 HP (3 with the Golem's gauntlets).
 - Dying never locks you out: try again straight away. The next attempt starts at the furthest phase you reached, and every death leaves the Warden 10% weaker, down to 70%.
 - Leave mid-fight ("Rest at the fog gate") and the fight waits exactly as you left it.
 - Felling the Warden pays 500 souls (750 on a first try) and lights the bonfire.
@@ -113,6 +113,19 @@ Reinforcing costs souls (200 x the new level) and titanite:
 | Titanite Slab | +10 | Bosses, your very first merged PR |
 
 Each level adds 1 damage up to a boss's recommended level (+2 for the Warden) and half that beyond it, and every boss still needs at least 60% of its hits (at most 16 damage). A fight keeps the damage your weapon had when it began. Random drops are saved when they are rolled, so replays never change your loot.
+
+## Armour
+
+The hero wears up to four pieces of armour, one per slot (head, chest, arms, legs), on both roads. Each piece has one effect, applied by the game rules, and is drawn on the hero wherever he appears. Armour is never reinforced.
+
+| Slot | Piece | Where | Effect |
+| --- | --- | --- | --- |
+| Head | Wanderer's Iron Hood | Bought at the blacksmith, 2,000 souls | +20 max HP in boss fights |
+| Chest | Warden's Bronze Pauldrons | Dropped by the て-form Warden | Mistakes in boss fights cost 5 HP less (never below 20) |
+| Arms | Golem's Riveted Gauntlets | Dropped by the Strict Golem | +1 Estus flask in every boss fight |
+| Legs | Wyrm-scale Greaves | Dropped by the Lock Wyrm | Good lessons drop titanite 15 points more often |
+
+Bosses you have already felled hand their piece over at once. Armour is put on and taken off at the blacksmith, whose page is split into Weapons, Armour, Rings and items (coming with the inventory; rings are worn but never drawn on the hero) and Recent finds. Like a weapon's damage, a fight keeps the HP, mistake cost and flasks it began with, so changing armour mid-fight changes nothing.
 
 ## Architect track
 
@@ -198,6 +211,8 @@ Both roads are **generated art**, and so is the hero, a hollow ronin: one painti
 
 `tools/sprites/weapons.py` (run after `ronin.py`) cuts every weapon out of one generated sheet (`weapons.jpg`) and makes, for each, a 72 px icon for the blacksmith and the character page and a layer on the hero's own canvas with its grip in his fist. The page stacks the hero, the weapon and his fingers (`hero_hand.png`), so any weapon fits the same sprite. `tools/sprites/items.py` does the same for the items: one sheet (`items.jpg`) holds the estus flask, the ember, the furigana lens, the phantom sign, the ring, the tome, the soul and the four grades of titanite, each a 48 px icon (the soul also comes at 28 px for the souls counters). It also pixelates the blacksmith's anvil from its own painting and draws the hit slash, a crescent cut, in code.
 
+`tools/sprites/armour.py` (run after `weapons.py`) cuts the four armour pieces out of their sheet (`armour.jpg`) into 72 px icons, and puts each on the hero's canvas as a layer: every part (one pauldron, one greave) pixelated at its size beside him and set where it sits. The hood is worn under the kasa (the layer carries the hat back over it and leaves his eye showing); the gauntlets turn his hands to iron and bring their own fist over the weapon's handle. It also makes the Architect road's accent: his eye and scarf in soul cyan. The page stacks the hero, the accent (on the Architect road), the armour (legs, chest, arms, head), the weapon and the fingers.
+
 ```sh
 uv run --with pillow --with numpy --with scipy --with opencv-python-headless \
     python tools/sprites/ronin.py src/hollow/adapters/web/static/sprites
@@ -207,6 +222,8 @@ uv run --with pillow --with numpy --with scipy --with opencv-python-headless \
     python tools/sprites/weapons.py src/hollow/adapters/web/static/sprites
 uv run --with pillow --with numpy --with scipy --with opencv-python-headless \
     python tools/sprites/items.py src/hollow/adapters/web/static/sprites
+uv run --with pillow --with numpy --with scipy --with opencv-python-headless \
+    python tools/sprites/armour.py src/hollow/adapters/web/static/sprites
 ```
 
 The output is deterministic: running them again rewrites the same files. Icons are shown at their file size (two screen pixels per art pixel), so they stay crisp.

@@ -8,6 +8,9 @@ Rules (from the plan):
 - Resting at the fog gate keeps the fight exactly where it is.
 - 2 Estus flasks per attempt, 50 HP each, refilled on every retry.
 - A win on the first attempt earns a bonus.
+- A conversation phase (the Warden's third) has no HP bar: you reply in sentences, and the
+  Sensei agent judges the replies later (agents/sensei.md). Code scores the verdict: enough
+  good replies fell the boss, too few kill you, and the next attempt starts at that phase.
 """
 
 import random
@@ -22,7 +25,7 @@ from hollow.domain.architect import QUESTIONS, TOPICS, boss_id
 from hollow.domain.calendar import GameCalendar
 from hollow.domain.conjugation import Verb, normalize
 from hollow.domain.curriculum import QuizQuestion
-from hollow.domain.events import Event, FightAction, FightStarted, FightTurn
+from hollow.domain.events import AgentResult, Event, FightAction, FightStarted, FightTurn
 
 DAMAGE = 10
 ESTUS_FLASKS = 2
@@ -43,6 +46,8 @@ class Kind(StrEnum):
     """Two actions in order: 〜て、〜."""
     CHOICE = "choice"
     """A quiz question from the Architect steps behind the boss: pick the right option."""
+    CONVERSATION = "conversation"
+    """Reply in a sentence, judged later by the Sensei: requests and sequences in context."""
 
 
 @dataclass(frozen=True)
@@ -54,6 +59,12 @@ class Phase:
     """Answer time limit; running out counts as a miss."""
     topics: tuple[str, ...] = ()
     """For CHOICE phases: the steps whose quiz questions the boss asks."""
+    prompts: int = 0
+    """For CONVERSATION phases: how many lines the boss speaks, each needing a reply."""
+
+    @property
+    def conversation(self) -> bool:
+        return Kind.CONVERSATION in self.kinds
 
 
 @dataclass(frozen=True)
@@ -91,9 +102,11 @@ WARDEN = Boss(
     (
         Phase("Swift conjugation", 120, (Kind.TE,), seconds=20),
         Phase("Requests and sequences", 80, (Kind.REQUEST, Kind.SEQUENCE)),
+        Phase("The Warden's question", 40, (Kind.CONVERSATION,), prompts=4),
     ),
     intro="Phase 1: the て-form of your verbs against the clock. "
-    "Phase 2: requests (〜てください) and sequences (〜て、〜).",
+    "Phase 2: requests (〜てください) and sequences (〜て、〜). "
+    "Phase 3: the Warden speaks; answer in sentences, and the Sensei judges them.",
 )
 GOLEM = Boss(
     boss_id("forge"),
@@ -278,20 +291,54 @@ def choice(phase: Phase, seed: int, turn: int) -> ChoiceQuestion:
     return ChoiceQuestion(asked, tuple(order))
 
 
+PASS_REPLIES = 3
+"""Good replies a conversation phase needs to fell the boss (out of its prompts)."""
+
+
 def question(
     boss: Boss, phase: int, seed: int, turn: int, verbs: Sequence[Verb]
 ) -> Question | ChoiceQuestion:
-    """The question for one turn of an attempt; the same seed and turn always ask the same."""
+    """The question for one turn of an attempt; the same seed and turn always ask the same.
+    In a conversation phase it is the line the boss speaks: a request (ask me to...) or a
+    sequence (tell me what you do, then...), answered in a whole sentence."""
     if Kind.CHOICE in boss.phases[phase].kinds:
         return choice(boss.phases[phase], seed, turn)
     rng = random.Random(f"{seed}:{turn}")
     kinds = boss.phases[phase].kinds
+    if boss.phases[phase].conversation:
+        kinds = (Kind.REQUEST, Kind.SEQUENCE)
     kind = kinds[turn % len(kinds)]
     pool = [v for v in verbs if v.written != "する"] or list(verbs)
     if kind is Kind.SEQUENCE:
         first, second = rng.sample(pool, 2)
         return Question(kind, (first, second))
     return Question(kind, (rng.choice(pool if kind is Kind.REQUEST else list(verbs)),))
+
+
+def _gloss(verb: Verb) -> str:
+    """A verb's meaning as the Warden's lines use it: 'to open (a door)' becomes 'open'."""
+    meaning = verb.meaning.split(";")[0].split(",")[0].strip()
+    meaning = meaning.removeprefix("to ").split(" (")[0].strip()
+    return meaning or verb.kana
+
+
+def spoken(line: Question) -> str:
+    """What the boss says in a conversation phase, in English: the reply must be Japanese.
+    A request wants 〜てください in a sentence, a sequence wants 〜て、〜."""
+    first = line.verbs[0]
+    if line.kind is Kind.REQUEST or len(line.verbs) < 2:
+        return f"Ask me, politely, to {_gloss(first)} ({first.written})."
+    second = line.verbs[1]
+    return (f"Tell me what you do: first you {_gloss(first)} ({first.written}), "
+            f"then you {_gloss(second)} ({second.written}).")  # fmt: skip
+
+
+RUBRIC = (
+    "A reply is good when it is one Japanese sentence that does what the line asks with its "
+    "verbs: a request ends in 〜てください, a sequence joins the two actions with the first "
+    "verb's て-form (〜て、〜). Wrong て-forms are not good; slips in other words are."
+)
+"""What the Sensei judges each reply on; the game then counts the good ones."""
 
 
 class Outcome(StrEnum):
@@ -311,6 +358,10 @@ class Beat(StrEnum):
     PHASE = "phase"
     DIED = "died"
     WON = "won"
+    REPLY = "reply"
+    """A reply given in a conversation phase."""
+    JUDGING = "judging"
+    """Every line answered: the fight waits for the Sensei's verdict."""
 
 
 @dataclass(frozen=True)
@@ -339,10 +390,32 @@ class Attempt:
     last_correct: bool | None = None
     flasks: int = ESTUS_FLASKS
     """Estus flasks the attempt began with (armour can add one)."""
+    phases: int = 0
+    """How many of the boss's phases this attempt has (FightStarted.phases)."""
+    replies: tuple[str, ...] = ()
+    """Your replies in the current conversation phase, in order."""
+    prompts: int = 0
+    """Lines the current conversation phase speaks; 0 outside one."""
+
+    @property
+    def conversing(self) -> bool:
+        return self.prompts > 0
+
+    @property
+    def judging(self) -> bool:
+        """Every line answered; the attempt waits for the Sensei's verdict."""
+        return (
+            self.outcome is Outcome.ACTIVE and self.conversing and len(self.replies) >= self.prompts
+        )
 
     @property
     def can_drink(self) -> bool:
-        return self.outcome is Outcome.ACTIVE and self.estus > 0 and self.hp < self.max_hp
+        return (
+            self.outcome is Outcome.ACTIVE
+            and not self.conversing
+            and self.estus > 0
+            and self.hp < self.max_hp
+        )
 
 
 @dataclass(frozen=True)
@@ -404,7 +477,8 @@ def phase_hp(boss: Boss, phase: int, wound: float) -> int:
 
 def start(record: BossRecord, event: FightStarted, day: date) -> Attempt:
     wound = record.next_wound
-    phase = record.furthest_phase if not record.defeated else 0
+    phases = min(event.phases or len(record.boss.phases), len(record.boss.phases))
+    phase = min(record.furthest_phase, phases - 1) if not record.defeated else 0
     hp = phase_hp(record.boss, phase, wound)
     return Attempt(
         id=event.id,
@@ -422,12 +496,23 @@ def start(record: BossRecord, event: FightStarted, day: date) -> Attempt:
         estus=event.estus,
         wound=wound,
         flasks=event.estus,
+        phases=phases,
+        prompts=record.boss.phases[phase].prompts,
     )
 
 
 def play(boss: Boss, attempt: Attempt, turn: FightTurn) -> Attempt:
     """Applies one turn. Turns that cannot happen (a sip with no flasks) change nothing."""
     if attempt.outcome is not Outcome.ACTIVE:
+        return attempt
+    if attempt.conversing:  # only replies count here, until every line is answered
+        if turn.action is not FightAction.REPLY or attempt.judging:
+            return attempt
+        replies = (*attempt.replies, turn.text)
+        beat = Beat.JUDGING if len(replies) >= attempt.prompts else Beat.REPLY
+        return replace(attempt, replies=replies, turns=attempt.turns + 1, beat=beat,
+                       last_correct=None)  # fmt: skip
+    if turn.action is FightAction.REPLY:
         return attempt
     if turn.action is FightAction.ESTUS:
         if not attempt.can_drink:
@@ -450,21 +535,44 @@ def play(boss: Boss, attempt: Attempt, turn: FightTurn) -> Attempt:
                       beat=Beat.HIT)  # fmt: skip
     if attempt.boss_hp > 0:
         return attempt
-    if attempt.phase + 1 < len(boss.phases):
-        hp = phase_hp(boss, attempt.phase + 1, attempt.wound)
-        return replace(attempt, phase=attempt.phase + 1, boss_hp=hp, boss_max_hp=hp,
-                       beat=Beat.PHASE)  # fmt: skip
+    if attempt.phase + 1 < (attempt.phases or len(boss.phases)):
+        nxt = attempt.phase + 1
+        hp = phase_hp(boss, nxt, attempt.wound)
+        return replace(attempt, phase=nxt, boss_hp=hp, boss_max_hp=hp, beat=Beat.PHASE,
+                       prompts=boss.phases[nxt].prompts)  # fmt: skip
     return replace(attempt, boss_hp=0, outcome=Outcome.WON, beat=Beat.WON)
+
+
+def verdict_task(attempt: Attempt) -> str:
+    """The Sensei's task id for an attempt's conversation phase."""
+    return f"boss:{attempt.boss_id}:{attempt.id}:phase-{attempt.phase + 1}"
+
+
+def judge(attempt: Attempt, good: Sequence[bool]) -> Attempt:
+    """Applies the Sensei's verdict on each reply. Code decides: PASS_REPLIES good replies
+    fell the boss; fewer, and the boss strikes you down (retry at this phase)."""
+    if not attempt.judging or len(good) != len(attempt.replies):
+        return attempt
+    hits = sum(good)
+    if hits >= min(PASS_REPLIES, attempt.prompts):
+        return replace(attempt, hits=attempt.hits + hits, boss_hp=0, outcome=Outcome.WON,
+                       beat=Beat.WON)  # fmt: skip
+    return replace(attempt, hits=attempt.hits + hits, misses=attempt.misses + len(good) - hits,
+                   hp=0, outcome=Outcome.DIED, beat=Beat.DIED)  # fmt: skip
 
 
 def track(events: Iterable[Event], calendar: GameCalendar, today: date) -> dict[str, BossRecord]:
     records = {boss_id: BossRecord(boss) for boss_id, boss in BOSSES.items()}
     by_attempt: dict[UUID, str] = {}
     for event in sorted(
-        (e for e in events if isinstance(e, FightStarted | FightTurn)), key=lambda e: e.occurred_at
+        (e for e in events if isinstance(e, FightStarted | FightTurn | AgentResult)),
+        key=lambda e: e.occurred_at,
     ):
         day = calendar.day_of(event.occurred_at)
         if day > today:
+            continue
+        if isinstance(event, AgentResult):
+            verdict(records, event, day)
             continue
         if isinstance(event, FightStarted):
             record = records.get(event.boss_id)
@@ -498,3 +606,35 @@ def track(events: Iterable[Event], calendar: GameCalendar, today: date) -> dict[
             bonus = FIRST_TRY_BONUS if after.number == 1 else 0
             record.rewards.append(Reward(day, VICTORY_SOULS + bonus, lights=True))
     return records
+
+
+def verdict(records: dict[str, BossRecord], event: AgentResult, day: date) -> None:
+    """A Sensei verdict on a conversation phase: applied to the attempt it names, if that
+    attempt is still waiting for it (the app validated it on submit)."""
+    if event.agent != "sensei" or not event.task.startswith("boss:"):
+        return
+    record = records.get(event.task.split(":")[1])
+    current = record.current if record else None
+    if record is None or current is None or verdict_task(current) != event.task:
+        return
+    turns = event.payload.get("turns", [])
+    good = [bool(t.get("ok")) for t in turns if isinstance(t, dict)]
+    first_win = not record.defeated
+    after = judge(current, good)
+    if after is current:
+        return
+    record.attempts[-1] = after
+    for _ in range(after.hits - current.hits):
+        record.rewards.append(Reward(day, SOULS_PER_HIT))
+    if after.outcome is Outcome.WON and first_win:
+        record.defeated_at = event.occurred_at
+        bonus = FIRST_TRY_BONUS if after.number == 1 else 0
+        record.rewards.append(Reward(day, VICTORY_SOULS + bonus, lights=True))
+
+
+def lines(boss: Boss, attempt: Attempt, verbs: Sequence[Verb]) -> list[Question]:
+    """Every line the boss speaks in an attempt's conversation phase, in order."""
+    if not attempt.conversing:
+        return []
+    asked = [question(boss, attempt.phase, attempt.seed, n, verbs) for n in range(attempt.prompts)]
+    return [q for q in asked if isinstance(q, Question)]

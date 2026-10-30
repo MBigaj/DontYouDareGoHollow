@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from hollow.adapters.db.store import SqlEventStore
+from hollow.application.agents import AgentDesk
 from hollow.application.fights import FightError, FightService
 from hollow.domain.activities import Track
 from hollow.domain.bosses import (
@@ -19,6 +20,7 @@ from hollow.domain.bosses import (
     Outcome,
     Question,
     question,
+    verdict_task,
 )
 from hollow.domain.conjugation import Verb
 from hollow.domain.events import FightAction, FightStarted, FightTurn
@@ -30,7 +32,7 @@ from tests.test_world import CAL
 
 HX = {"HX-Request": "true"}
 VERBS = [Verb(w, k, "meaning") for w, k in DECK_VERBS]
-P1, P2 = (p.hp // DAMAGE for p in WARDEN.phases)  # hits to clear each phase
+P1, P2 = (p.hp // DAMAGE for p in WARDEN.phases[:2])  # hits to clear each phase
 
 
 class Fight:
@@ -40,9 +42,11 @@ class Fight:
         self.store, self.clock = store, clock
         self.attempt: UUID | None = None
 
-    def start(self, max_hp: int = 100, cost: int = 35) -> None:
+    def start(self, max_hp: int = 100, cost: int = 35, phases: int | None = 2) -> None:
+        """An attempt at the Warden. Two phases by default, as attempts began before phase 3
+        existed: the rule tests here are about the HP phases (phase 3 has tests of its own)."""
         self.clock.advance(seconds=1)
-        event = FightStarted(self.clock.now(), WARDEN.id, 1, max_hp, cost)
+        event = FightStarted(self.clock.now(), WARDEN.id, 1, max_hp, cost, phases=phases)
         self.store.append(event)
         self.attempt = event.id
 
@@ -235,12 +239,23 @@ def test_service_runs_a_whole_fight(store: SqlEventStore, clock: FakeClock) -> N
     fights = FightService(store, clock, CAL)
     view = fights.enter(WARDEN.id)
     assert fights.enter(WARDEN.id).attempt == view.attempt  # resumes, never restarts
-    while view.record.current is not None:
+    while (attempt := view.record.current) is not None and not attempt.conversing:
         clock.advance(seconds=3)
-        attempt, ask = view.record.current, view.question
+        ask = view.question
         assert ask is not None
         view = fights.answer(WARDEN.id, str(attempt.id), attempt.turns, ask.answers[1])
         assert view.answered is not None and view.answered.correct
+    while (attempt := view.record.current) is not None and not attempt.judging:  # phase 3
+        clock.advance(seconds=3)
+        assert isinstance(view.question, Question)
+        line = view.question.answers[0] + "。"
+        view = fights.reply(WARDEN.id, str(attempt.id), len(attempt.replies), line)
+    assert attempt is not None and not view.record.defeated  # waits for the Sensei
+    turns = [{"prompt": "…", "reply": r, "ok": True} for r in attempt.replies]
+    AgentDesk(store, clock, CAL).submit(
+        {"agent": "sensei", "task": verdict_task(attempt), "passed": True, "turns": turns}
+    )
+    view = fights.view(WARDEN.id)
     assert view.record.defeated
     assert view.state.lit_today
 
@@ -285,7 +300,7 @@ def test_fight_page_from_gate_to_death_to_retry(
     gate = client.get("/boss/te-warden").text
     assert "Enter the fog" in gate
     page = client.post("/boss/te-warden/enter", headers=HX).text
-    assert "Phase 1 of 2" in page and 'class="timer" data-seconds="20"' in page
+    assert "Phase 1 of 3" in page and 'class="timer" data-seconds="20"' in page
     for _ in range(3):
         page = client.post(
             "/boss/te-warden/answer", data={**fields(page), "answer": "x"}, headers=HX
@@ -318,7 +333,7 @@ def test_fight_pages_without_javascript_redirect(
     learn(store, clock)
     response = client.post("/boss/te-warden/enter", follow_redirects=False)
     assert response.headers["location"] == "/boss/te-warden"
-    assert "Phase 1 of 2" in client.get("/boss/te-warden").text  # a live fight resumes
+    assert "Phase 1 of 3" in client.get("/boss/te-warden").text  # a live fight resumes
     stale = client.post(
         "/boss/te-warden/answer",
         data={"attempt": "00000000-0000-0000-0000-000000000000", "turn": "0"},

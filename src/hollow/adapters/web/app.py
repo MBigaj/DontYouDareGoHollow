@@ -71,11 +71,16 @@ from hollow.domain.bosses import (
     BOSSES,
     ESTUS_HEAL,
     FIRST_TRY_BONUS,
+    PASS_REPLIES,
     VICTORY_SOULS,
     WARDEN,
     Boss,
     Outcome,
+    Question,
     architect_foe,
+    lines,
+    spoken,
+    verdict_task,
 )
 from hollow.domain.conjugation import Ending, Verb
 from hollow.domain.events import AgentResult, Material, Slot
@@ -1103,9 +1108,45 @@ def create_app(
         damage = FightService.damage(view.boss, view.state)
         return f"Your {weapon.name} +{level} deals {damage} per hit here."
 
-    def fight_page(request: Request, view: FightView, gate: bool = False) -> Response:
+    def last_verdict(view: FightView) -> dict[str, Any] | None:
+        """The Sensei's verdict on the last attempt's conversation phase, once it is in: the
+        fight resolved in an agent round, so the fog gate tells you how it went."""
+        last = view.record.last
+        if last is None or not last.conversing or last.outcome not in (Outcome.WON, Outcome.DIED):
+            return None
+        task = verdict_task(last)
+        result = next(
+            (e for e in reversed(store.all()) if isinstance(e, AgentResult) and e.task == task),
+            None,
+        )
+        if result is None:
+            return None
+        spoken_lines = lines(view.boss, last, fights.verbs())
+        turns = result.payload.get("turns", [])
+        return {
+            "won": last.outcome is Outcome.WON,
+            "turns": [
+                {"line": spoken(line), "reply": reply, "ok": bool(turn.get("ok"))}
+                for line, reply, turn in zip(spoken_lines, last.replies, turns, strict=False)
+            ],
+            "corrections": result.payload.get("corrections", []),
+            "day": settings.calendar().day_of(result.occurred_at).strftime("%a %d %b"),
+        }
+
+    def fight_page(
+        request: Request, view: FightView, gate: bool = False, warning: str | None = None
+    ) -> Response:
         attempt = view.attempt
         wins = sum(1 for a in view.record.attempts if a.outcome is Outcome.WON)
+        current = view.record.current
+        transcript = (
+            [
+                {"line": spoken(line), "verbs": line.verbs, "reply": reply}
+                for line, reply in fights.transcript(view.boss.id)
+            ]
+            if current is not None and current.conversing
+            else []
+        )
         name = "partials/_fight.html" if request.headers.get("HX-Request") else "boss.html"
         return templates.TemplateResponse(
             request,
@@ -1124,6 +1165,15 @@ def create_app(
                 weapon=weapon_line(view),
                 victory_souls=VICTORY_SOULS
                 + (FIRST_TRY_BONUS if attempt is not None and attempt.number == 1 else 0),
+                transcript=transcript,
+                spoken=spoken(view.question)
+                if current is not None
+                and current.conversing
+                and isinstance(view.question, Question)
+                else "",
+                verdict=last_verdict(view) if gate else None,
+                pass_replies=PASS_REPLIES,
+                warning=warning,
             ),
         )
 
@@ -1161,6 +1211,23 @@ def create_app(
         except FightError:
             view = fights.view(boss_id)
         return fight_response(request, boss_id, view)
+
+    @app.post("/boss/{boss_id}/reply")
+    def boss_reply(
+        request: Request,
+        boss_id: str,
+        attempt: Annotated[str, Form()],
+        turn: Annotated[int, Form()],
+        reply: Annotated[str, Form()] = "",
+    ) -> Response:
+        warning = None
+        try:
+            view = fights.reply(boss_id, attempt, turn, reply)
+        except FightError as error:
+            view, warning = fights.view(boss_id), str(error)
+        if not request.headers.get("HX-Request"):
+            return RedirectResponse(f"/boss/{boss_id}", status_code=status.HTTP_303_SEE_OTHER)
+        return fight_page(request, view, gate=False, warning=warning)
 
     @app.post("/boss/{boss_id}/estus")
     def boss_estus(request: Request, boss_id: str, attempt: Annotated[str, Form()]) -> Response:

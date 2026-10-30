@@ -80,7 +80,7 @@ def test_the_sensei_judges_quests_and_the_game_pays(store: SqlEventStore, clock:
     agents.submit(quests())
     with pytest.raises(AgentError, match="No judged quest q1"):
         agents.submit({"agent": "sensei", "task": "quest:q1", "passed": True})
-    with pytest.raises(AgentError, match="not built yet"):
+    with pytest.raises(AgentError, match="No conversation is waiting"):
         agents.submit({"agent": "sensei", "task": "boss:te-warden:x:phase-3", "passed": True})
     agents.submit({"agent": "sensei", "task": "quest:r", "passed": False,
                    "corrections": [{"wrote": "飲むでください", "better": "飲んでください",

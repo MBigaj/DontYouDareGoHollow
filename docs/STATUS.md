@@ -21,7 +21,12 @@ Template for an entry:
 - Open: ...
 ```
 
-_Nothing. The last branch is ready for review; take the next number after it merges._
+### 24-warden-phase-3
+The Warden's third phase: a short conversation in the fight, judged later by the Sensei agent.
+- Done: the engine (`Kind.CONVERSATION`, `Phase.prompts`, `FightAction.REPLY` with `FightTurn.text`, `FightStarted.phases` so attempts keep the phases they began with, `Attempt.replies/judging`, `judge()` and `verdict()` applying a Sensei `AgentResult` in `bosses.track`); `FightService.reply()`; the Sensei's inbox task (`boss:te-warden:<attempt>:phase-3` with the transcript and `RUBRIC`) and the desk's checks (replies word for word, `passed` must follow the rule); the fight page (the Warden's lines, a reply form, a waiting panel, the verdict on the fog gate); tests in `tests/test_warden_phase3.py`.
+- Next: the Sensei playbook and `agents/README.md`, README, CLAUDE.md, screenshots, then deliver.
+- Decisions (Mikołaj, 30 Oct): the conversation happens in the game (prompts built by code from known verbs, replies typed in the fight) and the Sensei judges the transcript in the next agent round; a fail is a death (wound, retry starts at phase 3), good replies still pay souls. The rule: 3 good replies of 4.
+- Open: nothing.
 
 ## Done
 
@@ -55,10 +60,9 @@ _Nothing. The last branch is ready for review; take the next number after it mer
 
 In a sensible order. Each one fits a branch.
 
-1. **Warden phase 3.** A short conversation judged by the Sensei agent. It needs a saved "pending phase" state, an inbox task and a Sensei result shape for `boss:<id>`. `agents/README.md` lists it as not saved yet.
-2. **Ronin region 2, Undead Village.** Lessons for 〜ている, 〜た and the plain form, its region map and the Plain-Form Gargoyle (recommended weapon level +4). The lesson engine may need more `LessonSpec` kinds than て-form endings.
-3. **Lore for the Architect road.** `lore_targets()` in `application/agents.py` only knows the Ronin regions. Add the Architect regions, so the Lorekeeper can write region and boss lore for them.
-4. **Deploy.** Put the Docker image on one small host (DigitalOcean was the plan) with PostgreSQL and `HOLLOW_PASSWORD`. Anki sync keeps running from his PC with `hollow-sync-anki` on a schedule, which needs the API to accept pushed reviews or a remote database URL. That design decision is Mikołaj's: ask first.
+1. **Ronin region 2, Undead Village.** Lessons for 〜ている, 〜た and the plain form, its region map and the Plain-Form Gargoyle (recommended weapon level +4). The lesson engine may need more `LessonSpec` kinds than て-form endings.
+2. **Lore for the Architect road.** `lore_targets()` in `application/agents.py` only knows the Ronin regions. Add the Architect regions, so the Lorekeeper can write region and boss lore for them.
+3. **Deploy.** Put the Docker image on one small host (DigitalOcean was the plan) with PostgreSQL and `HOLLOW_PASSWORD`. Anki sync keeps running from his PC with `hollow-sync-anki` on a schedule, which needs the API to accept pushed reviews or a remote database URL. That design decision is Mikołaj's: ask first.
 
 ## Backlog
 

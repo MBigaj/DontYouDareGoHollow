@@ -36,7 +36,8 @@
     {% if a and beat != 'gate' %}
     <div class="boss-bar">
       <div class="boss-name" lang="ja">{{ view.boss.name }}</div>
-      <div class="bar foe-hp"><span id="boss-chip" class="chip" style="width: {{ (100 * a.boss_hp / a.boss_max_hp) | round(1) }}%"></span><span id="boss-fill" class="fill" style="width: {{ (100 * a.boss_hp / a.boss_max_hp) | round(1) }}%"></span></div>
+      {% set left = (100 * (a.prompts - a.replies | length) / a.prompts) if a.conversing and a.outcome.value == 'active' else (100 * a.boss_hp / a.boss_max_hp) %}
+      <div class="bar foe-hp"{% if a.conversing %} aria-label="{{ a.prompts - a.replies | length }} of {{ a.prompts }} lines left"{% endif %}><span id="boss-chip" class="chip" style="width: {{ left | round(1) }}%"></span><span id="boss-fill" class="fill" style="width: {{ left | round(1) }}%"></span></div>
     </div>
     {% endif %}
     <div class="flash-red" aria-hidden="true"></div>
@@ -66,7 +67,17 @@
       {% if rec.defeated %}<p>Felled. Fight again for practice; every hit pays souls.</p>
       {% else %}<p>{{ view.boss.intro }}</p>{% endif %}
       <p>{{ weapon }}</p>
-      <p class="muted">{{ rec.deaths }} death{{ 's' if rec.deaths != 1 }}{% if rec.deaths %} · the {{ view.boss.short }} is {{ ((1 - rec.next_wound) * 100) | round | int }}% weaker{% endif %}{% if rec.furthest_phase %} · you start in phase {{ rec.furthest_phase + 1 }}{% endif %} · 2 Estus flasks per attempt</p>
+      <p class="muted">{{ rec.deaths }} death{{ 's' if rec.deaths != 1 }}{% if rec.deaths %} · the {{ view.boss.short }} is {{ ((1 - rec.next_wound) * 100) | round | int }}% weaker{% endif %}{% if rec.furthest_phase %} · you start in phase {{ rec.furthest_phase + 1 }}{% endif %} · {{ view.state.estus }} Estus flasks per attempt</p>
+      {% if verdict %}
+      <div class="verdict-box {{ 'won' if verdict.won else 'died' }}" role="status">
+        <div class="label">The Sensei's verdict · {{ verdict.day }}</div>
+        <p><strong>{{ (view.boss.short | upper ~ ' FELLED') if verdict.won else ('The ' ~ view.boss.short ~ ' struck you down') }}</strong> · {{ verdict.turns | selectattr('ok') | list | length }} of {{ verdict.turns | length }} replies held{% if not verdict.won %}; {{ pass_replies }} were needed{% endif %}.</p>
+        <ol class="said">
+          {% for t in verdict.turns %}<li class="{{ 'ok' if t.ok else 'miss' }}"><span class="muted">{{ t.line }}</span><br><span lang="ja">{{ '✓' if t.ok else '✗' }} {{ t.reply }}</span></li>{% endfor %}
+        </ol>
+        {% for c in verdict.corrections %}<p class="correction" lang="ja">{{ c.wrote }} → <strong>{{ c.better }}</strong> <span class="muted">· {{ c.why }}</span></p>{% endfor %}
+      </div>
+      {% endif %}
       {% if ready %}
       <form method="post" action="/boss/{{ view.boss.id }}/enter" hx-post="/boss/{{ view.boss.id }}/enter" hx-target="#fight" hx-swap="outerHTML"><button class="btn ember big" type="submit" autofocus>Enter the fog</button></form>
       {% else %}<p class="blood-ink">{{ requirement }}</p>{% endif %}
@@ -74,7 +85,40 @@
     {% endif %}
   </div>
 
-  {% if on and beat != 'gate' %}
+  {% if on and beat != 'gate' and a.conversing %}
+  <div class="duel panel conversation">
+    {% if warning %}<div class="verdict-strip miss" role="alert">{{ warning }}</div>{% endif %}
+    {% if transcript %}
+    <ol class="said">
+      {% for t in transcript %}<li><span class="muted">{{ t.line }}</span><br><span lang="ja">{{ t.reply }}</span></li>{% endfor %}
+    </ol>
+    {% endif %}
+    {% if a.judging %}
+    <div class="judging" role="status">
+      <div class="ask label">The {{ view.boss.short }} weighs your words</div>
+      <p>Every line is answered. The Sensei judges your replies in your next agent round: ask Claude for one (“agent round”, or “Sensei, judge the Warden”). {{ pass_replies }} good replies of {{ a.prompts }} fell the {{ view.boss.short }}; fewer, and he strikes you down, and you face his question again.</p>
+      <div class="row-buttons"><a class="btn ember" href="{{ home }}">Rest at the fog gate</a><a class="btn" href="/">Bonfire</a></div>
+    </div>
+    {% else %}
+    {% set q = view.question %}
+    <form class="quiz" method="post" action="/boss/{{ view.boss.id }}/reply" hx-post="/boss/{{ view.boss.id }}/reply" hx-target="#fight" hx-swap="outerHTML" data-fight-form>
+      <input type="hidden" name="attempt" value="{{ a.id }}">
+      <input type="hidden" name="turn" value="{{ a.replies | length }}">
+      <div class="ask label">The {{ view.boss.short }} speaks · line {{ a.replies | length + 1 }} of {{ a.prompts }}</div>
+      <div class="ask-text">“{{ spoken }}”</div>
+      <div class="prompt mid" lang="ja">{% for v in q.verbs %}{{ ja(v.written, v.kana) }}{% if not loop.last %} · {% endif %}{% endfor %}</div>
+      <div class="muted meaning">Answer in one Japanese sentence: {{ '〜てください' if q.kind.value == 'request' else '〜て、〜' }}. The Sensei judges it later; nothing is scored yet.</div>
+      <input name="reply" lang="ja" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus maxlength="120" aria-label="Your reply">
+      <div class="duel-buttons">
+        <button class="btn ember" type="submit">Reply</button>
+      </div>
+    </form>
+    <div class="duel-side">
+      <a class="btn" href="{{ home }}">Rest at the fog gate</a>
+    </div>
+    {% endif %}
+  </div>
+  {% elif on and beat != 'gate' %}
   {% set q = view.question %}
   <div class="duel panel">
     {% if view.answered %}

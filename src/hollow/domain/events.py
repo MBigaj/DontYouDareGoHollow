@@ -112,6 +112,8 @@ class LessonCompleted:
 class FightAction(StrEnum):
     ANSWER = "answer"
     ESTUS = "estus"
+    REPLY = "reply"
+    """A sentence typed in a conversation phase; the Sensei judges it later."""
 
 
 @dataclass(frozen=True)
@@ -128,6 +130,9 @@ class FightStarted:
     """Your weapon's damage against this boss when the attempt began."""
     estus: int = 2
     """Estus flasks for the attempt, set by your armour when it began (2 before armour existed)."""
+    phases: int | None = None
+    """How many phases the boss had when the attempt began, so adding a phase later never
+    rewrites an old fight. None (attempts stored before it was recorded): all of them."""
     id: UUID = field(default_factory=uuid4)
 
     def __post_init__(self) -> None:
@@ -137,12 +142,14 @@ class FightStarted:
 
 @dataclass(frozen=True)
 class FightTurn:
-    """One answer (right or wrong) or one Estus sip in a fight."""
+    """One answer (right or wrong), one Estus sip, or one reply in a conversation phase."""
 
     occurred_at: datetime
     attempt_id: UUID
     action: FightAction
     correct: bool = False
+    text: str = ""
+    """The reply itself (REPLY only); it is judged later, so `correct` stays False."""
     id: UUID = field(default_factory=uuid4)
 
     def __post_init__(self) -> None:

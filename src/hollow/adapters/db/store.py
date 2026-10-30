@@ -128,6 +128,7 @@ def to_row(event: Event) -> EventRow:
                 "mistake_cost": event.mistake_cost,
                 "damage": event.damage,
                 "estus": event.estus,
+                **({"phases": event.phases} if event.phases is not None else {}),
             },
         )
     if isinstance(event, FightTurn):
@@ -139,6 +140,7 @@ def to_row(event: Event) -> EventRow:
                 "attempt_id": str(event.attempt_id),
                 "action": event.action.value,
                 "correct": event.correct,
+                **({"text": event.text} if event.text else {}),
             },
         )
     if isinstance(event, LessonCompleted):
@@ -212,6 +214,7 @@ def from_row(row: EventRow) -> Event:
             mistake_cost=int(p["mistake_cost"]),
             damage=int(p.get("damage", 10)),
             estus=int(p.get("estus", 2)),
+            phases=int(p["phases"]) if "phases" in p else None,
             id=UUID(row.id),
         )
     if row.type == "fight_turn":
@@ -220,6 +223,7 @@ def from_row(row: EventRow) -> Event:
             attempt_id=UUID(str(p["attempt_id"])),
             action=FightAction(p["action"]),
             correct=bool(p["correct"]),
+            text=str(p.get("text", "")),
             id=UUID(row.id),
         )
     if row.type == "agent_result":

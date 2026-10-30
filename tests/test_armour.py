@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 import pytest
+from fastapi.testclient import TestClient
 
 from hollow.adapters.db.store import SqlEventStore
 from hollow.application.blacksmith import Blacksmith, BlacksmithError
@@ -208,3 +209,52 @@ def test_armour_events_round_trip_through_the_store(store: SqlEventStore, clock:
     for event in events:
         store.append(event)
     assert list(store.all()) == events
+
+
+# --- pages --------------------------------------------------------------------
+
+HX = {"HX-Request": "true"}
+
+
+def test_the_blacksmith_has_sections(client: TestClient) -> None:
+    page = client.get("/blacksmith").text
+    for anchor in ("weapons", "armour", "rings", "finds"):
+        assert f'href="#{anchor}"' in page and f'id="{anchor}"' in page
+    assert "Wanderer&#39;s Iron Hood" in page and "Buy · 2,000 souls" in page
+    assert "Dropped by The て-form Warden." in page and "Dropped by The Lock Wyrm." in page
+    assert "+1 Estus flask in every boss fight" in page
+
+
+def test_blacksmith_page_buys_wears_and_takes_off_armour(
+    client: TestClient, store: SqlEventStore, clock: FakeClock
+) -> None:
+    earn(store, clock, 2500)
+    text = client.post("/blacksmith/armour/buy", data={"armour": "wanderer-hood"}, headers=HX).text
+    assert "Bought the Wanderer&#39;s Iron Hood." in text and 'data-sfx="coins"' in text
+    text = client.post("/blacksmith/armour/wear", data={"armour": "wanderer-hood"}, headers=HX).text
+    assert "You put on the Wanderer&#39;s Iron Hood." in text and "Worn" in text
+    character = client.get("/character").text
+    assert "+20 max HP in boss fights." in character and "<td>120</td>" in character
+    text = client.post("/blacksmith/armour/take-off", data={"slot": "head"}, headers=HX).text
+    assert "You took off the Wanderer&#39;s Iron Hood." in text
+    text = client.post("/blacksmith/armour/take-off", data={"slot": "head"}, headers=HX).text
+    assert "Nothing is worn" in text
+
+
+def test_armour_without_javascript_and_bad_actions(client: TestClient) -> None:
+    bad = client.post(
+        "/blacksmith/armour/wear", data={"armour": "wyrm-greaves"}, follow_redirects=False
+    )
+    assert (bad.status_code, bad.headers["location"]) == (303, "/blacksmith#armour")
+    nowhere = client.post("/blacksmith/armour/take-off", data={"slot": "tail"}, headers=HX)
+    assert "Nothing is worn" in nowhere.text
+    assert client.post("/blacksmith/armour/melt", data={"armour": "x"}).status_code == 404
+
+
+def test_the_character_page_counts_flasks_from_armour(
+    client: TestClient, store: SqlEventStore, clock: FakeClock
+) -> None:
+    assert "2 × 50 HP" in client.get("/character").text  # noqa: RUF001
+    wear(store, clock, "golem-gauntlets")
+    page = client.get("/character").text
+    assert "3 × 50 HP" in page and "Golem&#39;s Riveted Gauntlets" in page  # noqa: RUF001

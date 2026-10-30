@@ -163,8 +163,6 @@ def sounds() -> dict[str, str]:
 WORN_WEAPONS = {"golem-fist"}
 HERO_SLOTS = (Slot.LEGS, Slot.CHEST, Slot.ARMS, Slot.HEAD)
 """The order worn armour is stacked on the hero: the hood's brim over the pauldrons."""
-FISTS = {"golem-gauntlets": "worn_golem-gauntlets_fist.png"}
-"""Gauntlets close their own fingers over the weapon's handle (tools/sprites/armour.py)."""
 """Weapons worn rather than held: the hero's fingers are not drawn over them."""
 
 RUN_LABELS = {Run.FIRST: "New lesson", Run.REFRESHER: "Refresher", Run.PRACTICE: "Practice"}
@@ -297,9 +295,9 @@ def create_app(
                 layers.append("accent_architect.png")
             layers += [f"worn_{a}.png" for a in worn]
             layers.append(f"held_{weapon.id}.png")
-            if weapon.id not in WORN_WEAPONS:
-                fist = FISTS.get(state.armory.worn.get(Slot.ARMS, ""), "hero_hand.png")
-                layers.append(fist)
+            if weapon.id not in WORN_WEAPONS:  # an arms piece closes its own fist over it
+                arms = state.armory.worn.get(Slot.ARMS)
+                layers.append(f"worn_{arms}_fist.png" if arms else "hero_hand.png")
             kits[track.value] = {"weapon": weapon.id, "name": weapon.name, "layers": layers}
         return kits
 

@@ -308,7 +308,8 @@ def test_the_architect_road_has_its_accent(client: TestClient) -> None:
 def test_every_piece_of_armour_has_its_art() -> None:
     sprites = Path(__file__).parent.parent / "src/hollow/adapters/web/static/sprites"
     names = [s for a in ARMOUR.values() for s in (a.sprite, f"worn_{a.id}.png")]
-    for name in [*names, "worn_golem-gauntlets_fist.png", "accent_architect.png"]:
+    fists = [f"worn_{a.id}_fist.png" for a in ARMOUR.values() if a.slot is Slot.ARMS]
+    for name in [*names, *fists, "accent_architect.png"]:
         size = struct.unpack(">II", (sprites / name).read_bytes()[16:24])  # the PNG header
         assert size == ((72, 72) if name.startswith("armour_") else (154, 240)), name
 

@@ -73,7 +73,7 @@ Grouped by area. Ask Mikołaj before starting anything marked *(decide)*.
 - **Portfolio export:** each felled Lord becomes a case study for mbigaj.github.io (problem, diagram, ADR, 10x section).
 
 ### Armour
-- **More pieces per slot** as bosses arrive: each new boss (Plain-Form Gargoyle, the Architect regions 3 to 8) can drop one, with its own effect. Every piece added needs a part list in `WORN` in `tools/sprites/armour.py` (its own sheet, or a new cell), and a head piece has to fit under or around the kasa, since layers only add pixels.
+- **More pieces per slot** as bosses arrive: each new boss (Plain-Form Gargoyle, the Architect regions 3 to 8) can drop one, with its own effect. Positioning is already saved per slot (`FITS` in `tools/sprites/armour.py`): a new piece needs its painting, an `ARMOUR` entry and a `LOOKS` entry (icon cell and painter), as `CLAUDE.md` under Armour art lists.
 - **Armour lore:** `lore_targets()` in `application/agents.py` asks for `weapon:` and `material:` lore only. Add `armour:<id>` so the Lorekeeper writes for the pieces, and show it at the blacksmith like weapon lore.
 
 ### Ronin road

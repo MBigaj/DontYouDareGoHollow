@@ -23,8 +23,8 @@ Template for an entry:
 
 ### 23-hero-armour
 The hero's armour: four slots drawn as layers over the knight, with real effects, plus the Architect road accent.
-- Done: the status rule (this board and `CLAUDE.md`).
-- Next: armour domain and events, effects, blacksmith sections, character page, art (Figma AI sources through the ASHEN pipeline), accent.
+- Done: the status rule (this board and `CLAUDE.md`). Armour domain: `ArmourBought`, `ArmourEquipped`, `ArmourRemoved` (in `SIMPLE`), `ARMOUR`/`BOSS_ARMOUR`/`EFFECTS` in `armory.py`, boss drops derived from `defeated` like boss weapons, purchases spend souls in `world.replay`. Effects: `WorldState.max_hp`, `mistake_cost` (floor kept) and `estus`; `FightStarted` gained `estus` (default 2 for old rows) and `Attempt.flasks`, so the fight draws as many flasks as it began with; `lesson_drop(bonus=...)`. `Blacksmith.buy_armour`, `wear`, `take_off`. Tests in `tests/test_armour.py`.
+- Next: blacksmith page sections (Weapons, Armour, Rings and items) and routes, character page listing, then the art (Figma AI sources through the ASHEN pipeline, `tools/sprites/armour.py`), the Architect accent and the `_hero.html` layers.
 - Decisions (Mikołaj, 30 Oct): armour pieces shown on the hero; rings and other items never drawn on him, they come later with the inventory. Most armour drops from bosses, one piece is bought at the blacksmith. Effects are real and checked by code. The blacksmith gets sections (Weapons, Armour, a "Rings and items" placeholder). Architect accent: both a cyan eye and a cyan scarf. Pieces: Wanderer's Iron Hood (head, blacksmith, +20 max HP), Warden's Bronze Pauldrons (chest, te-form Warden, mistakes cost 5 HP less), Golem's Riveted Gauntlets (arms, Strict Golem, +1 Estus), Wyrm-scale Greaves (legs, Lock Wyrm, +15 points lesson titanite chance). Armour works on both roads and is not reinforced.
 - Open: nothing yet.
 

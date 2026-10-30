@@ -15,6 +15,9 @@ from sqlalchemy.types import TypeDecorator
 from hollow.domain.activities import ActivityKind
 from hollow.domain.events import (
     AgentResult,
+    ArmourBought,
+    ArmourEquipped,
+    ArmourRemoved,
     Event,
     FightAction,
     FightStarted,
@@ -70,6 +73,9 @@ SIMPLE: dict[str, type[Any]] = {
     "weapon_bought": WeaponBought,
     "weapon_upgraded": WeaponUpgraded,
     "weapon_equipped": WeaponEquipped,
+    "armour_bought": ArmourBought,
+    "armour_equipped": ArmourEquipped,
+    "armour_removed": ArmourRemoved,
 }
 """Flat events stored field by field: every field but `occurred_at` and `id` in the payload."""
 SIMPLE_TYPES = {cls: name for name, cls in SIMPLE.items()}
@@ -121,6 +127,7 @@ def to_row(event: Event) -> EventRow:
                 "max_hp": event.max_hp,
                 "mistake_cost": event.mistake_cost,
                 "damage": event.damage,
+                "estus": event.estus,
             },
         )
     if isinstance(event, FightTurn):
@@ -204,6 +211,7 @@ def from_row(row: EventRow) -> Event:
             max_hp=int(p["max_hp"]),
             mistake_cost=int(p["mistake_cost"]),
             damage=int(p.get("damage", 10)),
+            estus=int(p.get("estus", 2)),
             id=UUID(row.id),
         )
     if row.type == "fight_turn":

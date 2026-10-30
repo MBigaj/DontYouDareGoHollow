@@ -162,6 +162,7 @@ class LessonService:
                 step=progress.step if progress else -1,
                 dry=dry_streak(outcomes, dropped),
                 roll=SystemRandom().random() if roll is None else roll,
+                bonus=before.armory.drop_bonus,
             )
             if material is not None:
                 self._store.append(

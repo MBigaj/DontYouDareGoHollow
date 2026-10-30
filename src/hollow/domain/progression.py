@@ -87,8 +87,9 @@ def max_hp(vigor: int) -> int:
     return BASE_HP + HP_PER_VIGOR * (vigor - STAT_START)
 
 
-def mistake_cost(endurance: int) -> int:
-    return max(MIN_MISTAKE_COST, BASE_MISTAKE_COST - (endurance - STAT_START))
+def mistake_cost(endurance: int, reduction: int = 0) -> int:
+    """HP a wrong answer costs in a boss fight; `reduction` comes from armour."""
+    return max(MIN_MISTAKE_COST, BASE_MISTAKE_COST - (endurance - STAT_START) - reduction)
 
 
 @dataclass(frozen=True)

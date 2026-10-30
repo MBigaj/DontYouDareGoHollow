@@ -5,7 +5,7 @@
 
   {% if state.bloodstain %}
   <div class="panel blood souls">
-    <img src="{{ asset('sprites/item_ember.png') }}" alt="" width="36" height="36">
+    <img src="{{ asset('sprites/item_ember.png') }}" alt="" width="48" height="48">
     <div>
       <div style="font-weight: 600; color: var(--blood-ink)">Bloodstain · {{ state.bloodstain.souls }} souls</div>
       <div style="font-size: 14px; color: var(--ink-2)">Light the bonfire today to get them back. Miss today and they are gone.</div>
@@ -26,7 +26,7 @@
     <div style="display: flex; flex-direction: column; gap: 14px; width: 100%">
       <div class="stats">
         <div class="stat"><span class="label">Souls</span>
-          <span class="value souls"><img src="{{ asset('sprites/item_soul.png') }}" alt="" width="27" height="27">{{ "{:,}".format(state.souls) }}</span></div>
+          <span class="value souls"><img src="{{ asset('sprites/item_soul_small.png') }}" alt="" width="28" height="28">{{ "{:,}".format(state.souls) }}</span></div>
         <div class="stat"><span class="label">Streak</span><span class="value">{{ state.streak }} {{ 'day' if state.streak == 1 else 'days' }}</span></div>
         <div class="stat"><span class="label">{{ state.status }}</span>
           <span class="pips" aria-label="Hollowing {{ h }} of {{ max_hollowing }}">{% for i in range(max_hollowing) %}<span class="pip {{ 'on' if i < h }}"></span>{% endfor %}</span></div>
@@ -113,7 +113,7 @@
   </section>
 
   <a class="panel charlink" href="/lessons">
-    <img src="{{ asset('sprites/item_tome.png') }}" alt="" width="36" height="36">
+    <img src="{{ asset('sprites/item_tome.png') }}" alt="" width="48" height="48">
     <span><strong>Lessons</strong>
       <span class="muted"> · て-form drills from your Anki verbs</span><br>
       {% if state.lessons_due %}<span class="souls-ink">{{ state.lessons_due }} refresher{{ 's' if state.lessons_due != 1 }} due today</span>
@@ -123,7 +123,7 @@
   </a>
 
   <a class="panel charlink" href="/character">
-    <img src="{{ asset('sprites/item_soul.png') }}" alt="" width="36" height="36">
+    <img src="{{ asset('sprites/item_soul.png') }}" alt="" width="48" height="48">
     <span><strong>Character · level {{ state.character_level }}</strong>
       <span class="muted"> · Ronin {{ state.jobs['ronin'].level }} · Architect {{ state.jobs['architect'].level }}</span><br>
       {% if state.can_level_up %}<span class="souls-ink">You can level up: {{ "{:,}".format(state.level_cost) }} souls</span>

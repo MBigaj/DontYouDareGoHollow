@@ -37,17 +37,17 @@ _Nothing. The last branch is merged; take the next number._
 | 18 | `18-architect-art` | Architect road redrawn from generated art at night: its world map (eight landmarks as places, the Distributed Abyss looming in the sky), the Forge hall and the flooded Data Depths archive (lesson points moved onto the painted floor and causeways), the Strict Golem, the Lock Wyrm and both arenas; iron obelisk waypoints and the chain icon at 2x; shared pipeline steps in `generated.py` |
 | 19 | `19-hollow-ronin` | A new hero: a hollow ronin (kasa hat, one ember eye, ragged indigo haori, bandaged hands), generated empty-handed in a weapon-agnostic stance with his grip point recorded for the weapons to come; mirrored to face the bosses |
 | 20 | `20-equipment` | The hero carries what you equip: every weapon cut from one generated sheet (`weapons.py`) into a 72 px icon and a layer gripped in his fist, stacked on the home stage, the character page, the maps (the road you walk) and in fights (the boss's road); the Architect's hammers became the Pilgrim's and Surveyor's Shakujō (old ids read as the staffs) |
+| 21 | `21-item-art` | The last code-drawn art replaced: the item icons (estus, ember, lens, sign, ring, tome, soul) and a sprite per titanite grade cut from one generated sheet (`items.py`), a generated anvil for the blacksmith and a crescent hit slash; icons shown at their file size (48 px, the souls counter's soul at 28) |
 
 ## Up next
 
 In a sensible order. Each one fits a branch.
 
-1. **Item icons, slash and anvil.** Redraw the last code-drawn sprites (`sprites.py`: the item icons, the hit slash, the blacksmith's anvil) to match the new art. The weapons showed the way: one generated sheet cut apart (`weapons.py`), pixelated at 36 px with `--no-clean` and a rim light.
-2. **The hero's other equipment.** A road accent on the Architect road (a cyan eye or scarf), then rings and armour as more layers over `knight_front.png`, the way weapons are (`weapons.HERO_GRIP`). Ask Mikołaj what items he wants first; they come with the inventory in the backlog.
-3. **Warden phase 3.** A short conversation judged by the Sensei agent. It needs a saved "pending phase" state, an inbox task and a Sensei result shape for `boss:<id>`. `agents/README.md` lists it as not saved yet.
-4. **Ronin region 2, Undead Village.** Lessons for 〜ている, 〜た and the plain form, its region map and the Plain-Form Gargoyle (recommended weapon level +4). The lesson engine may need more `LessonSpec` kinds than て-form endings.
-5. **Lore for the Architect road.** `lore_targets()` in `application/agents.py` only knows the Ronin regions. Add the Architect regions, so the Lorekeeper can write region and boss lore for them.
-6. **Deploy.** Put the Docker image on one small host (DigitalOcean was the plan) with PostgreSQL and `HOLLOW_PASSWORD`. Anki sync keeps running from his PC with `hollow-sync-anki` on a schedule, which needs the API to accept pushed reviews or a remote database URL. That design decision is Mikołaj's: ask first.
+1. **The hero's other equipment.** A road accent on the Architect road (a cyan eye or scarf), then rings and armour as more layers over `knight_front.png`, the way weapons are (`weapons.HERO_GRIP`). Ask Mikołaj what items he wants first; they come with the inventory in the backlog.
+2. **Warden phase 3.** A short conversation judged by the Sensei agent. It needs a saved "pending phase" state, an inbox task and a Sensei result shape for `boss:<id>`. `agents/README.md` lists it as not saved yet.
+3. **Ronin region 2, Undead Village.** Lessons for 〜ている, 〜た and the plain form, its region map and the Plain-Form Gargoyle (recommended weapon level +4). The lesson engine may need more `LessonSpec` kinds than て-form endings.
+4. **Lore for the Architect road.** `lore_targets()` in `application/agents.py` only knows the Ronin regions. Add the Architect regions, so the Lorekeeper can write region and boss lore for them.
+5. **Deploy.** Put the Docker image on one small host (DigitalOcean was the plan) with PostgreSQL and `HOLLOW_PASSWORD`. Anki sync keeps running from his PC with `hollow-sync-anki` on a schedule, which needs the API to accept pushed reviews or a remote database URL. That design decision is Mikołaj's: ask first.
 
 ## Backlog
 

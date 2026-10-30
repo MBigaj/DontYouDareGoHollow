@@ -196,7 +196,7 @@ Both roads are **generated art**, and so is the hero, a hollow ronin: one painti
 - the bonfire (`bonfire.py`): the generated ash mound and a crisp greatsword, with an 8-frame flame that spirals up the blade and firelight that flickers on the stones, plus the cold, unlit bonfire;
 - the home page stage: a shrine nook under the moon, cold until the day is lit, then warm around the fire.
 
-`tools/sprites/weapons.py` (run after `ronin.py`) cuts every weapon out of one generated sheet (`weapons.jpg`) and makes, for each, a 72 px icon for the blacksmith and the character page and a layer on the hero's own canvas with its grip in his fist. The page stacks the hero, the weapon and his fingers (`hero_hand.png`), so any weapon fits the same sprite.
+`tools/sprites/weapons.py` (run after `ronin.py`) cuts every weapon out of one generated sheet (`weapons.jpg`) and makes, for each, a 72 px icon for the blacksmith and the character page and a layer on the hero's own canvas with its grip in his fist. The page stacks the hero, the weapon and his fingers (`hero_hand.png`), so any weapon fits the same sprite. `tools/sprites/items.py` does the same for the items: one sheet (`items.jpg`) holds the estus flask, the ember, the furigana lens, the phantom sign, the ring, the tome, the soul and the four grades of titanite, each a 48 px icon (the soul also comes at 28 px for the souls counters). It also pixelates the blacksmith's anvil from its own painting and draws the hit slash, a crescent cut, in code.
 
 ```sh
 uv run --with pillow --with numpy --with scipy --with opencv-python-headless \
@@ -205,11 +205,9 @@ uv run --with pillow --with numpy --with scipy --with opencv-python-headless \
     python tools/sprites/architect.py src/hollow/adapters/web/static/sprites
 uv run --with pillow --with numpy --with scipy --with opencv-python-headless \
     python tools/sprites/weapons.py src/hollow/adapters/web/static/sprites
+uv run --with pillow --with numpy --with scipy --with opencv-python-headless \
+    python tools/sprites/items.py src/hollow/adapters/web/static/sprites
 ```
 
-The output is deterministic: running them again rewrites the same files. The other item icons, the slash and the anvil are still drawn in code:
-
-```sh
-uv run --with pillow python tools/sprites/sprites.py src/hollow/adapters/web/static/sprites
-```
+The output is deterministic: running them again rewrites the same files. Icons are shown at their file size (two screen pixels per art pixel), so they stay crisp.
 

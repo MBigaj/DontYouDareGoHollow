@@ -15,7 +15,7 @@ An agent never awards souls, titanite, levels or clears, and never edits the dat
 
 ## How a session works
 
-When you open a session and ask for an "agent round" (or when a task needs one, such as a pending Warden phase 3 attempt), Claude:
+When you open a session and ask for an "agent round" (or when a task needs one, such as the Warden's phase 3 waiting for its verdict: the fight stays paused until it comes), Claude:
 
 1. Reads this README and the playbooks it needs.
 2. Reads the inbox: what the app is waiting for, with the context each task needs (known words, weak verbs, region, recent days, PRs).
@@ -41,11 +41,11 @@ What the game does with results:
 | Agent | Saved as | The game then |
 | --- | --- | --- |
 | Quest Master | Today's quests (once per day) | Shows them on the bonfire, checks them by code, pays at most 100 souls each and 250 a day |
-| Sensei | A verdict on a judged quest | Marks the quest done when passed; corrections go to the Journal |
+| Sensei | A verdict on a judged quest, or on the Warden's phase 3 | Marks the quest done when passed; for the Warden, 3 good replies of 4 fell him and fewer strike the player down (retry at phase 3); corrections go to the Journal and the fog gate |
 | Lorekeeper | One text per target | Shows it on the weapon, titanite or region, with reading tooltips |
 | Tech Lead | A review or an exam | Lists it in the Journal (`/journal`) |
 
-Not saved yet: the Warden's phase 3 (the boss has two phases so far) and free conversation, which is practice only.
+Not saved: free conversation, which is practice only.
 
 ## Shared rules for every agent
 

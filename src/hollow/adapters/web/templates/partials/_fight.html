@@ -68,16 +68,6 @@
       {% else %}<p>{{ view.boss.intro }}</p>{% endif %}
       <p>{{ weapon }}</p>
       <p class="muted">{{ rec.deaths }} death{{ 's' if rec.deaths != 1 }}{% if rec.deaths %} · the {{ view.boss.short }} is {{ ((1 - rec.next_wound) * 100) | round | int }}% weaker{% endif %}{% if rec.furthest_phase %} · you start in phase {{ rec.furthest_phase + 1 }}{% endif %} · {{ view.state.estus }} Estus flasks per attempt</p>
-      {% if verdict %}
-      <div class="verdict-box {{ 'won' if verdict.won else 'died' }}" role="status">
-        <div class="label">The Sensei's verdict · {{ verdict.day }}</div>
-        <p><strong>{{ (view.boss.short | upper ~ ' FELLED') if verdict.won else ('The ' ~ view.boss.short ~ ' struck you down') }}</strong> · {{ verdict.turns | selectattr('ok') | list | length }} of {{ verdict.turns | length }} replies held{% if not verdict.won %}; {{ pass_replies }} were needed{% endif %}.</p>
-        <ol class="said">
-          {% for t in verdict.turns %}<li class="{{ 'ok' if t.ok else 'miss' }}"><span class="muted">{{ t.line }}</span><br><span lang="ja">{{ '✓' if t.ok else '✗' }} {{ t.reply }}</span></li>{% endfor %}
-        </ol>
-        {% for c in verdict.corrections %}<p class="correction" lang="ja">{{ c.wrote }} → <strong>{{ c.better }}</strong> <span class="muted">· {{ c.why }}</span></p>{% endfor %}
-      </div>
-      {% endif %}
       {% if ready %}
       <form method="post" action="/boss/{{ view.boss.id }}/enter" hx-post="/boss/{{ view.boss.id }}/enter" hx-target="#fight" hx-swap="outerHTML"><button class="btn ember big" type="submit" autofocus>Enter the fog</button></form>
       {% else %}<p class="blood-ink">{{ requirement }}</p>{% endif %}
@@ -85,6 +75,16 @@
     {% endif %}
   </div>
 
+  {% if verdict and beat == 'gate' %}
+  <section class="panel verdict-box {{ 'won' if verdict.won else 'died' }}" role="status">
+    <div class="label">The Sensei's verdict · {{ verdict.day }}</div>
+    <p><strong>{{ (view.boss.short | upper ~ ' FELLED') if verdict.won else ('The ' ~ view.boss.short ~ ' struck you down') }}</strong> · {{ verdict.turns | selectattr('ok') | list | length }} of {{ verdict.turns | length }} replies held{% if not verdict.won %}; {{ pass_replies }} were needed{% endif %}.</p>
+    <ol class="said">
+      {% for t in verdict.turns %}<li class="{{ 'ok' if t.ok else 'miss' }}"><span class="muted">{{ t.line }}</span><br><span lang="ja">{{ '✓' if t.ok else '✗' }} {{ t.reply }}</span></li>{% endfor %}
+    </ol>
+    {% for c in verdict.corrections %}<p class="correction" lang="ja">{{ c.wrote }} → <strong>{{ c.better }}</strong> <span class="muted">· {{ c.why }}</span></p>{% endfor %}
+  </section>
+  {% endif %}
   {% if on and beat != 'gate' and a.conversing %}
   <div class="duel panel conversation">
     {% if warning %}<div class="verdict-strip miss" role="alert">{{ warning }}</div>{% endif %}

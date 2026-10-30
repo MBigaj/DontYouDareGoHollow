@@ -21,12 +21,7 @@ Template for an entry:
 - Open: ...
 ```
 
-### 24-warden-phase-3
-The Warden's third phase: a short conversation in the fight, judged later by the Sensei agent.
-- Done: the engine (`Kind.CONVERSATION`, `Phase.prompts`, `FightAction.REPLY` with `FightTurn.text`, `FightStarted.phases` so attempts keep the phases they began with, `Attempt.replies/judging`, `judge()` and `verdict()` applying a Sensei `AgentResult` in `bosses.track`); `FightService.reply()`; the Sensei's inbox task (`boss:te-warden:<attempt>:phase-3` with the transcript and `RUBRIC`) and the desk's checks (replies word for word, `passed` must follow the rule); the fight page (the Warden's lines, a reply form, a waiting panel, the verdict on the fog gate); tests in `tests/test_warden_phase3.py`.
-- Next: the Sensei playbook and `agents/README.md`, README, CLAUDE.md, screenshots, then deliver.
-- Decisions (Mikołaj, 30 Oct): the conversation happens in the game (prompts built by code from known verbs, replies typed in the fight) and the Sensei judges the transcript in the next agent round; a fail is a death (wound, retry starts at phase 3), good replies still pay souls. The rule: 3 good replies of 4.
-- Open: nothing.
+_Nothing. The last branch is ready for review; take the next number after it merges._
 
 ## Done
 
@@ -55,6 +50,7 @@ The Warden's third phase: a short conversation in the fight, judged later by the
 | 21 | `21-item-art` | The last code-drawn art replaced: the item icons (estus, ember, lens, sign, ring, tome, soul) and a sprite per titanite grade cut from one generated sheet (`items.py`), a generated anvil for the blacksmith and a crescent hit slash; icons shown at their file size (48 px, the souls counter's soul at 28) |
 | 22 | `22-sound` | Sound effects: Kenney CC0 recordings layered with synthesis (`tools/sounds/sounds.py`) for the bonfire, souls, drops, fights (fog, strikes, blows, estus, phase, felled, death), the anvil, coins, equipping, levelling up, map footsteps and soft lesson ticks; cues sent by the server as `data-sfx`, played on HTMX swaps only; a ♪ mute toggle in the header |
 | 23 | `23-hero-armour` | Armour with real effects, one piece per slot drawn on the hero: Wanderer's Iron Hood (bought, +20 HP), Warden's Bronze Pauldrons (mistakes -5 HP), Golem's Riveted Gauntlets (+1 Estus), Wyrm-scale Greaves (+15 points lesson titanite); the blacksmith split into Weapons, Armour, Rings and items, Recent finds; the Architect road's cyan eye and scarf; `armour.py` cuts a generated sheet into icons and paints each piece onto the hero's own silhouette; the status rule for agents in `CLAUDE.md` |
+| 24 | `24-warden-phase-3` | The Warden's third phase: he speaks four lines built from your verbs, you answer each in a Japanese sentence in the fight, and the Sensei judges the transcript in the next agent round (3 good of 4 fell him; fewer is a death and the retry starts at his question); attempts record their phase count; the verdict shows on the fog gate |
 
 ## Up next
 
@@ -81,6 +77,8 @@ Grouped by area. Ask Mikołaj before starting anything marked *(decide)*.
 - **Armour lore:** `lore_targets()` in `application/agents.py` asks for `weapon:` and `material:` lore only. Add `armour:<id>` so the Lorekeeper writes for the pieces, and show it at the blacksmith like weapon lore.
 
 ### Ronin road
+- **A waiting verdict on the bonfire:** while the Warden waits for the Sensei, or once a verdict comes in, the home page could say so (today it shows only on the fog gate and in the inbox).
+- **More conversation phases:** the engine is generic (`Kind.CONVERSATION`, `Phase.prompts`), so later Ronin bosses (the Plain-Form Gargoyle) can end the same way, with lines for their own grammar in `spoken()`.
 - Regions 3 to 6 (Kanji Catacombs, Sen's Fortress, Anor Keigo, the Kiln) with their grammar and bosses; the Kiln lines up with JLPT N4.
 - **Furigana fading:** readings fade as the Ronin levels up.
 - **Free conversation with the Sensei:** practice only, nothing saved.

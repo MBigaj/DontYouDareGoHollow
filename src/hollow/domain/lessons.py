@@ -8,6 +8,8 @@ Rewards and timing (from the plan):
 - A due refresher at 90% or better moves to the next interval; 80-89% repeats the same
   interval; a failed refresher stays due.
 - Clearing a lesson (or a due refresher) lights the bonfire, like a grammar drill.
+- Each lesson drills one or more forms (て, 〜ている, 〜た, 〜ない, 〜なかった) and belongs to a
+  Ronin region. A region past Firelink opens when the boss before it falls (REGION_GATES).
 """
 
 import random
@@ -18,7 +20,7 @@ from enum import StrEnum
 from uuid import UUID
 
 from hollow.domain.calendar import GameCalendar
-from hollow.domain.conjugation import Ending, Verb
+from hollow.domain.conjugation import FORM_NAMES, Ending, Form, TeForm, Verb
 from hollow.domain.events import Event, LessonCompleted
 
 CLEAR = 0.8
@@ -48,9 +50,32 @@ class LessonSpec:
     endings: frozenset[Ending]
     size: int = 10
     min_verbs: int = 2
+    forms: tuple[Form, ...] = (Form.TE,)
+    """What each question asks for, in turn: question n asks forms[n % len(forms)]."""
+    region: str = "firelink"
+    """The Ronin region (atlas.REGIONS) the lesson belongs to."""
+    skip: frozenset[str] = frozenset()
+    """Verbs (as written) left out of this drill, e.g. ある in 〜ている."""
 
     def pool(self, verbs: Iterable[Verb]) -> list[Verb]:
-        return [v for v in verbs if v.ending in self.endings]
+        return [v for v in verbs if v.ending in self.endings and v.written not in self.skip]
+
+    def form_at(self, n: int) -> Form:
+        return self.forms[n % len(self.forms)]
+
+    def answer(self, n: int, verb: Verb) -> TeForm:
+        """The right answer to question `n` about `verb`."""
+        return verb.form(self.form_at(n))
+
+    def asks(self, n: int) -> str:
+        """What question `n` asks for, in words."""
+        return FORM_NAMES[self.form_at(n)]
+
+    def grade(self, questions: Sequence[Verb], answers: Sequence[str]) -> list[bool]:
+        return [
+            self.answer(n, q).accepts(a)
+            for n, (q, a) in enumerate(zip(questions, answers, strict=True))
+        ]
 
     def available(self, verbs: Iterable[Verb]) -> bool:
         return len(self.pool(verbs)) >= self.min_verbs
@@ -73,6 +98,19 @@ class LessonSpec:
 
 
 ALL = frozenset(Ending)
+GODAN = frozenset({Ending.TSU, Ending.NDE, Ending.ITE, Ending.SHITE})
+VILLAGE = "undead-village"
+PF_TEIRU = (
+    ("読む", "よむ"),
+    ("読んでいる", "よんでいる"),
+    ("食べる", "たべる"),
+    ("食べている", "たべている"),
+)
+PF_TA = (("食べる", "たべる"), ("食べた", "たべた"), ("行く", "いく"), ("行った", "いった"))
+PF_NAI_RU = (("食べる", "たべる"), ("食べない", "たべない"), ("来る", "くる"), ("来ない", "こない"))
+PF_NAI_U = (("書く", "かく"), ("書かない", "かかない"), ("買う", "かう"), ("買わない", "かわない"))
+PF_NAKATTA = (("見る", "みる"), ("見なかった", "みなかった"), ("飲む", "のむ"),
+              ("飲まなかった", "のまなかった"))  # fmt: skip
 TE_RU = (("食べる", "たべる"), ("食べて", "たべて"))
 TE_TSU = (("買う", "かう"), ("買って", "かって"))
 TE_NDE = (("飲む", "のむ"), ("飲んで", "のんで"))
@@ -90,8 +128,30 @@ LESSONS: dict[str, LessonSpec] = {
         LessonSpec("te-shite", "す → して", TE_SHITE, frozenset({Ending.SHITE})),
         LessonSpec("te-irregular", "する and 来る", TE_IRREGULAR, frozenset({Ending.IRREGULAR})),
         LessonSpec("te-mixed", "Mixed て-form", (), ALL, size=12, min_verbs=6),
+        # Undead Village: the plain forms, opened when the て-form Warden falls
+        LessonSpec("pf-teiru", "〜ている: what is happening", PF_TEIRU, ALL, min_verbs=4,
+                   forms=(Form.TEIRU,), region=VILLAGE, skip=frozenset({"ある", "いる"})),
+        LessonSpec("pf-ta", "〜た: what already happened", PF_TA, ALL, min_verbs=4,
+                   forms=(Form.TA,), region=VILLAGE),
+        LessonSpec("pf-nai-ru", "〜ない: る-verbs, する and 来る", PF_NAI_RU,
+                   frozenset({Ending.RU_VERB, Ending.IRREGULAR}), forms=(Form.NAI,),
+                   region=VILLAGE),
+        LessonSpec("pf-nai-u", "〜ない: う-verbs (う → わない)", PF_NAI_U, GODAN, min_verbs=4,
+                   forms=(Form.NAI,), region=VILLAGE),
+        LessonSpec("pf-nakatta", "〜なかった: what did not happen", PF_NAKATTA, ALL, min_verbs=4,
+                   forms=(Form.NAKATTA,), region=VILLAGE),
+        LessonSpec("pf-mixed", "Mixed plain forms", (), ALL, size=12, min_verbs=6,
+                   forms=(Form.TA, Form.NAI, Form.NAKATTA, Form.TEIRU), region=VILLAGE,
+                   skip=frozenset({"ある", "いる"})),
     )
-}
+}  # fmt: skip
+REGION_GATES = {VILLAGE: "te-warden"}
+"""A region past Firelink opens when this boss has fallen."""
+
+
+def region_open(region: str, felled: Iterable[str]) -> bool:
+    gate = REGION_GATES.get(region)
+    return gate is None or gate in set(felled)
 
 
 @dataclass(frozen=True)
@@ -179,4 +239,5 @@ def track(
 
 
 def grade(questions: Sequence[Verb], answers: Sequence[str]) -> list[bool]:
+    """Grades a て-form drill (the Firelink lessons); LessonSpec.grade grades any lesson."""
     return [q.te_form.accepts(a) for q, a in zip(questions, answers, strict=True)]

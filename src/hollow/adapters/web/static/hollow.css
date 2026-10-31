@@ -466,3 +466,4 @@ td:last-child { text-align: right; color: var(--ember-hi); }
 .verdict-box.died { box-shadow: inset 0 0 0 2px var(--blood); }
 .verdict-box p { margin: 4px 0; }
 .correction { font-size: 14px; }
+.lessons-waiting { margin: 0 2px 16px; font-size: 14px; }

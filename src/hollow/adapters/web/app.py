@@ -29,7 +29,7 @@ from hollow.application.github_sync import (
     GitHubSync,
     GitHubUnavailable,
 )
-from hollow.application.lessons import LessonError, LessonService
+from hollow.application.lessons import LessonError, LessonService, Status
 from hollow.application.lessons import Run as LessonRun
 from hollow.application.ports import Clock, EventStore, SystemClock
 from hollow.config import Settings
@@ -83,8 +83,9 @@ from hollow.domain.bosses import (
     verdict_task,
 )
 from hollow.domain.conjugation import Ending, Verb
+from hollow.domain.conjugation import Form as VerbForm
 from hollow.domain.events import AgentResult, Material, Slot
-from hollow.domain.lessons import LESSONS, LessonProgress, Run, grade
+from hollow.domain.lessons import LESSONS, REGION_GATES, LessonProgress, Run
 from hollow.domain.progression import STATS, Stat
 from hollow.domain.world import EFFIGIES_PER_WEEK, MAX_HOLLOWING, WorldState
 
@@ -181,14 +182,34 @@ HINTS = {
 }
 
 
-def hint(verb: Verb) -> str:
-    if (
+def hint(verb: Verb, form: VerbForm = VerbForm.TE) -> str:
+    """One line on how the answer is built, for the verb and the form asked."""
+    disguised = (
         verb.ending is Ending.TSU
         and verb.kana.endswith("る")
         and verb.kana[-2] in "いきしちにひみりえけせてねへめれげべでぜじぎびぢ"
-    ):
-        return f"{verb.written} looks like a る-verb but is not: る becomes って."
-    return HINTS[verb.ending]
+    )
+    te, wanted = verb.te_form.written, verb.form(form).written
+    if form is VerbForm.TE:
+        if disguised:
+            return f"{verb.written} looks like a る-verb but is not: る becomes って."
+        return HINTS[verb.ending]
+    if form is VerbForm.TEIRU:
+        return f"The て-form, then いる: {te} → {wanted}."
+    if form is VerbForm.TA:
+        return f"Built like the て-form, with て → た and で → だ: {te} → {wanted}."
+    nai = verb.form(VerbForm.NAI).written
+    if form is VerbForm.NAKATTA:
+        return f"〜ない with い → かった: {nai} → {wanted}."
+    if verb.kana == "ある":
+        return "ある is the exception: its negative is just ない."
+    if disguised:
+        return f"{verb.written} looks like a る-verb but is not: る moves to ら, {wanted}."
+    if verb.ending is Ending.RU_VERB:
+        return f"る-verb: drop る, add ない. {wanted}."
+    if verb.ending is Ending.IRREGULAR:
+        return "Irregular: する → しない, 来る → 来ない (こない)."
+    return f"う-verb: the last kana moves to the あ-row, then ない (う becomes わ). {wanted}."
 
 
 ANKI_KINDS = {ActivityKind.ANKI_REVIEWS, ActivityKind.ANKI_NEW_CARDS}
@@ -541,13 +562,40 @@ def create_app(
             for r in ARCH_REGIONS
             if state.architect.region_open(r.id)
         ]  # fmt: skip
+        cards = lessons.overview()
+        # only lessons you can play now; the rest wait off the page, counted in one line
+        ronin = [
+            {
+                "region": r,
+                "cards": [
+                    c for c in cards if c.spec.region == r.id and c.status is not Status.LOCKED
+                ],
+            }
+            for r in REGIONS
+        ]
+        ronin = [group for group in ronin if group["cards"]]
+        waiting = [c for c in cards if c.status is Status.LOCKED]
+        sealed = [
+            {"name": r.name, "boss": BOSSES[REGION_GATES[r.id]].name}
+            for r in REGIONS
+            if any(c.sealed and c.spec.region == r.id for c in waiting)
+        ]
+        closest = min(
+            (c for c in waiting if not c.sealed),
+            key=lambda c: c.spec.min_verbs - c.verbs,
+            default=None,
+        )
         return templates.TemplateResponse(
             request,
             "lessons.html",
             context(
                 state,
                 page="lessons",
-                cards=lessons.overview(),
+                cards=cards,
+                ronin=ronin,
+                waiting=len(waiting),
+                sealed_regions=sealed,
+                closest=closest,
                 arch_regions=steps,
                 verb_count=len(lessons.verbs()) - 1,
                 warning=warning,
@@ -561,7 +609,7 @@ def create_app(
         progress = state.lessons.get(run.spec.id)
         run_kind = progress.run_on(state.today) if progress else Run.FIRST
         name = "partials/_lesson.html" if request.headers.get("HX-Request") else "lesson.html"
-        marks = grade(run.questions[: len(answers)], answers)
+        marks = run.spec.grade(run.questions[: len(answers)], answers)
         return templates.TemplateResponse(
             request,
             name,
@@ -607,14 +655,15 @@ def create_app(
         answers = [*(a or []), answer.strip()[:40]]
         if len(answers) > len(current.questions):
             raise HTTPException(422, "Every question is already answered.")
-        verb = current.questions[len(answers) - 1]
+        n = len(answers) - 1
+        verb = current.questions[n]
         return lesson_page(
             request,
             current,
             answers,
             "feedback",
-            correct=verb.te_form.accepts(answer),
-            hint=hint(verb),
+            correct=current.spec.answer(n, verb).accepts(answer),
+            hint=hint(verb, current.spec.form_at(n)),
         )
 
     @app.post("/lessons/{lesson_id}/next")
@@ -645,10 +694,11 @@ def create_app(
             outcome, drop, state = lessons.finish(current, answers)
         except LessonError as error:
             raise HTTPException(422, str(error)) from error
+        marks = current.spec.grade(current.questions, answers)
         misses = [
-            (verb, given)
-            for verb, given, ok in zip(
-                current.questions, answers, grade(current.questions, answers), strict=True
+            (verb, given, current.spec.answer(n, verb))
+            for n, (verb, given, ok) in enumerate(
+                zip(current.questions, answers, marks, strict=True)
             )
             if not ok
         ]
@@ -663,8 +713,8 @@ def create_app(
             drop={"material": drop.value, "name": MATERIAL_NAMES[drop]} if drop else None,
         )
 
-    def explored() -> int:
-        cards = lessons.overview()
+    def explored(region: str = "firelink") -> int:
+        cards = [c for c in lessons.overview() if c.spec.region == region]
         cleared = sum(1 for c in cards if c.progress is not None and c.progress.cleared)
         return round(100 * cleared / len(cards))
 

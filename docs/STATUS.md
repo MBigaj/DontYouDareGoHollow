@@ -51,14 +51,16 @@ _Nothing. The last branch is ready for review; take the next number after it mer
 | 22 | `22-sound` | Sound effects: Kenney CC0 recordings layered with synthesis (`tools/sounds/sounds.py`) for the bonfire, souls, drops, fights (fog, strikes, blows, estus, phase, felled, death), the anvil, coins, equipping, levelling up, map footsteps and soft lesson ticks; cues sent by the server as `data-sfx`, played on HTMX swaps only; a ♪ mute toggle in the header |
 | 23 | `23-hero-armour` | Armour with real effects, one piece per slot drawn on the hero: Wanderer's Iron Hood (bought, +20 HP), Warden's Bronze Pauldrons (mistakes -5 HP), Golem's Riveted Gauntlets (+1 Estus), Wyrm-scale Greaves (+15 points lesson titanite); the blacksmith split into Weapons, Armour, Rings and items, Recent finds; the Architect road's cyan eye and scarf; `armour.py` cuts a generated sheet into icons and paints each piece onto the hero's own silhouette; the status rule for agents in `CLAUDE.md` |
 | 24 | `24-warden-phase-3` | The Warden's third phase: he speaks four lines built from your verbs, you answer each in a Japanese sentence in the fight, and the Sensei judges the transcript in the next agent round (3 good of 4 fell him; fewer is a death and the retry starts at his question); attempts record their phase count; the verdict shows on the fog gate |
+| 25 | `25-plain-forms` | Undead Village, part 1 of 3: the conjugation engine learns the plain forms (〜ている, 〜た, 〜ない, 〜なかった, with ある → ない); six Undead Village lessons on them, a mixed one cycling the forms; the region sealed until the Warden falls (lessons, quests, inbox); `/lessons` grouped by region with hints per form; the rule to work directly in Mikołaj's repo in `CLAUDE.md` |
 
 ## Up next
 
 In a sensible order. Each one fits a branch.
 
-1. **Ronin region 2, Undead Village.** Lessons for 〜ている, 〜た and the plain form, its region map and the Plain-Form Gargoyle (recommended weapon level +4). The lesson engine may need more `LessonSpec` kinds than て-form endings.
-2. **Lore for the Architect road.** `lore_targets()` in `application/agents.py` only knows the Ronin regions. Add the Architect regions, so the Lorekeeper can write region and boss lore for them.
-3. **Deploy.** Put the Docker image on one small host (DigitalOcean was the plan) with PostgreSQL and `HOLLOW_PASSWORD`. Anki sync keeps running from his PC with `hollow-sync-anki` on a schedule, which needs the API to accept pushed reviews or a remote database URL. That design decision is Mikołaj's: ask first.
+1. **Undead Village map** (`26-undead-village-map`). The lessons exist already (`pf-*` in `domain/lessons.py`); put one rune stone per lesson on the map, like `FIRELINK` in `domain/atlas.py`, and count only this region's lessons in its explored %. Its generated painting (golden dusk, the bonfire bottom left, the Gargoyle's gate top right), a rune stone per Undead Village lesson on the painted ground, the bonfire and gate as landmarks, the region lifting out of the fog once the Warden falls.
+2. **The Plain-Form Gargoyle** (`27-plain-form-gargoyle`). Timed phases on the plain forms, ending in a conversation phase judged by the Sensei (the engine from branch 24), recommended weapon level +4, its arena, sprite and drops (ask Mikołaj which weapon and armour piece).
+3. **Lore for the Architect road.** `lore_targets()` in `application/agents.py` only knows the Ronin regions. Add the Architect regions, so the Lorekeeper can write region and boss lore for them.
+4. **Deploy.** Put the Docker image on one small host (DigitalOcean was the plan) with PostgreSQL and `HOLLOW_PASSWORD`. Anki sync keeps running from his PC with `hollow-sync-anki` on a schedule, which needs the API to accept pushed reviews or a remote database URL. That design decision is Mikołaj's: ask first.
 
 ## Backlog
 

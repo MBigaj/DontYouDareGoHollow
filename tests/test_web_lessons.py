@@ -45,8 +45,9 @@ def play(client: TestClient, lesson: str, wrong: int = 0) -> str:
 def test_lessons_page_lists_lessons_by_status(
     client: TestClient, store: SqlEventStore, clock: FakeClock
 ) -> None:
-    page = client.get("/lessons").text
-    assert "Learn 2 more verbs of this kind in Anki to open it." in page
+    page = client.get("/lessons").text  # no verbs yet: nothing to play, and what opens first
+    assert "No lesson is open yet." in page and 'href="/lessons/te-' not in page
+    assert "learn 1 more verb of the right kind and “する and 来る” opens" in page  # する is known
     learn(store, clock)
     page = client.get("/lessons").text
     assert "17 so far, plus する" in page

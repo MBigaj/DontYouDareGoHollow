@@ -13,10 +13,19 @@ from uuid import UUID, uuid4, uuid5
 
 from hollow.application.ports import Clock, EventStore, next_moment
 from hollow.domain.armory import dry_streak, lesson_drop
+from hollow.domain.atlas import REGIONS
+from hollow.domain.bosses import BOSSES
 from hollow.domain.calendar import GameCalendar
 from hollow.domain.conjugation import Verb
 from hollow.domain.events import LessonCompleted, Material, MaterialDropped
-from hollow.domain.lessons import LESSONS, LessonOutcome, LessonProgress, LessonSpec, grade
+from hollow.domain.lessons import (
+    LESSONS,
+    REGION_GATES,
+    LessonOutcome,
+    LessonProgress,
+    LessonSpec,
+    region_open,
+)
 from hollow.domain.lessons import Run as LessonRunKind
 from hollow.domain.vocabulary import known_verbs
 from hollow.domain.world import WorldState, replay
@@ -42,6 +51,8 @@ class LessonCard:
     questions: int
     status: Status
     progress: LessonProgress | None
+    sealed: bool = False
+    """Its region waits for a boss (lessons.REGION_GATES); the lesson is locked until then."""
 
 
 @dataclass(frozen=True)
@@ -67,10 +78,12 @@ class LessonService:
     def overview(self) -> list[LessonCard]:
         verbs = self.verbs()
         state = self.state()
+        felled = self.felled(state)
         cards = []
         for spec in LESSONS.values():
             progress = state.lessons.get(spec.id)
-            if not spec.available(verbs):
+            sealed = not region_open(spec.region, felled)
+            if sealed or not spec.available(verbs):
                 status = Status.LOCKED
             elif progress is None or not progress.cleared:
                 status = Status.NEW
@@ -85,9 +98,22 @@ class LessonService:
                     spec.question_count(verbs),
                     status,
                     progress,
+                    sealed,
                 )
             )
         return cards
+
+    @staticmethod
+    def felled(state: WorldState) -> set[str]:
+        return {boss_id for boss_id, record in state.bosses.items() if record.defeated}
+
+    def sealed(self, spec: LessonSpec) -> str | None:
+        """Why a lesson's region is still closed, or None when it is open."""
+        if region_open(spec.region, self.felled(self.state())):
+            return None
+        boss = BOSSES[REGION_GATES[spec.region]]
+        region = next(r.name for r in REGIONS if r.id == spec.region)
+        return f"{region} opens when {boss.name} falls."
 
     def spec(self, lesson_id: str) -> LessonSpec:
         try:
@@ -97,6 +123,8 @@ class LessonService:
 
     def start(self, lesson_id: str) -> Run:
         spec = self.spec(lesson_id)
+        if (closed := self.sealed(spec)) is not None:
+            raise LessonError(closed)
         verbs = self.verbs()
         if not spec.available(verbs):
             raise LessonError(f"{spec.title} needs {spec.min_verbs} learned verbs first.")
@@ -124,7 +152,7 @@ class LessonService:
         """Records the run once, and rolls for titanite. Returns the outcome and any drop."""
         if len(answers) != len(run.questions):
             raise LessonError("Answer every question before finishing.")
-        marks = grade(run.questions, answers)
+        marks = run.spec.grade(run.questions, answers)
         missed = tuple(q.written for q, ok in zip(run.questions, marks, strict=True) if not ok)
         return self.record(run.spec.id, run.id, sum(marks), len(run.questions), missed, roll)
 

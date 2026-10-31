@@ -3,31 +3,42 @@
 {% block title %}Lessons · DontYouDareGoHollow{% endblock %}
 {% block content %}
 {% if warning %}<div class="panel blood" role="alert" style="color: var(--blood-ink)">{{ warning }}</div>{% endif %}
-<section class="panel" aria-labelledby="lessons-title">
-  <h2 id="lessons-title" class="label">Region 1 · Firelink Shrine · て-form</h2>
-  <p style="margin: 6px 0 4px">Type the て-form of verbs you have learned in Anki ({{ verb_count }} so far, plus する). Kana or kanji both count.</p>
+{% for group in ronin %}
+{% set r = group.region %}
+<section class="panel" aria-labelledby="lessons-{{ r.id }}">
+  <h2 id="lessons-{{ r.id }}" class="label">Region {{ r.number }} · {{ r.name }} · {{ r.topics }}</h2>
+  {% if loop.first %}
+  <p style="margin: 6px 0 4px">Type the asked form of verbs you have learned in Anki ({{ verb_count }} so far, plus する). Kana or kanji both count.</p>
   <p class="muted" style="margin: 0; font-size: 14px">First clear pays full souls. A cleared lesson returns as a refresher after 1, 3, 7, 21 and 60 days; refreshers pay 60%, early practice 25%. Clear at 80%.</p>
+  {% else %}
+  <p style="margin: 6px 0 4px">{{ r.blurb }} The same verbs, now in their plain forms: what is happening, what happened, and what did not.</p>
+  {% endif %}
 </section>
 
 <div class="lessons">
-  {% for card in cards %}
+  {% for card in group.cards %}
   <section class="panel lesson-card {{ card.status.value }}">
     <div>
       <div class="lesson-head"><strong>{{ card.spec.title }}</strong>
-        <span class="chip {{ card.status.value }}">{% if card.status.value == 'new' %}New{% elif card.status.value == 'due' %}Refresher due{% elif card.status.value == 'waiting' %}Back {{ card.progress.due_on.strftime('%a %d %b') }}{% else %}Locked{% endif %}</span>
+        <span class="chip {{ card.status.value }}">{% if card.status.value == 'new' %}New{% elif card.status.value == 'due' %}Refresher due{% else %}Back {{ card.progress.due_on.strftime('%a %d %b') }}{% endif %}</span>
       </div>
-      <div lang="ja" style="font-size: 18px; margin: 6px 0">{% if card.spec.example %}{% for pair in card.spec.example | batch(2) %}{% if not loop.first %}, {% endif %}{{ ja(*pair[0]) }} → {{ ja(*pair[1]) }}{% endfor %}{% else %}Every group, shuffled{% endif %}</div>
-      <div class="muted" style="font-size: 13px">
-        {% if card.status.value == 'locked' %}Learn {{ card.spec.min_verbs - card.verbs }} more verb{{ 's' if card.spec.min_verbs - card.verbs != 1 }} of this kind in Anki to open it.
-        {% else %}{{ card.questions }} questions from {{ card.verbs }} of your verbs{% if card.progress and card.progress.attempts %} · best {{ (card.progress.best * 100) | round | int }}%{% endif %}{% endif %}
-      </div>
+      <div lang="ja" style="font-size: 18px; margin: 6px 0">{% if card.spec.example %}{% for pair in card.spec.example | batch(2) %}{% if not loop.first %}, {% endif %}{{ ja(*pair[0]) }} → {{ ja(*pair[1]) }}{% endfor %}{% else %}{{ 'Every form, in turn: 〜た, 〜ない, 〜なかった, 〜ている' if card.spec.forms | length > 1 else 'Every group, shuffled' }}{% endif %}</div>
+      <div class="muted" style="font-size: 13px">{{ card.questions }} questions from {{ card.verbs }} of your verbs{% if card.progress and card.progress.attempts %} · best {{ (card.progress.best * 100) | round | int }}%{% endif %}</div>
     </div>
-    {% if card.status.value != 'locked' %}
     <a class="btn {{ 'ember' if card.status.value in ('new', 'due') }}" href="/lessons/{{ card.spec.id }}">{{ 'Start' if card.status.value == 'new' else ('Refresh' if card.status.value == 'due' else 'Practise') }}</a>
-    {% endif %}
   </section>
   {% endfor %}
 </div>
+{% else %}
+<section class="panel" aria-labelledby="lessons-none">
+  <h2 id="lessons-none" class="label">Lessons</h2>
+  <p style="margin: 6px 0 4px">No lesson is open yet. Lessons are built from the verbs you learn in Anki{% if closest %}: learn {{ closest.spec.min_verbs - closest.verbs }} more verb{{ 's' if closest.spec.min_verbs - closest.verbs != 1 }} of the right kind and “{{ closest.spec.title }}” opens{% endif %}.</p>
+</section>
+{% endfor %}
+
+{% if waiting and ronin %}
+<p class="muted lessons-waiting">{{ waiting }} more lesson{{ 's' if waiting != 1 }} open later{% if closest %}: learn verbs in Anki (“{{ closest.spec.title }}” needs {{ closest.spec.min_verbs - closest.verbs }} more){% endif %}{% for s in sealed_regions %}{{ ',' if closest or not loop.first else ':' }} {{ 'or ' if loop.last and (closest or not loop.first) }}fell {{ s.boss }} for {{ s.name }}{% endfor %}.</p>
+{% endif %}
 
 {% for group in arch_regions %}
 <section class="panel road-architect-panel" aria-labelledby="arch-{{ group.region.id }}">

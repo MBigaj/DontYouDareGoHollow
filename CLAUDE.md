@@ -57,7 +57,7 @@ tests/             pytest; conftest has FakeClock, store and client fixtures
 - **Game day** starts at 04:00 Europe/Warsaw (`GameCalendar`).
 - **Domain stays pure.** No I/O in `domain/`. The curriculum loader reads package files once at import, in `hollow/curriculum/__init__.py`; parsing lives in `domain/curriculum.py`.
 - **Agents never score.** The app never calls a model. Agents are Claude in a session, following `agents/*.md`. They return JSON through `hollow-agent-submit`, which validates it (pydantic plus game rules) and stores an `AgentResult`. The game rules decide what that result is worth.
-- **Lessons share one engine.** Japanese lessons use ids like `te-ru`. Architect lessons are `arch:<step id>` runs of the same `LessonCompleted` event, so clears, refreshers, souls, titanite and bonfire lighting are identical. Architect runs feed Architect XP.
+- **Lessons share one engine.** Japanese lessons use ids like `te-ru` (Firelink, the て-form) and `pf-ta` (Undead Village, the plain forms). A `LessonSpec` names its `forms` (question n asks `forms[n % len]`, so a mixed lesson cycles them), its Ronin `region` and the verbs it `skip`s; `conjugation.conjugate()` builds every form, and `lessons.REGION_GATES` seals a region until the boss before it falls. Architect lessons are `arch:<step id>` runs of the same `LessonCompleted` event, so clears, refreshers, souls, titanite and bonfire lighting are identical. Architect runs feed Architect XP.
 - **Bosses are data.** A `Boss` in `domain/bosses.py` carries its own presentation:
   - `home` and `node`: the map it stands on and its node there.
   - `short`: the name used in "X FELLED".

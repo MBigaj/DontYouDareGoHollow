@@ -9,7 +9,7 @@ Once a day, in the first session of the game day (days start at 04:00 Europe/War
 ## Reads (from the inbox)
 
 - Today's date, your time budget (45 to 60 minutes) and whether the bonfire is lit.
-- Due refreshers and lessons not yet cleared, with best scores.
+- Due refreshers and lessons not yet cleared, with best scores. Each lesson has its `region` and whether it is `open`: a lesson in a sealed region (Undead Village until the Warden falls) cannot be set as a quest, and the app rejects one that is.
 - Weak verbs: verbs you missed most in lessons and fights over the last 14 days.
 - Anki: reviews and new cards over the last 7 days.
 - Your current region (Firelink Shrine) and boss state (the Warden: felled or not, deaths, furthest phase).

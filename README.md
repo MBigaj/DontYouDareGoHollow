@@ -71,10 +71,12 @@ The Docker setup cannot see an Anki running on your desktop, because AnkiConnect
 
 ## Lessons
 
-Lessons are short typed drills. The first set covers the て-form, one lesson per sound change (る-verbs, う・つ・る → って, む・ぶ・ぬ → んで, く・ぐ → いて・いで, す → して, する and 来る) plus a mixed one.
+Lessons are short typed drills, grouped by Ronin region on `/lessons`. Firelink Shrine covers the て-form, one lesson per sound change (る-verbs, う・つ・る → って, む・ぶ・ぬ → んで, く・ぐ → いて・いで, す → して, する and 来る) plus a mixed one.
+
+Undead Village covers the plain forms, built on the て-form: 〜ている (what is happening: 読んでいる), 〜た (what already happened: 読んだ, the same sound changes with た and だ), 〜ない for る-verbs, する and 来る (食べない, しない, 来ない), 〜ない for う-verbs (the last kana moves to the あ-row, う becomes わ: 書かない, 買わない), 〜なかった (書かなかった), and a mixed one that asks each form in turn. ある and いる sit out the 〜ている drill, and ある's negative is just ない. The village and its lessons stay sealed until the て-form Warden falls.
 
 - Questions only use verbs you have learned: every Anki sync imports the notes in your decks whose cards are no longer new. Lessons open once you know enough verbs of that kind.
-- Type the answer with your Japanese keyboard. Kana or kanji both count (食べて or たべて).
+- Type the form the lesson asks for with your Japanese keyboard. Kana or kanji both count (食べて or たべて). A wrong answer shows the right one and how it is built.
 - A lesson clears at 80% and lights the bonfire. First clear pays 5 souls per correct answer; a due refresher pays 60%; practice before it is due pays 25%.
 - Cleared lessons come back as refreshers after 1, 3, 7, 21 and 60 days. A refresher at 90% or better moves to the next interval.
 - The word fields default to the Core 2000 deck (`Vocabulary-Kanji`, `Vocabulary-Kana`, `Vocabulary-English`, `Vocabulary-Pos`). Another deck can set `HOLLOW_ANKI_WORD_FIELD`, `HOLLOW_ANKI_KANA_FIELD`, `HOLLOW_ANKI_MEANING_FIELD` and `HOLLOW_ANKI_POS_FIELD`.

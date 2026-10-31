@@ -21,7 +21,12 @@ Template for an entry:
 - Open: ...
 ```
 
-_Nothing. The last branch is ready for review; take the next number after it merges._
+### 25-plain-forms
+Undead Village, part 1 of 3: the plain forms as playable lessons.
+- Done: the working rule (edit directly in Mikołaj's repo) in `CLAUDE.md`.
+- Next: the conjugation engine learns target forms (〜ている, 〜た, 〜ない, 〜なかった); the Undead Village lessons on it; locked until the Warden falls; the lessons page, quests and the agents' inbox.
+- Decisions (Mikołaj, 31 Oct): Undead Village is three branches in this order: 25 the plain-form lessons, 26 its map, 27 the Plain-Form Gargoyle. The drill is dictionary form, 〜ない, 〜た and 〜なかった (〜ている too); no polite past. The region and its lessons wait until the て-form Warden is felled.
+- Open: nothing.
 
 ## Done
 
@@ -56,9 +61,10 @@ _Nothing. The last branch is ready for review; take the next number after it mer
 
 In a sensible order. Each one fits a branch.
 
-1. **Ronin region 2, Undead Village.** Lessons for 〜ている, 〜た and the plain form, its region map and the Plain-Form Gargoyle (recommended weapon level +4). The lesson engine may need more `LessonSpec` kinds than て-form endings.
-2. **Lore for the Architect road.** `lore_targets()` in `application/agents.py` only knows the Ronin regions. Add the Architect regions, so the Lorekeeper can write region and boss lore for them.
-3. **Deploy.** Put the Docker image on one small host (DigitalOcean was the plan) with PostgreSQL and `HOLLOW_PASSWORD`. Anki sync keeps running from his PC with `hollow-sync-anki` on a schedule, which needs the API to accept pushed reviews or a remote database URL. That design decision is Mikołaj's: ask first.
+1. **Undead Village map** (`26-undead-village-map`). Its generated painting (golden dusk, the bonfire bottom left, the Gargoyle's gate top right), a rune stone per Undead Village lesson on the painted ground, the bonfire and gate as landmarks, the region lifting out of the fog once the Warden falls.
+2. **The Plain-Form Gargoyle** (`27-plain-form-gargoyle`). Timed phases on the plain forms, ending in a conversation phase judged by the Sensei (the engine from branch 24), recommended weapon level +4, its arena, sprite and drops (ask Mikołaj which weapon and armour piece).
+3. **Lore for the Architect road.** `lore_targets()` in `application/agents.py` only knows the Ronin regions. Add the Architect regions, so the Lorekeeper can write region and boss lore for them.
+4. **Deploy.** Put the Docker image on one small host (DigitalOcean was the plan) with PostgreSQL and `HOLLOW_PASSWORD`. Anki sync keeps running from his PC with `hollow-sync-anki` on a schedule, which needs the API to accept pushed reviews or a remote database URL. That design decision is Mikołaj's: ask first.
 
 ## Backlog
 

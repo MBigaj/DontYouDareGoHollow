@@ -147,13 +147,8 @@ Sound is a JavaScript-only extra (`static/js/sound.js`). A handler names the sou
 - **Repo:** `D:\Programming\DontYouDareGoHollow` (`~/mnt/DontYouDareGoHollow` in the linked-computer shell). The game data is `hollow.db` (SQLite) there: never edit it, and copy it before reading.
 - **Running in the linked shell:** `export UV_PROJECT_ENVIRONMENT=$HOME/hollow-venv UV_CACHE_DIR=$HOME/.uvcache`, then `uv sync -q --python 3.12`, then `uv run --no-sync ...`.
 - **Delete permission:** git and SQLite need it once per session (`device_request_delete_permission` on the repo folder). Without it, git leaves `.lock` files behind.
-- **Delivering a branch from a cloud session:**
-  1. Commit in your clone.
-  2. Run `git format-patch`.
-  3. Copy the patch into the repo folder.
-  4. On his machine, create the numbered branch from up-to-date `main` and `git am` the patch there, with `-c user.name=... -c user.email=...`.
-  5. Delete the patch file.
-  6. Run the tests there.
+- **Edit in his codebase, always (Mikołaj, 31 Oct 2026).** When his computer is linked, every branch is created, edited, committed and checked directly in his repo through the linked shell: edit files in place (short Python read-modify-write scripts), run the four checks there, commit there. Do not build in a cloud clone and ship patches. The cloud container is only for what the shell cannot do: screenshots with Playwright and generating art (Figma). Bring those files into the repo with `device_commit_files`, never by retyping them.
+- **If his computer is not linked**, say so and ask him to link it before starting a branch. As a last resort only, a cloud session can commit in its own clone, `git format-patch`, and apply it on his machine later with `git am` (as Mikolaj Bigaj, no trailers), then delete the patch and run the tests there.
 - **Other locations:**
   - The Anki profile is `C:\Users\mikol\AppData\Roaming\Anki2\User 1`. Read it only, and only with his permission.
   - The old Obsidian notes are in `D:\Programming\Notes\Senior Backend Roadmap`. The game no longer reads them.

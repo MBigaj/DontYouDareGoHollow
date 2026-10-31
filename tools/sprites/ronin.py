@@ -26,7 +26,7 @@ from generated import SRC, cropped, glow, landmark_masks, pixelate, scaled, veil
 from kit import BAYER4, Canvas, blend, hx, ramp  # noqa: E402
 from waypoints import waypoints  # noqa: E402
 
-from hollow.domain.atlas import FIRELINK, FIRELINK_SIZE, REGIONS, WORLD_SIZE  # noqa: E402
+from hollow.domain.atlas import RONIN_REGION_MAPS, REGIONS, WORLD_SIZE  # noqa: E402
 
 def eclipse(c: Canvas, cx: float, cy: float, r: float) -> None:
     """The pipeline's value stretch lifts the eclipse's black to grey; put the void back."""
@@ -36,15 +36,28 @@ def eclipse(c: Canvas, cx: float, cy: float, r: float) -> None:
     c.fill((d > r - 1.5) & (d <= r) & (c.yy > cy + r * 0.3) & ((c.xx + c.yy) % 2 == 0), hx("5a240c"))
 
 
+REGION_ART: dict[str, tuple[str, tuple[int, int, int, int], tuple[float, float, float]]] = {
+    # region: (source painting, crop to the map's 260x150 grid, eclipse centre and radius in 2x)
+    "firelink": ("firelink.jpg", (19, 0, 1517, 864), (108, 36, 17.5)),
+    "undead-village": ("undead_village.jpg", (19, 0, 1517, 864), (99, 32, 17.5)),
+}
+
+
 def firelink(tmp: Path) -> Image.Image:
-    """The region map: the scene, with the atlas path laid over it."""
-    w, h = FIRELINK_SIZE[0] * 2, FIRELINK_SIZE[1] * 2
-    src = cropped(SRC / "firelink.jpg", (19, 0, 1517, 864), tmp)
+    return region_map("firelink", tmp)
+
+
+def region_map(region: str, tmp: Path) -> Image.Image:
+    """A Ronin region map: the scene, with the atlas path laid over it."""
+    nodes, size, _ = RONIN_REGION_MAPS[region]
+    painting, crop, sun = REGION_ART[region]
+    w, h = size[0] * 2, size[1] * 2
+    src = cropped(SRC / painting, crop, tmp)
     c = Canvas(w, h)
     c.a = np.array(pixelate(src, tmp, "--preset", "landscape", "--width", str(w), "--colors", "64",
                             "--chroma", "1.1"))  # fmt: skip
-    eclipse(c, 108, 36, 17.5)
-    pts = [(n.point[0] * 2, n.point[1] * 2) for n in FIRELINK]
+    eclipse(c, *sun)
+    pts = [(n.point[0] * 2, n.point[1] * 2) for n in nodes]
     for (x0, y0), (x1, y1) in zip(pts, pts[1:]):  # ember motes along the way
         steps = int(max(abs(x1 - x0), abs(y1 - y0)))
         for i in range(4, steps - 3, 5):
@@ -91,11 +104,18 @@ def landmarks(out: Path) -> None:
     for key, m in masks.items():
         glow(world, m).save(out / f"spot_world_{key}.png")
         veil(world, m).save(out / f"veil_world_{key}.png")
-    region = Image.open(out / "region_firelink.png")
-    masks = landmark_masks(SRC / "firelink.jpg", (19, 0, 1517, 864), FIRELINK_SIZE,
-                           {n.id: n.area for n in FIRELINK if n.area})  # fmt: skip
+    for region_id, (nodes, size, art) in RONIN_REGION_MAPS.items():
+        region_landmarks(out, region_id)
+
+
+def region_landmarks(out: Path, region_id: str) -> None:
+    """Hover outlines for a Ronin region's bonfire and fog gate."""
+    nodes, size, art = RONIN_REGION_MAPS[region_id]
+    painting, crop, _ = REGION_ART[region_id]
+    region = Image.open(out / art)
+    masks = landmark_masks(SRC / painting, crop, size, {n.id: n.area for n in nodes if n.area})
     for key, m in masks.items():
-        glow(region, m).save(out / f"spot_firelink_{key}.png")
+        glow(region, m).save(out / f"spot_{region_id}_{key}.png")
 
 
 # the て glyph, drawn at 2 px per cell on the Warden's shield
@@ -196,6 +216,12 @@ def bonfire_art(tmp: Path) -> tuple[Image.Image, Image.Image]:
 
 if __name__ == "__main__":
     out = Path(sys.argv[1])
+    if sys.argv[2:]:  # just the named regions' maps: ronin.py OUT undead-village
+        with tempfile.TemporaryDirectory() as d:
+            for region_id in sys.argv[2:]:
+                region_map(region_id, Path(d)).save(out / RONIN_REGION_MAPS[region_id][2])
+                region_landmarks(out, region_id)
+        sys.exit(0)
     with tempfile.TemporaryDirectory() as d:
         tmp = Path(d)
         lit, cold = bonfire_art(tmp)
@@ -206,7 +232,8 @@ if __name__ == "__main__":
         stage_cold.save(out / "stage_unlit.png")
         knight(tmp).save(out / "knight_front.png")
         warden(tmp).save(out / "warden_body.png")
-        firelink(tmp).save(out / "region_firelink.png")
+        for region_id, (_, _, art) in RONIN_REGION_MAPS.items():
+            region_map(region_id, tmp).save(out / art)
         world(tmp).save(out / "map_bg.png")
         arena(tmp).save(out / "arena_bg.png")
     for name, img in waypoints().items():

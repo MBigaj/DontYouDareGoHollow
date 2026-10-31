@@ -61,9 +61,8 @@ from hollow.domain.atlas import (
     ARCH_POINTS,
     ARCH_REGION_MAPS,
     ARCH_WORLD_SIZE,
-    FIRELINK,
-    FIRELINK_SIZE,
     REGIONS,
+    RONIN_REGION_MAPS,
     WORLD_SIZE,
     NodeKind,
 )
@@ -85,7 +84,7 @@ from hollow.domain.bosses import (
 from hollow.domain.conjugation import Ending, Verb
 from hollow.domain.conjugation import Form as VerbForm
 from hollow.domain.events import AgentResult, Material, Slot
-from hollow.domain.lessons import LESSONS, REGION_GATES, LessonProgress, Run
+from hollow.domain.lessons import LESSONS, REGION_GATES, LessonProgress, Run, region_open
 from hollow.domain.progression import STATS, Stat
 from hollow.domain.world import EFFIGIES_PER_WEEK, MAX_HOLLOWING, WorldState
 
@@ -750,15 +749,16 @@ def create_app(
     def ronin_world(request: Request, at: str | None) -> Response:
         ids = [r.id for r in REGIONS]
         here = at if at in ids else request.cookies.get("hollow_at_world", "firelink")
+        opened = ronin_open(service.state())
         points = []
         for r in REGIONS:
             x, y = percent(r.point, WORLD_SIZE)
-            kind = "bonfire" if r.open else "world"
+            kind = "bonfire" if r.id in opened else "world"
             point: dict[str, Any] = {
                 "id": r.id,
                 "name": r.name,
                 "kind": kind,
-                "status": "open" if r.open else "fog",
+                "status": "open" if r.id in opened else "fog",
                 "x": x,
                 "y": y,
             }
@@ -775,10 +775,16 @@ def create_app(
                 art="map_bg.png",
                 points=points,
                 regions=REGIONS,
+                opened=opened,
                 at=here if here in ids else "firelink",
-                explored=explored(),
+                explored={r: explored(r) for r in opened},
             ),
         )
+
+    def ronin_open(state: WorldState) -> set[str]:
+        """Ronin regions you can walk into: drawn, and the boss before them has fallen."""
+        felled = {b for b, record in state.bosses.items() if record.defeated}
+        return {r for r in RONIN_REGION_MAPS if region_open(r, felled)}
 
     def architect_world(request: Request, at: str | None) -> Response:
         state = service.state()
@@ -868,24 +874,44 @@ def create_app(
             "extra": ("Visit the blacksmith", "/blacksmith"),
         }
 
-    @app.get("/map/firelink", response_class=HTMLResponse)
-    def firelink(request: Request, at: str | None = None) -> Response:
-        ids = [n.id for n in FIRELINK]
-        here = at if at in ids else request.cookies.get("hollow_at_firelink", "bonfire")
+    RONIN_GATES: dict[str, Boss] = {"firelink": WARDEN}
+    """The boss behind each Ronin region's fog gate, once it exists (the Gargoyle: branch 27)."""
+    LESSON_KIND = {"firelink": "て-form", "undead-village": "plain forms"}
+
+    @app.get("/map/{region_id}", response_class=HTMLResponse)
+    def ronin_region(request: Request, region_id: str, at: str | None = None) -> Response:
+        if region_id not in RONIN_REGION_MAPS:
+            raise HTTPException(404, f"No Ronin region called {region_id}.")
+        state = service.state()
+        region = next(r for r in REGIONS if r.id == region_id)
+        if region_id not in ronin_open(state):
+            raise HTTPException(404, f"{region.name} is still in the fog.")
+        nodes, size, art = RONIN_REGION_MAPS[region_id]
+        ids = [n.id for n in nodes]
+        here = at if at in ids else request.cookies.get(f"hollow_at_{region_id}", "bonfire")
         cards = {c.spec.id: c for c in lessons.overview()}
         points = []
-        for number, node in enumerate(FIRELINK):
-            x, y = percent(node.point, FIRELINK_SIZE)
+        for number, node in enumerate(nodes):
+            x, y = percent(node.point, size)
             point: dict[str, Any] = {"id": node.id, "kind": node.kind.value, "x": x, "y": y}
-            point |= landmark("firelink", node.id, node.area)
+            point |= landmark(region_id, node.id, node.area)
             if node.kind is NodeKind.BONFIRE:
-                point |= bonfire_point("Firelink bonfire")
+                point |= bonfire_point(f"{region.name} bonfire")
             elif node.kind is NodeKind.BOSS:
-                point |= boss_point(
-                    WARDEN,
-                    fights.ready(WARDEN.id),
-                    f"It will not part until you know {WARDEN.min_verbs} verbs.",
-                )
+                boss = RONIN_GATES.get(region_id)
+                if boss is None:
+                    point |= {
+                        "name": "Fog gate",
+                        "status": "fog",
+                        "caption": f"Boss · {region.boss}",
+                        "detail": f"{region.boss} perches above the gate. He has not woken yet.",
+                    }
+                else:
+                    point |= boss_point(
+                        boss,
+                        fights.ready(boss.id),
+                        f"It will not part until you know {boss.min_verbs} verbs.",
+                    )
             else:
                 assert node.lesson_id is not None
                 card = cards[node.lesson_id]
@@ -909,7 +935,7 @@ def create_app(
                 point |= {
                     "name": card.spec.title,
                     "status": "cleared" if status == "waiting" else status,
-                    "caption": f"Lesson {number} · て-form",
+                    "caption": f"Lesson {number} · {LESSON_KIND[region_id]}",
                     "example": card.spec.example,
                     "detail": detail,
                     "action": (
@@ -921,16 +947,16 @@ def create_app(
             request,
             "map_region.html",
             context(
-                service.state(),
+                state,
                 page="map",
                 road="ronin",
-                map_id="firelink",
-                size=FIRELINK_SIZE,
-                art="region_firelink.png",
+                map_id=region_id,
+                size=size,
+                art=art,
                 points=points,
-                region=REGIONS[0],
+                region=region,
                 at=here if here in ids else "bonfire",
-                explored=explored(),
+                explored=explored(region_id),
             ),
         )
 

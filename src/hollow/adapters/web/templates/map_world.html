@@ -11,7 +11,7 @@
   <aside class="map-side">
     {% for r in regions %}
     <section class="panel map-panel" data-panel="{{ r.id }}" {{ 'hidden' if r.id != at }}>
-      <div class="label">Region {{ r.number }}{% if not r.open %} · in the fog{% endif %}</div>
+      <div class="label">Region {{ r.number }}{% if r.id not in opened %} · in the fog{% endif %}</div>
       <h2 class="map-title">{{ r.name }}</h2>
       <div lang="ja" class="map-jp">{{ ja(r.jp, r.jp_kana) }}</div>
       <p>{{ r.blurb }}</p>
@@ -21,10 +21,10 @@
         <tr><td>Words</td><td>{{ r.cards }}</td></tr>
         <tr><td>Grammar</td><td>{{ r.topics }}</td></tr>
         <tr><td>Boss</td><td>{{ r.boss }}</td></tr>
-        {% if r.open %}<tr><td>Explored</td><td>{{ explored }}%</td></tr>{% endif %}
+        {% if r.id in opened %}<tr><td>Explored</td><td>{{ explored[r.id] }}%</td></tr>{% endif %}
       </table>
-      {% if r.open %}<a class="btn ember wide-link" href="/map/{{ r.id }}" data-action>Enter {{ r.name }}</a>
-      {% else %}<p class="muted">Unavailable for now. It opens after the boss before it falls.</p>{% endif %}
+      {% if r.id in opened %}<a class="btn ember wide-link" href="/map/{{ r.id }}" data-action>Enter {{ r.name }}</a>
+      {% else %}<p class="muted">Unavailable for now. It opens after the boss before it falls{% if r.number == 2 %}: the て-form Warden{% endif %}.</p>{% endif %}
     </section>
     {% endfor %}
   </aside>

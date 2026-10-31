@@ -126,6 +126,31 @@ FIRELINK: tuple[Node, ...] = (
 )
 """The path through Firelink Shrine, in walking order."""
 
+VILLAGE_SIZE = (260, 150)
+"""Grid of the Undead Village art (region_undead_village.png is 4 px per unit, 2x density)."""
+
+VILLAGE: tuple[Node, ...] = (
+    Node("bonfire", NodeKind.BONFIRE, (27, 128),
+         area=((15, 138), (17, 126), (24, 120), (29, 116), (33, 122), (37, 130), (38, 138))),
+    Node("pf-teiru", NodeKind.LESSON, (63, 120), "pf-teiru"),
+    Node("pf-ta", NodeKind.LESSON, (101, 106), "pf-ta"),
+    Node("pf-nai-ru", NodeKind.LESSON, (141, 97), "pf-nai-ru"),
+    Node("pf-nai-u", NodeKind.LESSON, (168, 79), "pf-nai-u"),
+    Node("pf-nakatta", NodeKind.LESSON, (200, 65), "pf-nakatta"),
+    Node("pf-mixed", NodeKind.LESSON, (221, 50), "pf-mixed"),
+    Node("gargoyle", NodeKind.BOSS, (234, 30),
+         area=((205, 40), (206, 17), (214, 11), (222, 12), (228, 0), (240, 0), (248, 10),
+               (258, 14), (260, 40))),
+)  # fmt: skip
+"""The street up through Undead Village, in walking order: the well, the bridge, the stairs,
+and the gargoyle's gatehouse at the top."""
+
+RONIN_REGION_MAPS: dict[str, tuple[tuple[Node, ...], tuple[int, int], str]] = {
+    "firelink": (FIRELINK, FIRELINK_SIZE, "region_firelink.png"),
+    "undead-village": (VILLAGE, VILLAGE_SIZE, "region_undead_village.png"),
+}
+"""Ronin region maps drawn so far: nodes, art size and art file."""
+
 
 # --- the Architect road ---------------------------------------------------------
 

@@ -28,7 +28,7 @@ src/hollow/
     lessons.py     lesson runs, refreshers (1, 3, 7, 21, 60 days), souls per run
     bosses.py      Boss/Phase data (WARDEN, GOLEM, WYRM), questions, attempts, wounds, rewards
     armory.py      weapons, armour and its effects, titanite, upgrade costs, drops
-    atlas.py       map coordinates: Ronin REGIONS/FIRELINK, Architect ARCH_POINTS/FORGE/DEPTHS
+    atlas.py       map coordinates: Ronin REGIONS/FIRELINK/VILLAGE, Architect ARCH_POINTS/FORGE/DEPTHS
     architect.py   Architect road: REGIONS/TOPICS loaded from the curriculum, LORDS, progress
     curriculum.py  parser for the Markdown steps (pure: text in, values out)
     quests.py, progression.py, activities.py, conjugation.py, vocabulary.py, calendar.py
@@ -68,6 +68,15 @@ tests/             pytest; conftest has FakeClock, store and client fixtures
   `Kind.CHOICE` phases ask quiz questions from the listed steps. `Kind.CONVERSATION` phases (the Warden's third) speak `prompts` lines built from the player's verbs; the replies are `FightTurn`s with `FightAction.REPLY`, and the fight waits for a Sensei `AgentResult` on `verdict_task(attempt)`, which `bosses.verdict()` applies by the game's rule (`PASS_REPLIES`). `FightStarted.phases` records how many phases an attempt began with, so adding a phase never rewrites an old fight. Drops are set in `armory.BOSS_WEAPONS`, `armory.BOSS_ARMOUR` and `armory.BOSS_MATERIALS`.
 - **Armour is data too.** `armory.ARMOUR` holds one piece per `Slot`, each with one `Effect` (`EFFECTS` words it). The armory says what is owned and worn and what the worn effects add up to (`max_hp_bonus`, `mistake_reduction`, `extra_estus`, `drop_bonus`); `WorldState.max_hp`, `mistake_cost` and `estus` apply them, and `FightStarted` records them so a fight never changes under you. A new effect needs a rule there and a test in `tests/test_armour.py`.
 - **Every form works without JavaScript.** HTMX swaps panels. Static files go through `asset()`, which fingerprints them so a changed sprite always loads.
+
+## Adding a Ronin region map
+
+`/map/<region>` serves any Ronin region in `atlas.RONIN_REGION_MAPS` (nodes, grid size, art) whose gate is open (`lessons.REGION_GATES`); the world map links it the same way. To add one:
+
+- Write its lessons first (`LessonSpec(..., region=...)` in `domain/lessons.py`) and its gate in `REGION_GATES`.
+- Generate its painting with the bonfire bottom left and the boss's gate top right (prompt in `PROMPTS.md`), add it to `REGION_ART` in `tools/sprites/ronin.py` (source, crop, eclipse) and run `python tools/sprites/ronin.py OUT <region>`, which builds only that map and its hover glows.
+- Add its nodes (bonfire, one per lesson in walking order, the gate) on the painted ground in `atlas.py`, and a `RONIN_REGION_MAPS` entry. Check them by drawing the points over the built map.
+- Name its lessons' kind in `LESSON_KIND` and its boss in `RONIN_GATES` in `app.py` (until the boss exists, the gate says it has not woken).
 
 ## Writing Architect content
 

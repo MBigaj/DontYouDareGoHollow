@@ -71,7 +71,7 @@ The Docker setup cannot see an Anki running on your desktop, because AnkiConnect
 
 ## Lessons
 
-Lessons are short typed drills, grouped by Ronin region on `/lessons`. Firelink Shrine covers the て-form, one lesson per sound change (る-verbs, う・つ・る → って, む・ぶ・ぬ → んで, く・ぐ → いて・いで, す → して, する and 来る) plus a mixed one.
+Lessons are short typed drills, grouped by Ronin region on `/lessons`. The tab lists only lessons you can play now; the rest (short of verbs, or in a region still sealed) stay off it, counted in one line that says what opens them next. Firelink Shrine covers the て-form, one lesson per sound change (る-verbs, う・つ・る → って, む・ぶ・ぬ → んで, く・ぐ → いて・いで, す → して, する and 来る) plus a mixed one.
 
 Undead Village covers the plain forms, built on the て-form: 〜ている (what is happening: 読んでいる), 〜た (what already happened: 読んだ, the same sound changes with た and だ), 〜ない for る-verbs, する and 来る (食べない, しない, 来ない), 〜ない for う-verbs (the last kana moves to the あ-row, う becomes わ: 書かない, 買わない), 〜なかった (書かなかった), and a mixed one that asks each form in turn. ある and いる sit out the 〜ている drill, and ある's negative is just ない. The village and its lessons stay sealed until the て-form Warden falls.
 

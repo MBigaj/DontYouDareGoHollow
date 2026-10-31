@@ -29,7 +29,7 @@ from hollow.application.github_sync import (
     GitHubSync,
     GitHubUnavailable,
 )
-from hollow.application.lessons import LessonError, LessonService
+from hollow.application.lessons import LessonError, LessonService, Status
 from hollow.application.lessons import Run as LessonRun
 from hollow.application.ports import Clock, EventStore, SystemClock
 from hollow.config import Settings
@@ -85,7 +85,7 @@ from hollow.domain.bosses import (
 from hollow.domain.conjugation import Ending, Verb
 from hollow.domain.conjugation import Form as VerbForm
 from hollow.domain.events import AgentResult, Material, Slot
-from hollow.domain.lessons import LESSONS, LessonProgress, Run
+from hollow.domain.lessons import LESSONS, REGION_GATES, LessonProgress, Run
 from hollow.domain.progression import STATS, Stat
 from hollow.domain.world import EFFIGIES_PER_WEEK, MAX_HOLLOWING, WorldState
 
@@ -563,16 +563,28 @@ def create_app(
             if state.architect.region_open(r.id)
         ]  # fmt: skip
         cards = lessons.overview()
+        # only lessons you can play now; the rest wait off the page, counted in one line
         ronin = [
             {
                 "region": r,
-                "cards": [c for c in cards if c.spec.region == r.id],
-                "sealed": next((c for c in cards if c.spec.region == r.id and c.sealed), None)
-                is not None,
+                "cards": [
+                    c for c in cards if c.spec.region == r.id and c.status is not Status.LOCKED
+                ],
             }
             for r in REGIONS
-            if any(c.spec.region == r.id for c in cards)
         ]
+        ronin = [group for group in ronin if group["cards"]]
+        waiting = [c for c in cards if c.status is Status.LOCKED]
+        sealed = [
+            {"name": r.name, "boss": BOSSES[REGION_GATES[r.id]].name}
+            for r in REGIONS
+            if any(c.sealed and c.spec.region == r.id for c in waiting)
+        ]
+        closest = min(
+            (c for c in waiting if not c.sealed),
+            key=lambda c: c.spec.min_verbs - c.verbs,
+            default=None,
+        )
         return templates.TemplateResponse(
             request,
             "lessons.html",
@@ -581,6 +593,9 @@ def create_app(
                 page="lessons",
                 cards=cards,
                 ronin=ronin,
+                waiting=len(waiting),
+                sealed_regions=sealed,
+                closest=closest,
                 arch_regions=steps,
                 verb_count=len(lessons.verbs()) - 1,
                 warning=warning,

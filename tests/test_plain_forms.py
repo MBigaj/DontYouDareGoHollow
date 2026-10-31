@@ -11,6 +11,7 @@ from hollow.application.agents import AgentDesk, AgentError
 from hollow.application.lessons import LessonError, LessonService, Status
 from hollow.domain.conjugation import Ending, Form, Verb
 from hollow.domain.lessons import LESSONS, REGION_GATES, region_open
+from hollow.domain.vocabulary import LearnedWord, to_event
 from tests.conftest import FakeClock
 from tests.test_agents import quests
 from tests.test_armory import fell_the_warden
@@ -154,15 +155,26 @@ def test_the_lessons_page_groups_by_region(
     client: TestClient, store: SqlEventStore, clock: FakeClock
 ) -> None:
     learn(store, clock)
-    page = client.get("/lessons").text
-    assert "Region 1 · Firelink Shrine" in page and "Region 2 · Undead Village" in page
-    assert "Sealed. Undead Village opens when the て-form Warden falls." in page
-    assert 'href="/lessons/pf-ta"' not in page
+    page = client.get("/lessons").text  # only what you can play: the village stays off the page
+    assert "Region 1 · Firelink Shrine" in page and "Region 2 · Undead Village" not in page
+    assert 'href="/lessons/pf-' not in page
+    assert "6 more lessons open later: fell The て-form Warden for Undead Village." in page
     sealed = client.get("/lessons/pf-ta").text
     assert "Undead Village opens when The て-form Warden falls." in sealed
     fell_the_warden(store, clock)
     page = client.get("/lessons").text
-    assert "Sealed." not in page and 'href="/lessons/pf-ta"' in page
+    assert "Region 2 · Undead Village" in page and 'href="/lessons/pf-ta"' in page
+    assert "more lessons open later" not in page
+
+
+def test_lessons_short_of_verbs_stay_off_the_page(
+    client: TestClient, store: SqlEventStore, clock: FakeClock
+) -> None:
+    store.append(to_event(LearnedWord(0, "食べる", "たべる", "to eat", "Verb"), clock.now()))
+    store.append(to_event(LearnedWord(1, "見る", "みる", "to see", "Verb"), clock.now()))
+    page = client.get("/lessons").text
+    assert 'href="/lessons/te-ru"' in page and 'href="/lessons/te-tsu"' not in page
+    assert "more lessons open later: learn verbs in Anki" in page
 
 
 def test_a_plain_form_lesson_asks_and_corrects_its_form(

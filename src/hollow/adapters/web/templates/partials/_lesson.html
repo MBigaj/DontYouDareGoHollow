@@ -23,7 +23,7 @@
       <div class="prompt" lang="ja">{{ ja(verb.written, verb.kana) }}</div>
       {% if verb.written != verb.kana %}<div class="reading muted">Hover or tap the word for its reading</div>{% endif %}
       {% if verb.meaning %}<div class="muted meaning">{{ verb.meaning }}</div>{% endif %}
-      <label class="answer-label">て-form
+      <label class="answer-label">{{ spec.asks(answers | length) }}
         <input name="answer" lang="ja" autocomplete="off" autocapitalize="off" spellcheck="false" required autofocus maxlength="40">
       </label>
       <button class="btn ember" type="submit">Answer</button>
@@ -31,8 +31,9 @@
 
   {% elif mode == 'feedback' %}
     {% set verb = questions[answers | length - 1] %}
+    {% set right = spec.answer(answers | length - 1, verb) %}
     <div class="verdict {{ 'ok' if correct else 'miss' }}" role="status" data-sfx="{{ 'right' if correct else 'wrong' }}">
-      <div class="prompt small" lang="ja">{{ ja(verb.written, verb.kana) }} → <strong>{{ ja(verb.te_form.written, verb.te_form.kana) }}</strong></div>
+      <div class="prompt small" lang="ja">{{ ja(verb.written, verb.kana) }} → <strong>{{ ja(right.written, right.kana) }}</strong></div>
       {% if correct %}<div class="verdict-line">正解 · Correct</div>
       {% else %}<div class="verdict-line">You wrote <span lang="ja">{{ answers[-1] }}</span></div>{% endif %}
       <div class="muted hint">{{ hint }}</div>
@@ -54,7 +55,7 @@
     {% if misses %}
     <h3 class="label">To review</h3>
     <table lang="ja">
-      {% for verb, given in misses %}<tr><td>{{ ja(verb.written, verb.kana) }} → {{ ja(verb.te_form.written, verb.te_form.kana) }}</td><td class="muted">you: {{ given }}</td></tr>{% endfor %}
+      {% for verb, given, right in misses %}<tr><td>{{ ja(verb.written, verb.kana) }} → {{ ja(right.written, right.kana) }}</td><td class="muted">you: {{ given }}</td></tr>{% endfor %}
     </table>
     {% endif %}
     <div class="row-buttons">

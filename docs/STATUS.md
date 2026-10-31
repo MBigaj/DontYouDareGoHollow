@@ -23,8 +23,8 @@ Template for an entry:
 
 ### 25-plain-forms
 Undead Village, part 1 of 3: the plain forms as playable lessons.
-- Done: the working rule (edit directly in Mikołaj's repo) in `CLAUDE.md`.
-- Next: the conjugation engine learns target forms (〜ている, 〜た, 〜ない, 〜なかった); the Undead Village lessons on it; locked until the Warden falls; the lessons page, quests and the agents' inbox.
+- Done: the working rule (edit directly in Mikołaj's repo) in `CLAUDE.md`. `conjugation.Form` and `conjugate()` (〜ている and 〜た from the て-form, 〜ない and 〜なかった from `nai_form()`, ある → ない), checked on all 41 verbs in his deck. `LessonSpec` gained `forms` (question n asks `forms[n % len]`), `region` and `skip`, with `answer()`, `asks()` and `grade()`; six Undead Village lessons (`pf-teiru`, `pf-ta`, `pf-nai-ru`, `pf-nai-u`, `pf-nakatta`, `pf-mixed`); `REGION_GATES` seals them until the Warden falls (overview, start, the quest master's checks, the inbox's `open`). The lessons page groups by region; hints explain the form asked. Tests in `tests/test_plain_forms.py`.
+- Next: screenshots of the lessons page and a plain-form run, then README and the agents' docs.
 - Decisions (Mikołaj, 31 Oct): Undead Village is three branches in this order: 25 the plain-form lessons, 26 its map, 27 the Plain-Form Gargoyle. The drill is dictionary form, 〜ない, 〜た and 〜なかった (〜ている too); no polite past. The region and its lessons wait until the て-form Warden is felled.
 - Open: nothing.
 

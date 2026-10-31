@@ -1,4 +1,4 @@
-"""て-form conjugation for the verbs in your deck.
+"""Conjugation for the verbs in your deck: the て-form, and the plain forms built on it.
 
 Groups follow how the て-form changes, which is how drills are split:
 - ichidan (る-verbs): drop る, add て. 食べる → 食べて
@@ -8,6 +8,13 @@ Groups follow how the て-form changes, which is how drills are split:
 
 A verb ending in -iru or -eru is ichidan unless it is a known godan exception (帰る, 入る, 走る…).
 Homographs decide by the written form: 切る (cut) is godan, 着る (wear) is ichidan.
+
+The plain forms (Undead Village) are built from that:
+- 〜ている: the て-form + いる. 食べている, 読んでいる
+- 〜た: the て-form with て → た, で → だ, so the same sound changes. 読んだ, 行った
+- 〜ない: ichidan drop る; godan move the last kana to the あ-row (う → わ); する → しない,
+  来る → 来ない (こない), and ある → ない.
+- 〜なかった: 〜ない with い → かった.
 """
 
 import unicodedata
@@ -100,6 +107,29 @@ GODAN_ENDING = {
 }
 
 
+class Form(StrEnum):
+    """What a drill asks you to turn the dictionary form into."""
+
+    TE = "te"
+    TEIRU = "teiru"
+    TA = "ta"
+    NAI = "nai"
+    NAKATTA = "nakatta"
+
+
+FORM_NAMES = {
+    Form.TE: "て-form",
+    Form.TEIRU: "〜ている",
+    Form.TA: "〜た (plain past)",
+    Form.NAI: "〜ない (plain negative)",
+    Form.NAKATTA: "〜なかった (plain past negative)",
+}
+
+A_ROW = {"う": "わ", "く": "か", "ぐ": "が", "す": "さ", "つ": "た", "ぬ": "な", "ぶ": "ば",
+         "む": "ま", "る": "ら"}  # fmt: skip
+"""Godan 〜ない: the last kana moves to the あ-row (う becomes わ, not あ)."""
+
+
 class NotAVerb(ValueError):
     pass
 
@@ -120,9 +150,14 @@ class Verb:
     def te_form(self) -> "TeForm":
         return te_form(self.written, self.kana)
 
+    def form(self, form: Form) -> "TeForm":
+        return conjugate(self.written, self.kana, form)
+
 
 @dataclass(frozen=True)
 class TeForm:
+    """A conjugated form, in kana and as written (the name is from when て was the only one)."""
+
     kana: str
     written: str
 
@@ -162,3 +197,34 @@ def te_form(written: str, kana: str) -> TeForm:
         return TeForm(kana[:-1] + "って", written[:-1] + "って")
     suffix = GODAN_TE[kana[-1]]
     return TeForm(kana[:-1] + suffix, written[:-1] + suffix)
+
+
+def nai_form(written: str, kana: str) -> TeForm:
+    """The plain negative: 食べない, 書かない, 買わない, しない, 来ない, and ある → ない."""
+    ending = classify(written, kana)
+    if ending is Ending.IRREGULAR:
+        if kana.endswith("する"):
+            return TeForm(kana[:-2] + "しない", written[:-2] + "しない")
+        return TeForm("こない", "来ない" if written.startswith("来") else "こない")
+    if kana == "ある":
+        return TeForm("ない", "ない")
+    if ending is Ending.RU_VERB:
+        return TeForm(kana[:-1] + "ない", written[:-1] + "ない")
+    stem = A_ROW[kana[-1]]
+    return TeForm(kana[:-1] + stem + "ない", written[:-1] + stem + "ない")
+
+
+def conjugate(written: str, kana: str, form: Form) -> TeForm:
+    """The verb in `form`, built from the て-form or the plain negative."""
+    if form is Form.NAI:
+        return nai_form(written, kana)
+    if form is Form.NAKATTA:
+        nai = nai_form(written, kana)
+        return TeForm(nai.kana[:-1] + "かった", nai.written[:-1] + "かった")
+    te = te_form(written, kana)
+    if form is Form.TEIRU:
+        return TeForm(te.kana + "いる", te.written + "いる")
+    if form is Form.TA:
+        past = {"て": "た", "で": "だ"}
+        return TeForm(te.kana[:-1] + past[te.kana[-1]], te.written[:-1] + past[te.written[-1]])
+    return te

@@ -36,7 +36,7 @@ from hollow.domain.events import (
     StudyLogged,
     WordLearned,
 )
-from hollow.domain.lessons import LESSONS
+from hollow.domain.lessons import LESSONS, region_open
 from hollow.domain.quests import issued
 from hollow.domain.vocabulary import known_verbs
 from hollow.domain.world import WorldState, replay
@@ -250,6 +250,7 @@ class AgentDesk:
         if state.today in issued(events):
             raise AgentError("Today's quests were already issued.")
         quests = [*result.quests, *([result.roulette] if result.roulette else [])]
+        felled = {b for b, r in state.bosses.items() if r.defeated}
         ids = [q.id for q in quests]
         if len(set(ids)) != len(ids):
             raise AgentError("Quest ids must be unique.")
@@ -257,6 +258,10 @@ class AgentDesk:
             check = q.check
             if isinstance(check, LessonCheck) and check.lesson_id not in LESSONS:
                 raise AgentError(f"No lesson called {check.lesson_id}.")
+            if isinstance(check, LessonCheck) and not region_open(
+                LESSONS[check.lesson_id].region, felled
+            ):
+                raise AgentError(f"{check.lesson_id} is sealed until its region opens.")
             if isinstance(check, BossCheck) and check.boss_id not in BOSSES:
                 raise AgentError(f"No boss called {check.boss_id}.")
 
@@ -435,10 +440,12 @@ class AgentDesk:
                     key = "reviews" if e.kind is ActivityKind.ANKI_REVIEWS else "new_cards"
                     anki[d][key] += e.quantity
         lessons = []
+        felled = {b for b, r in state.bosses.items() if r.defeated}
         for spec in LESSONS.values():
             p = state.lessons.get(spec.id)
             lessons.append({
-                "id": spec.id, "title": spec.title,
+                "id": spec.id, "title": spec.title, "region": spec.region,
+                "open": region_open(spec.region, felled),
                 "cleared": bool(p and p.cleared), "best": round(p.best, 2) if p else 0,
                 "due_on": p.due_on.isoformat() if p and p.due_on else None,
                 "due_today": bool(p and p.is_due(today)),

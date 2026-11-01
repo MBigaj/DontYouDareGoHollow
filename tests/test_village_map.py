@@ -37,11 +37,12 @@ def test_the_village_has_its_art() -> None:
         assert size(f"spot_undead-village_{place}.png") == size("region_undead_village.png")
 
 
-def test_the_village_stones_carry_ta() -> None:
+def test_every_map_shares_one_set_of_stones() -> None:
     css = (SPRITES.parent / "hollow.css").read_text(encoding="utf-8")
-    for state in ("", "_cleared", "_locked"):
-        assert size(f"waypoint_ta{state}.png") == size(f"waypoint{state}.png") == (48, 56)
-        assert f"waypoint_ta{state}.png" in css
+    stones = sorted(p.name for p in SPRITES.glob("waypoint*.png"))
+    assert stones == ["waypoint.png", "waypoint_cleared.png", "waypoint_locked.png"]
+    assert all(size(name) == (48, 56) for name in stones)
+    assert css.count("sprites/waypoint") == len(stones)  # no road or region swaps them
 
 
 def test_the_village_waits_in_the_fog_until_the_warden_falls(

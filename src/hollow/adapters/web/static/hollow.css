@@ -226,6 +226,10 @@ td:last-child { text-align: right; color: var(--ember-hi); }
 .node.due .node-mark { animation: ember 1.4s ease-in-out infinite; }
 .node.world.fog { width: 3.4%; }
 .node.locked .node-mark, .node.fog .node-mark { background-image: url(/static/sprites/waypoint_locked.png); filter: grayscale(1) brightness(.7); opacity: .55; }
+/* Undead Village's stones carry た, the plain forms' kana, instead of Firelink's て */
+.map[data-map="undead-village"] .node-mark { background-image: url(/static/sprites/waypoint_ta.png); }
+.map[data-map="undead-village"] .node.cleared .node-mark { background-image: url(/static/sprites/waypoint_ta_cleared.png); }
+.map[data-map="undead-village"] .node.locked .node-mark, .map[data-map="undead-village"] .node.fog .node-mark { background-image: url(/static/sprites/waypoint_ta_locked.png); }
 .node.bonfire { width: 5.4%; aspect-ratio: 72 / 90; }
 .node.bonfire .node-mark { background: url(/static/sprites/bonfire_sheet8.png) 0 0 / 800% 100% no-repeat; animation: mapfire .66s steps(8) infinite; }
 @keyframes mapfire { from { background-position: 0 0; } to { background-position: 114.2857% 0; } }

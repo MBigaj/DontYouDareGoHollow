@@ -237,11 +237,15 @@ def bonfire_art(tmp: Path) -> tuple[Image.Image, Image.Image]:
 
 if __name__ == "__main__":
     out = Path(sys.argv[1])
-    if sys.argv[2:]:  # just the named parts: ronin.py OUT undead-village gargoyle
+    if sys.argv[2:]:  # just the named parts: ronin.py OUT undead-village gargoyle waypoints
         parts = {"gargoyle": (gargoyle, "gargoyle_body.png"),
                  "arena-undead-village": (village_arena, "arena_undead_village.png")}  # fmt: skip
         with tempfile.TemporaryDirectory() as d:
             for name in sys.argv[2:]:
+                if name == "waypoints":
+                    for file, img in waypoints().items():
+                        img.save(out / file)
+                    continue
                 if name in parts:
                     build, file = parts[name]
                     build(Path(d)).save(out / file)

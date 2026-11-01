@@ -87,6 +87,12 @@ The Gargoyle's drops on one sheet: the halberd for `weapons.py` (`Held(..., shee
 
 Dark fantasy game item concept sheet: two separate original items side by side, evenly spaced, each centred in its own half, not touching. Left: a tall stone halberd standing upright, its haft of dark segmented stone like a gargoyle's tail, a curved axe blade on one side and a hooked spike on the other, a pointed iron butt. Right: a horned helm of weathered grey stone with patches of green lichen, short curled horns, a dark open face and carved brow ridges. Strong warm rim light from the upper left, deep shadows, high contrast, painterly, inspired by Dark Souls and Elden Ring item icons, on a plain flat light grey background, no floor, no shadow, no text.
 
+## tombstone.jpg (1024x1024)
+
+The grave stone behind every Ronin waypoint. `waypoints.py` averages its light and moss onto a 24x28 grid (`SOURCE_SLAB` is where the slab sits on it) and draws the rest. Generated on `gpt-image-2.5-sunburst` in the Figma file "ASHEN source art - armour" (node 4:2); only the 256 px preview came through (the MCP's daily limit), upscaled 4x, which is plenty for a sprite this small.
+
+Dark fantasy game prop concept art: one small old Japanese-style grave stone (a rune stone waypoint), seen from the front with a slight three-quarter turn. A single upright slab of weathered grey granite, taller than wide, with a gently rounded arched top, chipped edges and a few cracks, a little green moss at its base and on one shoulder. On its face a smooth, flat, slightly recessed rectangular panel, completely blank and empty, ready for a carved character. It stands on a low, wide, rough stone plinth sunk into a tuft of dry grass. Strong warm golden rim light from the upper left, deep cool shadows on the right, high contrast, clear readable chunky silhouette, large simple shapes, painterly, inspired by Dark Souls and Elden Ring item icons. The whole stone visible and centred, isolated on a plain flat light grey background, no floor, no cast shadow, no text, no writing, no symbols.
+
 ## The Architect road
 
 Same rules, colder: night blue, cold steel, soul cyan and abyss violet, Dark Souls leaning. `tools/sprites/architect.py` runs these darker than the Ronin sources (gamma above 1), so night stays night.

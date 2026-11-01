@@ -52,14 +52,14 @@ Template for an entry:
 | 25 | `25-plain-forms` | Undead Village, part 1 of 3: the conjugation engine learns the plain forms (〜ている, 〜た, 〜ない, 〜なかった, with ある → ない); six Undead Village lessons on them, a mixed one cycling the forms; the region sealed until the Warden falls (lessons, quests, inbox); `/lessons` grouped by region, listing only lessons you can play (the rest counted in one line), with hints per form; the rule to work directly in Mikołaj's repo in `CLAUDE.md` |
 | 26 | `26-undead-village-map` | Undead Village, part 2 of 3: its generated map (a dead village climbing to the gargoyle's gatehouse at dusk), a stone per plain-form lesson up the street, the bonfire and gate as landmarks; `/map/<region>` for any Ronin region in `RONIN_REGION_MAPS`, opened by `REGION_GATES`; `ronin.py OUT <region>` builds one map. Branched from 25 (not merged when it began) |
 | 27 | `27-plain-form-gargoyle` | Undead Village, part 3 of 3: the Plain-Form Gargoyle at the village gatehouse, waiting for 3 cleared village lessons; plain-form phases (〜た/〜ない, then 〜なかった/〜ている, timed) and a conversation in plain forms judged by the Sensei with its own rubric; drops the Gargoyle's Tail Halberd (Soul Siphon) and the Gargoyle Helm (right answers in boss fights pay 2 more souls, recorded on `FightStarted`); his sprite, arena and gear generated in Figma; `weapons.py` reads more than one sheet. Branched from 26 (25 and 26 not merged when it began) |
+| 28 | `28-rune-stones` | New Ronin waypoints (Mikołaj, 1 Nov: the old ones looked poor): a grave stone painted from a generated `tombstone.jpg` (light, cracks, moss) with a recessed panel, rim light, grass and a crisp kana drawn in code; て on Firelink, た on Undead Village (`waypoint_ta*.png`, swapped in by the CSS); `ronin.py OUT waypoints`. Branched from 27 |
 
 ## Up next
 
 In a sensible order. Each one fits a branch.
 
-1. **New rune stones** (`28-rune-stones`). Mikołaj, 1 Nov: the stone waypoints on the Ronin maps (`waypoint.png`, `waypoint_cleared.png`, `waypoint_locked.png`, drawn by `tools/sprites/waypoints.py`) look poor. Redraw them as proper pixel-art tombstones, with a た stone for Undead Village (Firelink keeps て). Generated in Figma when the MCP limit allows, else drawn carefully in code.
-2. **Lore for the Architect road.** `lore_targets()` in `application/agents.py` only knows the Ronin regions. Add the Architect regions, so the Lorekeeper can write region and boss lore for them.
-3. **Deploy.** Put the Docker image on one small host (DigitalOcean was the plan) with PostgreSQL and `HOLLOW_PASSWORD`. Anki sync keeps running from his PC with `hollow-sync-anki` on a schedule, which needs the API to accept pushed reviews or a remote database URL. That design decision is Mikołaj's: ask first.
+1. **Lore for the Architect road.** `lore_targets()` in `application/agents.py` only knows the Ronin regions. Add the Architect regions, so the Lorekeeper can write region and boss lore for them.
+2. **Deploy.** Put the Docker image on one small host (DigitalOcean was the plan) with PostgreSQL and `HOLLOW_PASSWORD`. Anki sync keeps running from his PC with `hollow-sync-anki` on a schedule, which needs the API to accept pushed reviews or a remote database URL. That design decision is Mikołaj's: ask first.
 
 ## Backlog
 

@@ -54,6 +54,8 @@ class Held:
     hand: bool = True
     """Do his fingers close over it? A gauntlet is worn, so it covers the hand instead."""
     icon_turn: float = -45.0
+    sheet: str = "weapons.jpg"
+    """The generated sheet it is cut from (later weapons come on sheets of their own)."""
 
 
 ARSENAL: dict[str, Held] = {
@@ -69,6 +71,8 @@ ARSENAL: dict[str, Held] = {
     "golem-fist": Held((1094, 1304), (1200, 245), 180, 30, hand=False, icon_turn=-15),
     # wound round the wrist, hanging to the ground
     "wyrm-chain": Held((1377, 1498), (1437, 60), 0, 60, icon_turn=-20),
+    # planted upright beside him like the staffs, its stone tail-blade above his hat
+    "gargoyle-halberd": Held((266, 550), (401, 560), 0, 112, sheet="gargoyle_gear.jpg"),
 }
 
 
@@ -167,19 +171,28 @@ def build(out: Path) -> None:
     sys.path.insert(0, str(HERE / "pipeline"))
     import pixelate as pipeline
 
-    sheet = Image.open(SRC / "weapons.jpg").convert("RGB")
-    mask = pipeline.remove_background(np.array(sheet.convert("RGBA")), "auto", 18.0, 0.0005, True)
+    sheets: dict[str, tuple[Image.Image, np.ndarray]] = {}
+    only = set(sys.argv[2:])  # weapons.py OUT gargoyle-halberd: just that one
     with tempfile.TemporaryDirectory() as d:
         tmp = Path(d)
         for weapon_id, held in ARSENAL.items():
             assert weapon_id in WEAPONS, weapon_id
+            if only and weapon_id not in only:
+                continue
+            if held.sheet not in sheets:
+                sheet = Image.open(SRC / held.sheet).convert("RGB")
+                mask = pipeline.remove_background(np.array(sheet.convert("RGBA")), "auto", 18.0,
+                                                  0.0005, True)  # fmt: skip
+                sheets[held.sheet] = (sheet, mask)
+            sheet, mask = sheets[held.sheet]
             img, grip = cut(sheet, mask, held)
             scaled(icon(img, held, tmp, weapon_id), 2).save(out / f"weapon_{weapon_id}.png")
             upright_h = img.height
             img, grip = turned(img, grip, held.turn)
             layer = held_layer(img, grip, held, upright_h, tmp, weapon_id)
             scaled(layer, 2).save(out / f"held_{weapon_id}.png")
-    scaled(hand(Image.open(out / "knight_front.png")), 2).save(out / "hero_hand.png")
+    if not only:
+        scaled(hand(Image.open(out / "knight_front.png")), 2).save(out / "hero_hand.png")
 
 
 if __name__ == "__main__":

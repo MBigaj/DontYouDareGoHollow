@@ -70,6 +70,7 @@ from hollow.domain.bosses import (
     BOSSES,
     ESTUS_HEAL,
     FIRST_TRY_BONUS,
+    GARGOYLE,
     PASS_REPLIES,
     VICTORY_SOULS,
     WARDEN,
@@ -81,7 +82,7 @@ from hollow.domain.bosses import (
     spoken,
     verdict_task,
 )
-from hollow.domain.conjugation import Ending, Verb
+from hollow.domain.conjugation import FORM_NAMES, Ending, Verb
 from hollow.domain.conjugation import Form as VerbForm
 from hollow.domain.events import AgentResult, Material, Slot
 from hollow.domain.lessons import LESSONS, REGION_GATES, LessonProgress, Run, region_open
@@ -874,8 +875,8 @@ def create_app(
             "extra": ("Visit the blacksmith", "/blacksmith"),
         }
 
-    RONIN_GATES: dict[str, Boss] = {"firelink": WARDEN}
-    """The boss behind each Ronin region's fog gate, once it exists (the Gargoyle: branch 27)."""
+    RONIN_GATES: dict[str, Boss] = {"firelink": WARDEN, "undead-village": GARGOYLE}
+    """The boss behind each Ronin region's fog gate."""
     LESSON_KIND = {"firelink": "て-form", "undead-village": "plain forms"}
 
     @app.get("/map/{region_id}", response_class=HTMLResponse)
@@ -910,7 +911,7 @@ def create_app(
                     point |= boss_point(
                         boss,
                         fights.ready(boss.id),
-                        f"It will not part until you know {boss.min_verbs} verbs.",
+                        fights.requirement(boss.id).replace("The fog", "It", 1),
                     )
             else:
                 assert node.lesson_id is not None
@@ -1250,6 +1251,7 @@ def create_app(
                 verdict=last_verdict(view) if gate else None,
                 pass_replies=PASS_REPLIES,
                 warning=warning,
+                form_names=FORM_NAMES,
             ),
         )
 

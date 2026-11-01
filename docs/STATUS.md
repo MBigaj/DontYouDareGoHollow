@@ -21,8 +21,6 @@ Template for an entry:
 - Open: ...
 ```
 
-_Nothing. The last branch is ready for review; take the next number after it merges._
-
 ## Done
 
 | # | Branch | What it delivered |
@@ -51,14 +49,15 @@ _Nothing. The last branch is ready for review; take the next number after it mer
 | 22 | `22-sound` | Sound effects: Kenney CC0 recordings layered with synthesis (`tools/sounds/sounds.py`) for the bonfire, souls, drops, fights (fog, strikes, blows, estus, phase, felled, death), the anvil, coins, equipping, levelling up, map footsteps and soft lesson ticks; cues sent by the server as `data-sfx`, played on HTMX swaps only; a ♪ mute toggle in the header |
 | 23 | `23-hero-armour` | Armour with real effects, one piece per slot drawn on the hero: Wanderer's Iron Hood (bought, +20 HP), Warden's Bronze Pauldrons (mistakes -5 HP), Golem's Riveted Gauntlets (+1 Estus), Wyrm-scale Greaves (+15 points lesson titanite); the blacksmith split into Weapons, Armour, Rings and items, Recent finds; the Architect road's cyan eye and scarf; `armour.py` cuts a generated sheet into icons and paints each piece onto the hero's own silhouette; the status rule for agents in `CLAUDE.md` |
 | 24 | `24-warden-phase-3` | The Warden's third phase: he speaks four lines built from your verbs, you answer each in a Japanese sentence in the fight, and the Sensei judges the transcript in the next agent round (3 good of 4 fell him; fewer is a death and the retry starts at his question); attempts record their phase count; the verdict shows on the fog gate |
-| 25 | `25-plain-forms` | Undead Village, part 1 of 3: the conjugation engine learns the plain forms (〜ている, 〜た, 〜ない, 〜なかった, with ある → ない); six Undead Village lessons on them, a mixed one cycling the forms; the region sealed until the Warden falls (lessons, quests, inbox); `/lessons` grouped by region with hints per form; the rule to work directly in Mikołaj's repo in `CLAUDE.md` |
+| 25 | `25-plain-forms` | Undead Village, part 1 of 3: the conjugation engine learns the plain forms (〜ている, 〜た, 〜ない, 〜なかった, with ある → ない); six Undead Village lessons on them, a mixed one cycling the forms; the region sealed until the Warden falls (lessons, quests, inbox); `/lessons` grouped by region, listing only lessons you can play (the rest counted in one line), with hints per form; the rule to work directly in Mikołaj's repo in `CLAUDE.md` |
 | 26 | `26-undead-village-map` | Undead Village, part 2 of 3: its generated map (a dead village climbing to the gargoyle's gatehouse at dusk), a stone per plain-form lesson up the street, the bonfire and gate as landmarks; `/map/<region>` for any Ronin region in `RONIN_REGION_MAPS`, opened by `REGION_GATES`; `ronin.py OUT <region>` builds one map. Branched from 25 (not merged when it began) |
+| 27 | `27-plain-form-gargoyle` | Undead Village, part 3 of 3: the Plain-Form Gargoyle at the village gatehouse, waiting for 3 cleared village lessons; plain-form phases (〜た/〜ない, then 〜なかった/〜ている, timed) and a conversation in plain forms judged by the Sensei with its own rubric; drops the Gargoyle's Tail Halberd (Soul Siphon) and the Gargoyle Helm (right answers in boss fights pay 2 more souls, recorded on `FightStarted`); his sprite, arena and gear generated in Figma; `weapons.py` reads more than one sheet. Branched from 26 (25 and 26 not merged when it began) |
 
 ## Up next
 
 In a sensible order. Each one fits a branch.
 
-1. **The Plain-Form Gargoyle** (`27-plain-form-gargoyle`). Put him in `RONIN_GATES` in `app.py` and give his gate node (`gargoyle` in `atlas.VILLAGE`) the fight. Timed phases on the plain forms, ending in a conversation phase judged by the Sensei (the engine from branch 24), recommended weapon level +4, its arena, sprite and drops (ask Mikołaj which weapon and armour piece).
+1. **New rune stones** (`28-rune-stones`). Mikołaj, 1 Nov: the stone waypoints on the Ronin maps (`waypoint.png`, `waypoint_cleared.png`, `waypoint_locked.png`, drawn by `tools/sprites/waypoints.py`) look poor. Redraw them as proper pixel-art tombstones, with a た stone for Undead Village (Firelink keeps て). Generated in Figma when the MCP limit allows, else drawn carefully in code.
 2. **Lore for the Architect road.** `lore_targets()` in `application/agents.py` only knows the Ronin regions. Add the Architect regions, so the Lorekeeper can write region and boss lore for them.
 3. **Deploy.** Put the Docker image on one small host (DigitalOcean was the plan) with PostgreSQL and `HOLLOW_PASSWORD`. Anki sync keeps running from his PC with `hollow-sync-anki` on a schedule, which needs the API to accept pushed reviews or a remote database URL. That design decision is Mikołaj's: ask first.
 
@@ -75,13 +74,12 @@ Grouped by area. Ask Mikołaj before starting anything marked *(decide)*.
 - **Portfolio export:** each felled Lord becomes a case study for mbigaj.github.io (problem, diagram, ADR, 10x section).
 
 ### Armour
-- **More pieces per slot** as bosses arrive: each new boss (Plain-Form Gargoyle, the Architect regions 3 to 8) can drop one, with its own effect. Positioning is already saved per slot (`FITS` in `tools/sprites/armour.py`): a new piece needs its painting, an `ARMOUR` entry and a `LOOKS` entry (icon cell and painter), as `CLAUDE.md` under Armour art lists.
+- **More pieces per slot** as bosses arrive: each new boss (the Architect regions 3 to 8, Ronin regions 3 to 6) can drop one, with its own effect, as the Gargoyle Helm did. Positioning is already saved per slot (`FITS` in `tools/sprites/armour.py`): a new piece needs its painting, an `ARMOUR` entry and a `LOOKS` entry (icon cell and painter), as `CLAUDE.md` under Armour art lists.
 - **Armour lore:** `lore_targets()` in `application/agents.py` asks for `weapon:` and `material:` lore only. Add `armour:<id>` so the Lorekeeper writes for the pieces, and show it at the blacksmith like weapon lore.
 
 ### Ronin road
-- **Village rune stones:** the stones on the Undead Village map still carry Firelink's て glyph (`waypoint.png`); a stone with た drawn in code (`waypoints.py`) would fit the plain forms.
 - **A waiting verdict on the bonfire:** while the Warden waits for the Sensei, or once a verdict comes in, the home page could say so (today it shows only on the fog gate and in the inbox).
-- **More conversation phases:** the engine is generic (`Kind.CONVERSATION`, `Phase.prompts`), so later Ronin bosses (the Plain-Form Gargoyle) can end the same way, with lines for their own grammar in `spoken()`.
+- **More conversation phases:** the engine is generic (`Kind.CONVERSATION`, `Phase.prompts`), and the Plain-Form Gargoyle ends the same way (`Kind.PLAIN` lines, `Phase.rubric`); later Ronin bosses can follow with lines for their own grammar in `spoken()`.
 - Regions 3 to 6 (Kanji Catacombs, Sen's Fortress, Anor Keigo, the Kiln) with their grammar and bosses; the Kiln lines up with JLPT N4.
 - **Furigana fading:** readings fade as the Ronin levels up.
 - **Free conversation with the Sensei:** practice only, nothing saved.
@@ -102,6 +100,7 @@ Grouped by area. Ask Mikołaj before starting anything marked *(decide)*.
 - Infrastructure as code: deploy with Terraform (Iron Keep).
 
 ### Art and platform
+- **The Gargoyle's gear at full size:** `gargoyle_gear.jpg` is the 256 px preview upscaled 6x (the Figma MCP's daily limit). Pull node 3:4 of "ASHEN source art - armour" at full size, then rerun `weapons.py OUT gargoyle-halberd` and `armour.py` (restore the unchanged sprites with `git checkout`).
 - **Ambience:** quiet loops under the pages: crackle at the lit bonfire, wind on the maps, a low drone in boss arenas, the flooded archive dripping. Off by default or its own toggle, so it never fights study.
 - **Art redesign:** replace the procedural placeholder sprites through the ASHEN pixel pipeline. Keep file names and sizes.
 - **PWA or native app** *(decide)*: still an open question in the plan.

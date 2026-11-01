@@ -41,7 +41,7 @@ from tests.test_world import CAL
 # --- rules --------------------------------------------------------------------
 
 
-def test_one_piece_per_slot_with_an_effect_each_and_one_for_sale() -> None:
+def test_every_slot_has_a_piece_each_with_its_own_effect_and_one_for_sale() -> None:
     assert {a.slot for a in ARMOUR.values()} == set(Slot)
     assert {a.effect for a in ARMOUR.values()} == set(Effect) == set(EFFECTS)
     assert [a.id for a in ARMOUR.values() if a.price] == ["wanderer-hood"]
@@ -83,10 +83,13 @@ def wear(store: SqlEventStore, clock: FakeClock, *ids: str) -> None:
 
 
 def test_each_worn_piece_does_what_it_says(store: SqlEventStore, clock: FakeClock) -> None:
-    wear(store, clock, *ARMOUR)
+    wear(store, clock, *(a for a in ARMOUR if a != "gargoyle-helm"))
     world = state(store, clock)
     assert (world.max_hp, world.mistake_cost, world.estus) == (120, 30, 3)
-    assert world.armory.drop_bonus == 0.15
+    assert world.armory.drop_bonus == 0.15 and world.souls_per_hit == 5
+    wear(store, clock, "gargoyle-helm")  # the second head piece replaces the hood
+    world = state(store, clock)
+    assert (world.max_hp, world.souls_per_hit) == (100, 7)
 
 
 def test_the_bulwark_never_goes_below_the_floor(store: SqlEventStore, clock: FakeClock) -> None:

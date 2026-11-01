@@ -96,6 +96,15 @@ def arena(tmp: Path) -> Image.Image:
     return scaled(c.img(), 2)
 
 
+def village_arena(tmp: Path) -> Image.Image:
+    """The Gargoyle's arena: the gatehouse roof above Undead Village."""
+    src = cropped(SRC / "arena_undead_village.jpg", (0, 40, 1536, 1000), tmp)
+    c = Canvas(720, 450)
+    c.a = np.array(pixelate(src, tmp, "--preset", "landscape", "--width", "720", "--colors", "64",
+                            "--chroma", "1.1"))  # fmt: skip
+    return scaled(c.img(), 2)
+
+
 def landmarks(out: Path) -> None:
     """Hover outlines for the world map's regions and Firelink's bonfire and fog gate."""
     world = Image.open(out / "map_bg.png")
@@ -160,6 +169,18 @@ def warden(tmp: Path) -> Image.Image:
     return scaled(c.img(), 3)
 
 
+def gargoyle(tmp: Path) -> Image.Image:
+    """The Plain-Form Gargoyle, Undead Village's boss: his embers relit after the pipeline."""
+    c = Canvas(136, 170)
+    c.a = np.array(pixelate(SRC / "gargoyle.jpg", tmp, "--preset", "boss", "--width", "136",
+                            "--height", "170", "--colors", "24", "--smooth", "1.8", "--gamma",
+                            "0.75", "--chroma", "1.2"))  # fmt: skip
+    for ex in (62, 73):  # two embers under the brow
+        c.dot(ex, 21, hx("ec9a2e"))
+        c.dot(ex + 1, 21, hx("f6c55a"))
+    return scaled(c.img(), 3)
+
+
 def knight(tmp: Path) -> Image.Image:
     """The hero, a hollow ronin: kasa hat, one ember eye, ragged haori, bandaged hands.
 
@@ -216,11 +237,17 @@ def bonfire_art(tmp: Path) -> tuple[Image.Image, Image.Image]:
 
 if __name__ == "__main__":
     out = Path(sys.argv[1])
-    if sys.argv[2:]:  # just the named regions' maps: ronin.py OUT undead-village
+    if sys.argv[2:]:  # just the named parts: ronin.py OUT undead-village gargoyle
+        parts = {"gargoyle": (gargoyle, "gargoyle_body.png"),
+                 "arena-undead-village": (village_arena, "arena_undead_village.png")}  # fmt: skip
         with tempfile.TemporaryDirectory() as d:
-            for region_id in sys.argv[2:]:
-                region_map(region_id, Path(d)).save(out / RONIN_REGION_MAPS[region_id][2])
-                region_landmarks(out, region_id)
+            for name in sys.argv[2:]:
+                if name in parts:
+                    build, file = parts[name]
+                    build(Path(d)).save(out / file)
+                    continue
+                region_map(name, Path(d)).save(out / RONIN_REGION_MAPS[name][2])
+                region_landmarks(out, name)
         sys.exit(0)
     with tempfile.TemporaryDirectory() as d:
         tmp = Path(d)
@@ -232,6 +259,8 @@ if __name__ == "__main__":
         stage_cold.save(out / "stage_unlit.png")
         knight(tmp).save(out / "knight_front.png")
         warden(tmp).save(out / "warden_body.png")
+        gargoyle(tmp).save(out / "gargoyle_body.png")
+        village_arena(tmp).save(out / "arena_undead_village.png")
         for region_id, (_, _, art) in RONIN_REGION_MAPS.items():
             region_map(region_id, tmp).save(out / art)
         world(tmp).save(out / "map_bg.png")

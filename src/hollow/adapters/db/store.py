@@ -129,6 +129,7 @@ def to_row(event: Event) -> EventRow:
                 "damage": event.damage,
                 "estus": event.estus,
                 **({"phases": event.phases} if event.phases is not None else {}),
+                **({"souls_per_hit": event.souls_per_hit} if event.souls_per_hit != 5 else {}),
             },
         )
     if isinstance(event, FightTurn):
@@ -215,6 +216,7 @@ def from_row(row: EventRow) -> Event:
             damage=int(p.get("damage", 10)),
             estus=int(p.get("estus", 2)),
             phases=int(p["phases"]) if "phases" in p else None,
+            souls_per_hit=int(p.get("souls_per_hit", 5)),
             id=UUID(row.id),
         )
     if row.type == "fight_turn":

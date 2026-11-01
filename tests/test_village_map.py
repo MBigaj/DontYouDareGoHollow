@@ -52,7 +52,8 @@ def test_the_village_waits_in_the_fog_until_the_warden_falls(
     assert "Region 2 · Undead Village · 0% explored" in page
     assert "region_undead_village.png" in page and "spot_undead-village_gargoyle.png" in page
     assert page.count('href="/lessons/pf-') == 6
-    assert "Lesson 1 · plain forms" in page and "has not woken yet" in page
+    assert "Lesson 1 · plain forms" in page
+    assert "It will not part until you clear 3 Undead Village lessons (0 so far)." in page
     assert client.get("/map/firelink").status_code == 200
 
 

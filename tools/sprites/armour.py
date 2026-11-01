@@ -264,6 +264,35 @@ def greaves(c: Canvas, hero: np.ndarray, fit: Fit) -> None:
             c.fill(band & (c.xx % 3 == 0), leather[2])
 
 
+STONE = ASH[2:8]
+LICHEN = [hx(h) for h in ("34462c", "52683e", "7e9460")]
+
+
+def stone_helm(c: Canvas, hero: np.ndarray, fit: Fit) -> None:
+    """A cowl of grey stone under the kasa, cracked and grown over with lichen, two short
+    curled horns at its temples and a corroded bronze rim at the brow."""
+    cowl = area(c, hero, fit, 0)
+    ys, xs = np.where(cowl.any(1))[0], np.where(cowl.any(0))[0]
+    top, bottom, left, right = int(ys.min()), int(ys.max()), int(xs.min()), int(xs.max())
+    c.shade(cowl, STONE, light=(-0.6, -0.8), soft=2.0, lo=0.2, hi=0.85, dither=0.3)
+    rng = np.random.default_rng(11)
+    for _ in range(5):  # cracks
+        x, y = int(rng.integers(left + 2, right - 2)), int(rng.integers(top + 3, bottom - 2))
+        for k in range(int(rng.integers(2, 5))):
+            if 0 <= y + k < c.h and cowl[y + k, x + (k % 2)]:
+                c.dot(x + (k % 2), y + k, STONE[0])
+    moss = cowl & (rng.random(cowl.shape) < 0.07) & (c.yy > top + 2)
+    c.levels(moss, np.clip((lum(c.a) - 40) / 120, 0, 1), LICHEN, dither=0)
+    for side, x in ((-1, left), (1, right)):  # horns curling out from the temples
+        for k, (dx, dy) in enumerate(((0, 0), (side, -1), (2 * side, -1), (3 * side, 0),
+                                      (3 * side, 1))):  # fmt: skip
+            c.dot(x + dx, top + 3 + dy, STONE[4 - min(k, 3)])
+    for box in fit.bands[0]:
+        band = c.rect(box)
+        c.fill(band, BRONZE[2])
+        c.fill(band & (c.xx % 3 == 0), VERDIGRIS[1])
+
+
 @dataclass(frozen=True)
 class Look:
     """How one piece is drawn: where its icon is, how it is painted inside its slot's fit."""
@@ -277,11 +306,16 @@ class Look:
     """For arms pieces: the ramp its fingers over the weapon's handle are recoloured to."""
 
 
+HELM_CELL = (700, 220, 1400, 880)
+"""The helm's half of gargoyle_gear.jpg (the halberd stands in the left third)."""
+
 LOOKS: dict[str, Look] = {
     "wanderer-hood": Look("armour.jpg", (100, 0, 640, 470), hood),
     "warden-pauldrons": Look("armour.jpg", (740, 0, 1530, 445), pauldrons),
     "golem-gauntlets": Look("armour.jpg", (110, 466, 710, 1010), gauntlets, fist=IRON),
     "wyrm-greaves": Look("armour.jpg", (870, 434, 1400, 1012), greaves),
+    # the Plain-Form Gargoyle's drop, on the sheet it shares with his halberd
+    "gargoyle-helm": Look("gargoyle_gear.jpg", HELM_CELL, stone_helm),
 }
 
 

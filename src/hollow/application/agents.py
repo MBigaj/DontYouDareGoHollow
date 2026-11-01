@@ -21,10 +21,10 @@ from hollow.domain.atlas import REGIONS
 from hollow.domain.bosses import (
     BOSSES,
     PASS_REPLIES,
-    RUBRIC,
     Question,
     lines,
     question,
+    rubric,
     spoken,
     verdict_task,
 )
@@ -344,7 +344,7 @@ class AgentDesk:
                 "agent": "sensei", "task": verdict_task(current),
                 "do": f"Judge each reply of {boss.name}'s conversation phase "
                       "(agents/sensei.md). The fight waits for it.",
-                "rubric": RUBRIC,
+                "rubric": rubric(boss, current.phase),
                 "pass": f"{PASS_REPLIES} good replies of {current.prompts}",
                 "transcript": [
                     {"line": spoken(line), "kind": line.kind.value,

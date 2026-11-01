@@ -5,8 +5,8 @@ the Strict Golem, the Lock Wyrm and their arenas. This road is cold: night blue,
 soul cyan, with the violet of the Distributed Abyss in the sky (Dark Souls leaning; the Ronin
 road is golden dusk). The pipeline runs darker here (gamma above 1) so night stays night.
 Hand cleanup restores the Golem's visor and the Wyrm's eye, and the region maps get a trail of
-cyan motes along their atlas paths. The iron waypoints are small enough to draw in code; the
-weapons, the Lock Wyrm's Chain among them, are in weapons.py.
+cyan motes along their atlas paths. The waypoints are the grave stones every map shares
+(waypoints.py, built by ronin.py); the weapons, the Lock Wyrm's Chain among them, are in weapons.py.
 
 Usage:
   uv run --with pillow --with numpy --with scipy --with opencv-python-headless \\
@@ -127,37 +127,6 @@ def landmarks(out: Path) -> None:
             glow(art, m, CYAN).save(out / f"spot_{map_id}_{key}.png")
 
 
-def obelisk(glyph: np.ndarray, body: list[np.ndarray], lit: bool) -> Canvas:
-    """An iron obelisk with a soul-cyan seam, 24x28 (the Ronin road has rune stones)."""
-    c = Canvas(24, 28)
-    iron = c.poly([(6, 25), (6, 7), (11, 1), (13, 1), (18, 7), (18, 25)])
-    c.shade(iron, body, light=(-0.8, -0.6), soft=1.2, lo=0.12, hi=0.95, relief=3.5)
-    c.fill(c.line([(8, 7), (8, 23)]), body[min(len(body) - 1, 4)])  # lit edge
-    for y in (10, 17):  # bands
-        c.fill(c.rect((6, y, 18, y)), body[1])
-    seam = c.line([(12, 4), (12, 22)]) | c.line([(10, 12), (14, 12)])
-    if lit:
-        halo = np.zeros_like(seam)
-        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-            halo |= np.roll(np.roll(seam, dx, 1), dy, 0)
-        c.fill(halo & iron & ~seam, blend(body[2], glyph, 0.45))
-    c.fill(seam & iron, glyph)
-    c.fill(c.rect((3, 24, 20, 27)), body[1])
-    c.fill(c.rect((4, 24, 19, 24)), body[3])
-    c.outline(darken=0.25)
-    return c
-
-
-def obelisks() -> dict[str, Image.Image]:
-    cold = ramp("10141c", "1b2230", "2b3646", "3e4c5e", "566a7e", "7a8fa3")
-    stones = {
-        "waypoint_arch.png": obelisk(hx("4fb4d0"), STEEL, True),
-        "waypoint_arch_cleared.png": obelisk(hx("e6fbff"), cold[1:] + [hx("a9bccb")], True),
-        "waypoint_arch_locked.png": obelisk(STEEL[1], STEEL, False),
-    }
-    return {name: c.img().resize((48, 56), Image.NEAREST) for name, c in stones.items()}
-
-
 if __name__ == "__main__":
     out = Path(sys.argv[1])
     with tempfile.TemporaryDirectory() as d:
@@ -169,6 +138,4 @@ if __name__ == "__main__":
         wyrm(tmp).save(out / "wyrm_body.png")
         arena(tmp, "arena_forge").save(out / "arena_forge.png")
         arena(tmp, "arena_data_depths").save(out / "arena_data_depths.png")
-    for name, img in obelisks().items():
-        img.save(out / name)
     landmarks(out)

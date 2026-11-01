@@ -100,9 +100,15 @@ The fog gate at the top of Firelink Shrine leads to the first boss, the て-form
 - Leave mid-fight ("Rest at the fog gate") and the fight waits exactly as you left it.
 - Felling the Warden pays 500 souls (750 on a first try) and lights the bonfire.
 
+The gatehouse at the top of Undead Village holds the second, the Plain-Form Gargoyle (`/boss/pf-gargoyle`), recommended weapon level +4. The fog parts once you have cleared 3 Undead Village lessons; until then the gate says how many you have.
+
+- Phase 1, Stone and past: a verb in the dictionary form, and you write its 〜た or 〜ない form, 20 seconds per answer. Phase 2, What did not happen: 〜なかった and 〜ている join in, 15 seconds. ある and いる never come up for 〜ている.
+- Phase 3, the Gargoyle's question: four lines about your days ("Tell me something you did yesterday, with eat (食べる). Plain style, no 〜ます."), answered in plain Japanese sentences and judged by the Sensei like the Warden's, by its own rubric: the right plain form of the line's verb, no polite ending.
+- He drops the Gargoyle's Tail Halberd, the Gargoyle Helm, 4 Large Titanite Shards and 2 Titanite Chunks.
+
 ## Weapons and the blacksmith
 
-Each job has its own weapon: Ronin weapons deal damage in Japanese fights, Architect weapons in dev fights. You start with a Rusted Katana and a Pilgrim's Shakujō, a monk's ringed staff (10 damage per hit). The blacksmith (`/blacksmith`, from the Character page or the Firelink bonfire) sells better basic weapons (the Uchigatana, the Surveyor's Shakujō), and bosses drop their own: the て-form Warden drops the Warden's Maul, whose Soul Siphon adds 15% to Ronin lesson souls while it is equipped.
+Each job has its own weapon: Ronin weapons deal damage in Japanese fights, Architect weapons in dev fights. You start with a Rusted Katana and a Pilgrim's Shakujō, a monk's ringed staff (10 damage per hit). The blacksmith (`/blacksmith`, from the Character page or the Firelink bonfire) sells better basic weapons (the Uchigatana, the Surveyor's Shakujō), and bosses drop their own: the て-form Warden drops the Warden's Maul, whose Soul Siphon adds 15% to Ronin lesson souls while it is equipped, and the Plain-Form Gargoyle drops the Gargoyle's Tail Halberd (base 11, Soul Siphon too).
 
 The hero carries what you equip. On the home page, the character page and the maps he holds the weapon of the road you last walked (the map remembers it); in a fight he holds the one for that boss's road. Gauntlets such as Golem's Iron Fist are worn rather than held. The Architect's weapons were hammers until branch 20: events stored with the old ids (`worn-hammer`, `smiths-hammer`) are read as the two shakujō.
 
@@ -119,16 +125,17 @@ Each level adds 1 damage up to a boss's recommended level (+2 for the Warden) an
 
 ## Armour
 
-The hero wears up to four pieces of armour, one per slot (head, chest, arms, legs), on both roads. Each piece has one effect, applied by the game rules, and is drawn on the hero wherever he appears. Armour is never reinforced.
+The hero wears up to four pieces of armour, one per slot (head, chest, arms, legs), on both roads. A slot can hold more than one piece; wearing one takes the other off. Each piece has one effect, applied by the game rules, and is drawn on the hero wherever he appears. Armour is never reinforced.
 
 | Slot | Piece | Where | Effect |
 | --- | --- | --- | --- |
 | Head | Wanderer's Iron Hood | Bought at the blacksmith, 2,000 souls | +20 max HP in boss fights |
+| Head | Gargoyle Helm | Dropped by the Plain-Form Gargoyle | Right answers in boss fights pay 2 more souls |
 | Chest | Warden's Bronze Pauldrons | Dropped by the て-form Warden | Mistakes in boss fights cost 5 HP less (never below 20) |
 | Arms | Golem's Riveted Gauntlets | Dropped by the Strict Golem | +1 Estus flask in every boss fight |
 | Legs | Wyrm-scale Greaves | Dropped by the Lock Wyrm | Good lessons drop titanite 15 points more often |
 
-Bosses you have already felled hand their piece over at once. Armour is put on and taken off at the blacksmith, whose page is split into Weapons, Armour, Rings and items (coming with the inventory; rings are worn but never drawn on the hero) and Recent finds. Like a weapon's damage, a fight keeps the HP, mistake cost and flasks it began with, so changing armour mid-fight changes nothing.
+Bosses you have already felled hand their piece over at once. Armour is put on and taken off at the blacksmith, whose page is split into Weapons, Armour, Rings and items (coming with the inventory; rings are worn but never drawn on the hero) and Recent finds. Like a weapon's damage, a fight keeps the HP, mistake cost and flasks it began with, so changing armour mid-fight changes nothing (the Gargoyle Helm's souls per hit too).
 
 ## Architect track
 
@@ -212,9 +219,9 @@ Both roads are **generated art**, and so is the hero, a hollow ronin: one painti
 - the bonfire (`bonfire.py`): the generated ash mound and a crisp greatsword, with an 8-frame flame that spirals up the blade and firelight that flickers on the stones, plus the cold, unlit bonfire;
 - the home page stage: a shrine nook under the moon, cold until the day is lit, then warm around the fire.
 
-`tools/sprites/weapons.py` (run after `ronin.py`) cuts every weapon out of one generated sheet (`weapons.jpg`) and makes, for each, a 72 px icon for the blacksmith and the character page and a layer on the hero's own canvas with its grip in his fist. The page stacks the hero, the weapon and his fingers (`hero_hand.png`), so any weapon fits the same sprite. `tools/sprites/items.py` does the same for the items: one sheet (`items.jpg`) holds the estus flask, the ember, the furigana lens, the phantom sign, the ring, the tome, the soul and the four grades of titanite, each a 48 px icon (the soul also comes at 28 px for the souls counters). It also pixelates the blacksmith's anvil from its own painting and draws the hit slash, a crescent cut, in code.
+`tools/sprites/weapons.py` (run after `ronin.py`) cuts every weapon out of its generated sheet (`weapons.jpg`, or a boss's own gear sheet such as `gargoyle_gear.jpg`) and makes, for each, a 72 px icon for the blacksmith and the character page and a layer on the hero's own canvas with its grip in his fist. The page stacks the hero, the weapon and his fingers (`hero_hand.png`), so any weapon fits the same sprite. `tools/sprites/items.py` does the same for the items: one sheet (`items.jpg`) holds the estus flask, the ember, the furigana lens, the phantom sign, the ring, the tome, the soul and the four grades of titanite, each a 48 px icon (the soul also comes at 28 px for the souls counters). It also pixelates the blacksmith's anvil from its own painting and draws the hit slash, a crescent cut, in code.
 
-`tools/sprites/armour.py` (run after `weapons.py`) cuts the four armour pieces out of their sheet (`armour.jpg`) into 72 px icons, and paints each onto the hero's own silhouette as a layer, keeping his shading, in ASHEN ramps matched to its painting, with its details drawn in code. Where a piece sits is saved per slot (`FITS`), so every future head, chest, arms or legs piece lands in the same place and only brings its own look (`LOOKS`). The hood is worn under the kasa, framing his face; the gauntlets turn his hands to iron and bring their own fist over the weapon's handle. It also makes the Architect road's accent: his eye and scarf in soul cyan. The page stacks the hero, the accent (on the Architect road), the armour (legs, chest, arms, head), the weapon and the fingers.
+`tools/sprites/armour.py` (run after `weapons.py`) cuts the armour pieces out of their sheets (`armour.jpg`, `gargoyle_gear.jpg`) into 72 px icons, and paints each onto the hero's own silhouette as a layer, keeping his shading, in ASHEN ramps matched to its painting, with its details drawn in code. Where a piece sits is saved per slot (`FITS`), so every future head, chest, arms or legs piece lands in the same place and only brings its own look (`LOOKS`). The hood is worn under the kasa, framing his face; the gauntlets turn his hands to iron and bring their own fist over the weapon's handle. It also makes the Architect road's accent: his eye and scarf in soul cyan. The page stacks the hero, the accent (on the Architect road), the armour (legs, chest, arms, head), the weapon and the fingers.
 
 ```sh
 uv run --with pillow --with numpy --with scipy --with opencv-python-headless \

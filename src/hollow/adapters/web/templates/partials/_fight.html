@@ -107,7 +107,7 @@
       <div class="ask label">The {{ view.boss.short }} speaks · line {{ a.replies | length + 1 }} of {{ a.prompts }}</div>
       <div class="ask-text">“{{ spoken }}”</div>
       <div class="prompt mid" lang="ja">{% for v in q.verbs %}{{ ja(v.written, v.kana) }}{% if not loop.last %} · {% endif %}{% endfor %}</div>
-      <div class="muted meaning">Answer in one Japanese sentence: {{ '〜てください' if q.kind.value == 'request' else '〜て、〜' }}. The Sensei judges it later; nothing is scored yet.</div>
+      <div class="muted meaning">Answer in one Japanese sentence: {{ form_names[q.form] if q.kind.value == 'plain' else ('〜てください' if q.kind.value == 'request' else '〜て、〜') }}. The Sensei judges it later; nothing is scored yet.</div>
       <input name="reply" lang="ja" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus maxlength="120" aria-label="Your reply">
       <div class="duel-buttons">
         <button class="btn ember" type="submit">Reply</button>
@@ -139,6 +139,10 @@
       {% if q.kind.value == 'choice' %}
         <div class="ask label">{{ q.topic }}</div>
         <div class="ask-text">{{ q.quiz.prompt | inline_md }}</div>
+      {% elif q.kind.value == 'plain' %}
+        <div class="ask label">{{ form_names[q.form] }}</div>
+        <div class="prompt" lang="ja">{{ ja(q.verbs[0].written, q.verbs[0].kana) }}</div>
+        {% if q.verbs[0].meaning %}<div class="muted meaning">{{ q.verbs[0].meaning.split(',')[0] }}</div>{% endif %}
       {% elif q.kind.value == 'te' %}
         <div class="ask label">て-form</div>
         <div class="prompt" lang="ja">{{ ja(q.verbs[0].written, q.verbs[0].kana) }}</div>

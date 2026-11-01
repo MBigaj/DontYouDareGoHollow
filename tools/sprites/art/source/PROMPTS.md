@@ -69,6 +69,24 @@ The four armour pieces, one per cell of a 2x2 grid, for `tools/sprites/armour.py
 
 Dark fantasy game armour inventory concept sheet: four separate original armour pieces arranged in a clean grid of two columns and two rows, evenly spaced, each piece centred in its own cell, none touching or overlapping, each shown whole. Top left: a wanderer's iron hood, a dented dark iron skullcap with a riveted brow band, worn under a ragged grey cloth hood with frayed edges. Top right: a pair of massive bronze pauldrons joined by a leather strap, layered rounded bronze plates green with verdigris, rivets and a small embossed sun disc. Bottom left: a pair of riveted dark iron gauntlets with stone plates on the forearms and a faint glowing cyan seam at the wrist. Bottom right: a pair of greaves made of overlapping dark iridescent wyrm scales, grey blue and steel, bound with old leather straps and a small iron padlock charm. Strong warm rim light from the upper left, deep shadows, high contrast, clear readable silhouettes, large simple shapes, painterly, inspired by Dark Souls and Elden Ring item icons, on a plain flat light grey background, no floor, no shadow, no text, no labels.
 
+## gargoyle.jpg (1024x1280)
+
+The Plain-Form Gargoyle, made into `gargoyle_body.png` by `ronin.py` (part `gargoyle`; his two ember eyes are redrawn in code). Generated in the Figma file "ASHEN source art - armour". The exact wording was not kept; this prompt describes the painting kept.
+
+Dark fantasy boss concept art, full body, standing three-quarter view facing left: a huge hulking gargoyle of cracked weathered grey stone with green moss and lichen in the cracks, great curled ram horns, a snarling stone face with two small glowing ember eyes, a broken iron collar with a hanging chain, folded bat wings of carved stone, long clawed hands, digitigrade legs and a long segmented stone tail ending in an axe-like blade. Strong warm rim light from the upper left, deep shadows, high contrast, clear readable silhouette, painterly, inspired by Dark Souls and Elden Ring, isolated on a plain flat light grey background, no floor, no shadow, no text.
+
+## arena_undead_village.jpg (1536x1024, cropped to 1536x960)
+
+The Gargoyle's arena, made into `arena_undead_village.png` by `ronin.py` (part `arena-undead-village`). Same file and caveat as `gargoyle.jpg`.
+
+Dark fantasy game boss arena background, wide view at golden dusk: a broad cobbled courtyard in front of a ruined stone gatehouse on the left, its tall arched gate filled with pale swirling white fog and lit by braziers; broken battlements and banners on poles; beyond the low wall the roofs of an abandoned village falling away into haze, and a ruined castle with an aqueduct on the far hill. In the sky a black eclipsed sun with a burning golden ring and long rays through dark gold-lit clouds, crows on the stones, scattered broken timber and leaves in the foreground. The courtyard floor is empty and well lit. Painterly, high contrast, inspired by Elden Ring and Dark Souls, no characters, no text, no UI.
+
+## gargoyle_gear.jpg (1536x1026)
+
+The Gargoyle's drops on one sheet: the halberd for `weapons.py` (`Held(..., sheet="gargoyle_gear.jpg")`) and the helm for `armour.py` (`HELM_CELL`, painted by `stone_helm`). Only the 256 px preview could be brought in (the Figma MCP's daily limit), upscaled 6x; re-pull node 3:4 at full size when the limit allows and rebuild both. Same file and caveat as `gargoyle.jpg`.
+
+Dark fantasy game item concept sheet: two separate original items side by side, evenly spaced, each centred in its own half, not touching. Left: a tall stone halberd standing upright, its haft of dark segmented stone like a gargoyle's tail, a curved axe blade on one side and a hooked spike on the other, a pointed iron butt. Right: a horned helm of weathered grey stone with patches of green lichen, short curled horns, a dark open face and carved brow ridges. Strong warm rim light from the upper left, deep shadows, high contrast, painterly, inspired by Dark Souls and Elden Ring item icons, on a plain flat light grey background, no floor, no shadow, no text.
+
 ## The Architect road
 
 Same rules, colder: night blue, cold steel, soul cyan and abyss violet, Dark Souls leaning. `tools/sprites/architect.py` runs these darker than the Ronin sources (gamma above 1), so night stays night.

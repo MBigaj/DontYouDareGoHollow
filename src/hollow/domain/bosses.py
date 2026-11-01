@@ -23,7 +23,7 @@ from uuid import UUID
 from hollow.domain.activities import Track
 from hollow.domain.architect import QUESTIONS, TOPICS, boss_id
 from hollow.domain.calendar import GameCalendar
-from hollow.domain.conjugation import Verb, normalize
+from hollow.domain.conjugation import Form, Verb, normalize
 from hollow.domain.curriculum import QuizQuestion
 from hollow.domain.events import AgentResult, Event, FightAction, FightStarted, FightTurn
 
@@ -48,6 +48,8 @@ class Kind(StrEnum):
     """A quiz question from the Architect steps behind the boss: pick the right option."""
     CONVERSATION = "conversation"
     """Reply in a sentence, judged later by the Sensei: requests and sequences in context."""
+    PLAIN = "plain"
+    """Dictionary form → a plain form (〜た, 〜ない, 〜なかった, 〜ている): Phase.forms in turn."""
 
 
 @dataclass(frozen=True)
@@ -61,6 +63,10 @@ class Phase:
     """For CHOICE phases: the steps whose quiz questions the boss asks."""
     prompts: int = 0
     """For CONVERSATION phases: how many lines the boss speaks, each needing a reply."""
+    forms: tuple[Form, ...] = ()
+    """For PLAIN phases, and conversations in the plain forms: the forms asked, in turn."""
+    rubric: str = ""
+    """For CONVERSATION phases: what the Sensei judges each reply on (RUBRIC if empty)."""
 
     @property
     def conversation(self) -> bool:
@@ -90,6 +96,9 @@ class Boss:
     weapon: str | None = None
     arena: str = "arena_bg.png"
     intro: str = ""
+    lessons_region: str | None = None
+    """A Ronin boss that waits for its region's lessons: the fog parts after `clears` of them."""
+    clears: int = 0
 
 
 WARDEN = Boss(
@@ -207,7 +216,41 @@ WYRM = Boss(
     "eye, plans, indexes and modelling. Phase 3: the flooded deep, replicas, shards and "
     "caches, against the clock.",
 )
-BOSSES = {b.id: b for b in (WARDEN, GOLEM, WYRM)}
+PLAIN_RUBRIC = (
+    "A reply is good when it is one Japanese sentence in the plain style (no 〜です or 〜ます "
+    "at the end) that uses the line's verb in the form the line asks for: 〜た for something "
+    "done, 〜ない for something never done, 〜なかった for something not done, 〜ている for "
+    "something going on. A wrong conjugation, or a polite ending, is not good; slips in other "
+    "words are."
+)
+
+
+GARGOYLE = Boss(
+    "pf-gargoyle",
+    "The Plain-Form Gargoyle",
+    Track.RONIN,
+    4,
+    "普通形の石像鬼",
+    "ふつうけいのせきぞうき",
+    (
+        Phase("Stone and past", 140, (Kind.PLAIN,), seconds=20, forms=(Form.TA, Form.NAI)),
+        Phase("What did not happen", 112, (Kind.PLAIN,), seconds=15,
+              forms=(Form.NAKATTA, Form.TEIRU, Form.TA, Form.NAI)),
+        Phase("The Gargoyle's question", 40, (Kind.CONVERSATION,), prompts=4,
+              forms=(Form.TA, Form.NAI, Form.TEIRU, Form.NAKATTA), rubric=PLAIN_RUBRIC),
+    ),
+    home="/map/undead-village",
+    home_name="Undead Village",
+    node="gargoyle",
+    short="Gargoyle",
+    body="gargoyle_body.png",
+    arena="arena_undead_village.png",
+    intro="Phase 1: 〜た and 〜ない against the clock. Phase 2: 〜なかった and 〜ている, faster. "
+    "Phase 3: he asks about your days; answer in plain sentences, and the Sensei judges them.",
+    lessons_region="undead-village",
+    clears=3,
+)  # fmt: skip
+BOSSES = {b.id: b for b in (WARDEN, GARGOYLE, GOLEM, WYRM)}
 ARCH_BOSSES = (GOLEM, WYRM)
 """The Architect road's bosses in road order, one per region with a map."""
 
@@ -221,10 +264,15 @@ def architect_foe(felled: set[str]) -> Boss:
 class Question:
     kind: Kind
     verbs: tuple[Verb, ...]
+    form: Form = Form.TE
+    """For PLAIN questions: the form asked."""
 
     @property
     def answers(self) -> tuple[str, str]:
         """The written answer and its kana."""
+        if self.kind is Kind.PLAIN:
+            plain = self.verbs[0].form(self.form)
+            return plain.written, plain.kana
         first = self.verbs[0].te_form
         if self.kind is Kind.TE:
             return first.written, first.kana
@@ -236,6 +284,8 @@ class Question:
     def accepts(self, answer: str) -> bool:
         # normalize (NFKC) turns a full-width comma into ","; both mean 、 here
         given = normalize(answer).replace("下さい", "ください").replace(",", "、")
+        if self.kind is Kind.PLAIN:
+            return self.verbs[0].form(self.form).accepts(answer)
         first = self.verbs[0].te_form
         heads = {normalize(first.written), normalize(first.kana)}
         if self.kind is Kind.TE:
@@ -305,6 +355,12 @@ def question(
         return choice(boss.phases[phase], seed, turn)
     rng = random.Random(f"{seed}:{turn}")
     kinds = boss.phases[phase].kinds
+    forms = boss.phases[phase].forms
+    if forms:  # a plain-form drill, or a conversation in the plain forms
+        form = forms[turn % len(forms)]
+        skip = {"ある", "いる"} if form is Form.TEIRU else set()
+        pool = [v for v in verbs if v.written not in skip] or list(verbs)
+        return Question(Kind.PLAIN, (rng.choice(pool),), form)
     if boss.phases[phase].conversation:
         kinds = (Kind.REQUEST, Kind.SEQUENCE)
     kind = kinds[turn % len(kinds)]
@@ -326,6 +382,14 @@ def spoken(line: Question) -> str:
     """What the boss says in a conversation phase, in English: the reply must be Japanese.
     A request wants 〜てください in a sentence, a sequence wants 〜て、〜."""
     first = line.verbs[0]
+    if line.kind is Kind.PLAIN:
+        said = {
+            Form.TA: "Tell me something you did yesterday",
+            Form.NAI: "Tell me something you never do",
+            Form.NAKATTA: "Tell me something you did not do yesterday",
+            Form.TEIRU: "Tell me what someone is doing right now",
+        }.get(line.form, "Say it plainly")
+        return f"{said}, with {_gloss(first)} ({first.written}). Plain style, no 〜ます."
     if line.kind is Kind.REQUEST or len(line.verbs) < 2:
         return f"Ask me, politely, to {_gloss(first)} ({first.written})."
     second = line.verbs[1]
@@ -339,6 +403,10 @@ RUBRIC = (
     "verb's て-form (〜て、〜). Wrong て-forms are not good; slips in other words are."
 )
 """What the Sensei judges each reply on; the game then counts the good ones."""
+
+
+def rubric(boss: "Boss", phase: int) -> str:
+    return boss.phases[phase].rubric or RUBRIC
 
 
 class Outcome(StrEnum):
@@ -396,6 +464,8 @@ class Attempt:
     """Your replies in the current conversation phase, in order."""
     prompts: int = 0
     """Lines the current conversation phase speaks; 0 outside one."""
+    souls_per_hit: int = SOULS_PER_HIT
+    """What each right answer pays in this attempt (armour can raise it)."""
 
     @property
     def conversing(self) -> bool:
@@ -498,6 +568,7 @@ def start(record: BossRecord, event: FightStarted, day: date) -> Attempt:
         flasks=event.estus,
         phases=phases,
         prompts=record.boss.phases[phase].prompts,
+        souls_per_hit=event.souls_per_hit,
     )
 
 
@@ -600,7 +671,7 @@ def track(events: Iterable[Event], calendar: GameCalendar, today: date) -> dict[
         after = play(record.boss, current, event)
         record.attempts[-1] = after
         if after.hits > current.hits:
-            record.rewards.append(Reward(day, SOULS_PER_HIT))
+            record.rewards.append(Reward(day, after.souls_per_hit))
         if after.outcome is Outcome.WON and first_win:
             record.defeated_at = event.occurred_at
             bonus = FIRST_TRY_BONUS if after.number == 1 else 0
@@ -625,7 +696,7 @@ def verdict(records: dict[str, BossRecord], event: AgentResult, day: date) -> No
         return
     record.attempts[-1] = after
     for _ in range(after.hits - current.hits):
-        record.rewards.append(Reward(day, SOULS_PER_HIT))
+        record.rewards.append(Reward(day, after.souls_per_hit))
     if after.outcome is Outcome.WON and first_win:
         record.defeated_at = event.occurred_at
         bonus = FIRST_TRY_BONUS if after.number == 1 else 0

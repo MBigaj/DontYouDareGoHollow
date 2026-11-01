@@ -20,6 +20,7 @@ from hollow.domain.bosses import (
 from hollow.domain.calendar import GameCalendar
 from hollow.domain.conjugation import Verb
 from hollow.domain.events import FightAction, FightStarted, FightTurn
+from hollow.domain.lessons import LESSONS
 from hollow.domain.vocabulary import known_verbs
 from hollow.domain.world import WorldState, replay
 
@@ -103,13 +104,30 @@ class FightService:
             today = self._calendar.day_of(self._clock.now())
             state = replay(self._store.all(), self._calendar, today)
             return state.architect.region_ready(boss.region)
+        if boss.lessons_region is not None:
+            return self.cleared_in(boss.lessons_region) >= boss.clears
         return len(self.verbs()) >= boss.min_verbs
+
+    def cleared_in(self, region: str) -> int:
+        """Lessons of a Ronin region cleared so far."""
+        today = self._calendar.day_of(self._clock.now())
+        state = replay(self._store.all(), self._calendar, today)
+        return sum(
+            1
+            for spec in LESSONS.values()
+            if spec.region == region and (p := state.lessons.get(spec.id)) and p.cleared
+        )
 
     def requirement(self, boss_id: str) -> str:
         """What opens the fog, in words."""
         boss = self.boss(boss_id)
         if boss.region is not None:
             return f"The fog will not part until every step of {boss.home_name} is cleared."
+        if boss.lessons_region is not None:
+            return (
+                f"The fog will not part until you clear {boss.clears} {boss.home_name} lessons "
+                f"({self.cleared_in(boss.lessons_region)} so far)."
+            )
         return f"The fog will not part until you know {boss.min_verbs} verbs."
 
     def enter(self, boss_id: str) -> FightView:
@@ -129,6 +147,7 @@ class FightService:
                 self.damage(view.boss, view.state),
                 view.state.estus,
                 len(view.boss.phases),
+                view.state.souls_per_hit,
             )
         )
         return self.view(boss_id)

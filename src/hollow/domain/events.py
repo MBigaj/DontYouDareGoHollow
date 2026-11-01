@@ -133,6 +133,8 @@ class FightStarted:
     phases: int | None = None
     """How many phases the boss had when the attempt began, so adding a phase later never
     rewrites an old fight. None (attempts stored before it was recorded): all of them."""
+    souls_per_hit: int = 5
+    """Souls each right answer pays, set by your armour when the attempt began."""
     id: UUID = field(default_factory=uuid4)
 
     def __post_init__(self) -> None:

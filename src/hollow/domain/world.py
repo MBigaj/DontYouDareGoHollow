@@ -21,7 +21,7 @@ from hollow.domain.architect import LESSON_PREFIX, ArchitectState
 from hollow.domain.architect import track as track_architect
 from hollow.domain.armory import SIPHON_PERCENT, WEAPONS, Armory, Skill
 from hollow.domain.armory import build as build_armory
-from hollow.domain.bosses import ESTUS_FLASKS, BossRecord
+from hollow.domain.bosses import ESTUS_FLASKS, SOULS_PER_HIT, BossRecord
 from hollow.domain.bosses import track as track_bosses
 from hollow.domain.calendar import GameCalendar
 from hollow.domain.events import (
@@ -137,6 +137,11 @@ class WorldState:
     def mistake_cost(self) -> int:
         """Endurance, less armour; never below the floor."""
         return mistake_cost(self.stats[Stat.ENDURANCE], self.armory.mistake_reduction)
+
+    @property
+    def souls_per_hit(self) -> int:
+        """Souls a right answer pays in a new boss attempt."""
+        return SOULS_PER_HIT + self.armory.hit_bonus
 
     @property
     def estus(self) -> int:

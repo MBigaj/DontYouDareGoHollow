@@ -101,6 +101,10 @@ WEAPONS: dict[str, WeaponSpec] = {
         WeaponSpec("warden-maul", "Warden's Maul", Track.RONIN, 10, 1, "weapon_warden-maul.png",
                    "Pried from the て-form Warden. It still hums with stolen souls.",
                    skill=Skill.SOUL_SIPHON),
+        WeaponSpec("gargoyle-halberd", "Gargoyle's Tail Halberd", Track.RONIN, 11, 1,
+                   "weapon_gargoyle-halberd.png",
+                   "Hewn from the Plain-Form Gargoyle's stone tail. It says no more than it must.",
+                   skill=Skill.SOUL_SIPHON),
         WeaponSpec("pilgrim-shakujo", "Pilgrim's Shakujō", Track.ARCHITECT, 10, 1,
                    "weapon_pilgrim-shakujo.png",
                    "Every Architect starts with one. Its rings ring once for every step walked.",
@@ -128,11 +132,13 @@ def weapon_id(stored: str) -> str:
 
 BOSS_WEAPONS = {
     "te-warden": "warden-maul",
+    "pf-gargoyle": "gargoyle-halberd",
     "forge-boss": "golem-fist",
     "data-depths-boss": "wyrm-chain",
 }
 BOSS_MATERIALS = {
     "te-warden": ((Material.LARGE_SHARD, 3), (Material.CHUNK, 1)),
+    "pf-gargoyle": ((Material.LARGE_SHARD, 4), (Material.CHUNK, 2)),
     "forge-boss": ((Material.LARGE_SHARD, 3), (Material.CHUNK, 1)),
     "data-depths-boss": ((Material.LARGE_SHARD, 3), (Material.CHUNK, 2)),
 }
@@ -143,17 +149,20 @@ class Effect(StrEnum):
     BULWARK = "bulwark"
     FLASK = "flask"
     PROSPECTOR = "prospector"
+    TRIBUTE = "tribute"
 
 
 VITALITY_HP = 20
 BULWARK_HP = 5
 FLASK_EXTRA = 1
 PROSPECTOR_CHANCE = 0.15
+TRIBUTE_SOULS = 2
 EFFECTS = {
     Effect.VITALITY: f"+{VITALITY_HP} max HP in boss fights",
     Effect.BULWARK: f"Mistakes in boss fights cost {BULWARK_HP} HP less",
     Effect.FLASK: f"+{FLASK_EXTRA} Estus flask in every boss fight",
     Effect.PROSPECTOR: f"Good lessons drop titanite {round(PROSPECTOR_CHANCE * 100)}% more often",
+    Effect.TRIBUTE: f"Right answers in boss fights pay {TRIBUTE_SOULS} more souls",
 }
 SLOT_NAMES = {Slot.HEAD: "Head", Slot.CHEST: "Chest", Slot.ARMS: "Arms", Slot.LEGS: "Legs"}
 
@@ -183,12 +192,16 @@ ARMOUR: dict[str, ArmourSpec] = {
                    "Cut from the て-form Warden's shoulders. Green with age, and still too heavy."),
         ArmourSpec("golem-gauntlets", "Golem's Riveted Gauntlets", Slot.ARMS, Effect.FLASK,
                    "Iron plates riveted to the Strict Golem's forearms. They never drop a flask."),
+        ArmourSpec("gargoyle-helm", "Gargoyle Helm", Slot.HEAD, Effect.TRIBUTE,
+                   "A stone cowl chipped from the Gargoyle's brow. It hears every answer, and "
+                   "takes its cut."),
         ArmourSpec("wyrm-greaves", "Wyrm-scale Greaves", Slot.LEGS, Effect.PROSPECTOR,
                    "Scales shed by the Lock Wyrm. Whoever wears them walks toward titanite."),
 )
 }  # fmt: skip
 BOSS_ARMOUR = {
     "te-warden": "warden-pauldrons",
+    "pf-gargoyle": "gargoyle-helm",
     "forge-boss": "golem-gauntlets",
     "data-depths-boss": "wyrm-greaves",
 }
@@ -257,6 +270,10 @@ class Armory:
     @property
     def extra_estus(self) -> int:
         return FLASK_EXTRA if self.wears(Effect.FLASK) else 0
+
+    @property
+    def hit_bonus(self) -> int:
+        return TRIBUTE_SOULS if self.wears(Effect.TRIBUTE) else 0
 
     @property
     def drop_bonus(self) -> float:

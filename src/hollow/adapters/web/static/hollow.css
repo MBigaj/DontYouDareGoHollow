@@ -452,7 +452,8 @@ td:last-child { text-align: right; color: var(--ember-hi); }
 .duel .options { margin: 8px 0; }
 .foe.foe-golem { aspect-ratio: 432 / 504; height: 70%; }
 .foe.foe-wyrm { aspect-ratio: 480 / 504; height: 70%; right: 7%; }
-@media (max-width: 720px) { .foe.foe-golem, .foe.foe-wyrm { height: 52%; right: 3%; } }
+.foe.foe-gargoyle { aspect-ratio: 408 / 510; height: 72%; }
+@media (max-width: 720px) { .foe.foe-golem, .foe.foe-wyrm, .foe.foe-gargoyle { height: 52%; right: 3%; } }
 
 /* the Warden's question: a conversation judged later by the Sensei */
 .duel.conversation .judging, .duel.conversation .said { grid-column: 1 / -1; }
